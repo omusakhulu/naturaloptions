@@ -1,0 +1,115 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Local development
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# WooCommerce Bridge specific
+woo-rental-bridge/.env
+woo-rental-bridge/dist/
+woo-rental-bridge/coverage/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# System files
+.DS_Store
+*.pem
+*.log
+
+# Editor directories and files
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.history/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Build output
+/dist
+/.cache
+
+# Icon generated files
+src/assets/iconify-icons/generated-icons.js
+src/assets/iconify-icons/generated-icons.css
+
+# Local development
+.idea/
+*.iml
+*.log
+*.sublime-*
+
+# Package manager specific
+yarn.lock
+pnpm-lock.yaml
+
+# Testing
+/cypress/videos/
+/cypress/screenshots/
+
+# Misc
+.cache/
+.temp/
+.tmp/
+
+
+/woo-rental-bridge/node_modules/*
+/woo-rental-bridge/node_modules
+/woo-rental-bridge/node_modules
+/woo-rental-bridge/node_modules/
+
+# Deployment & Production
+logs/
+*.log
+backups/
+*.dump
+.pm2/
+pm2-*.log
+
+# Database
+prisma/migrations/migration_lock.toml
+
+# Temporary files
+*.tmp
+*.temp
+test-*.js
+simple-test.js
+fetch-test.js
+axios-test.js
+network-test.js
+ipv4-test.js
+undici-test.js

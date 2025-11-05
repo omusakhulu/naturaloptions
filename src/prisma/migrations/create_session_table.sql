@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS "Session" (
+    id TEXT PRIMARY KEY,
+    "sessionToken" TEXT UNIQUE NOT NULL,
+    "userId" TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+    expires TIMESTAMPTZ NOT NULL
+);

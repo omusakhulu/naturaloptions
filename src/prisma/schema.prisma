@@ -1,0 +1,684 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native"]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String?        @unique
+  emailVerified DateTime?
+  password      String?        // Hashed password for credential login
+  image         String?
+  role          UserRole       @default(USER)
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  packingSlips  PackingSlip[]
+  activityLogs  ActivityLog[]  // Activities performed by this user
+  userActivities ActivityLog[] @relation("UserActivities") // Activities related to this user
+}
+
+enum UserRole {
+  SUPER_ADMIN  // Full system access
+  ADMIN        // Admin access to most features
+  MANAGER      // Can manage projects, orders, inventory
+  SALES        // Can create quotes, view reports
+  USER         // Basic access
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  wooId            Int      @unique
+  name             String
+  slug             String   @unique
+  description      String?
+  shortDescription String?
+  price            String?
+  regularPrice     String?
+  salePrice        String?
+  stockStatus      String   @default("instock")
+  stockQuantity    Int      @default(0)
+  sku              String?
+  image            String?
+  images           String?  @default("[]")
+  categories       String?  @default("[]")
+  rating           Float    @default(0)
+  ratingCount      Int      @default(0)
+  status           String   @default("publish")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  syncedAt         DateTime @default(now())
+
+  @@index([wooId])
+  @@index([status])
+  @@index([syncedAt])
+}
+
+model Order {
+  id               String   @id @default(cuid())
+  wooId            Int      @unique
+  orderNumber      String   @unique
+  customerId       Int?
+  status           String
+  total            String?
+  subtotal         String?
+  shippingTotal    String?
+  taxTotal         String?
+  discountTotal    String?
+  paymentMethod    String?
+  paymentMethodTitle String?
+  customerNote     String?
+  dateCreated      DateTime?
+  datePaid         DateTime?
+  dateCompleted    DateTime?
+  shippingAddress  String?  @default("{}")
+  billingAddress   String?  @default("{}")
+  lineItems        String?  @default("[]")
+  customer         String?  @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  syncedAt         DateTime @default(now())
+  
+  deliveries       DeliveryAssignment[]
+
+  @@index([wooId])
+  @@index([customerId])
+  @@index([status])
+  @@index([syncedAt])
+  @@index([dateCreated])
+}
+
+model Customer {
+  id               String   @id @default(cuid())
+  wooId            Int      @unique
+  email            String   @unique
+  firstName        String?
+  lastName         String?
+  username         String?
+  role             String?
+  avatarUrl        String?
+  billingAddress   String?  @default("{}")
+  shippingAddress  String?  @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  syncedAt         DateTime @default(now())
+
+  @@index([wooId])
+  @@index([email])
+  @@index([syncedAt])
+}
+
+model Invoice {
+  id               String   @id @default(cuid())
+  wooOrderId       Int      @unique
+  invoiceNumber    String   @unique
+  customerId       Int?
+  status           String   @default("draft")
+  // Mirrors Woo order.status (e.g., pending, processing, completed)
+  orderStatus      String?
+  // Independent invoice lifecycle
+  invoiceStatus    InvoiceStatus @default(draft)
+  amount           String?
+  date             DateTime @default(now())
+  dueDate          DateTime?
+  customerName     String?
+  customerEmail    String?
+  billingAddress   String  @default("{}")
+  lineItems        String  @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([wooOrderId])
+  @@index([customerId])
+  @@index([status])
+  @@index([orderStatus])
+  @@index([invoiceStatus])
+  @@index([date])
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  partially_paid
+  paid
+}
+
+model PackingSlip {
+  id                String            @id @default(cuid())
+  wooOrderId        Int               @unique
+  packingSlipNumber String            @unique
+  status            PackingSlipStatus @default(awaiting_collection)
+  boothNumber       String?
+  assignedUserId    String?
+  assignedUser      User?             @relation(fields: [assignedUserId], references: [id])
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([wooOrderId])
+  @@index([status])
+  @@index([assignedUserId])
+  @@index([createdAt])
+}
+
+enum PackingSlipStatus {
+  awaiting_collection
+  en_route
+  delivered
+  collected
+}
+
+model Project {
+  id            String          @id @default(cuid())
+  name          String
+  orderId       Int?            @unique
+  status        ProjectStatus   @default(draft)
+  crewDetails   CrewDetail[]
+  transport     Transport[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ProjectStatus {
+  draft
+  submitted
+  approved
+  in_progress
+  completed
+  cancelled
+}
+
+model CrewDetail {
+  id              String        @id @default(cuid())
+  projectId       String
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workType        WorkType
+  numberOfCrew    Int
+  shiftsNeeded    Int
+  fare            Float
+  accommodation   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([workType])
+}
+
+enum WorkType {
+  loading_offloading
+  buttoning_up_during_event
+  standby
+  build
+  takedown_return
+  roof_floor_walls
+  carpeting_general_cleaning
+}
+
+model Transport {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vehicleType     String
+  numberOfTrips   Int
+  pricePerTrip    Float
+  contingency     Float?   @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+model EventTentQuote {
+  id                String   @id @default(cuid())
+  quoteNumber       String   @unique
+  
+  // Contact Information
+  contactName       String?
+  contactEmail      String?
+  contactPhone      String?
+  
+  // Event Details
+  eventType         String
+  eventStartDate    DateTime?
+  eventEndDate      DateTime?
+  eventVenue        String?
+  numberOfGuests    Int
+  duration          Int      @default(1)
+  
+  // Structure Details
+  tentType          String
+  structureSummary  String?
+  
+  // Pricing
+  lineItems         String   @default("[]") // JSON array of line items
+  subtotal          Float
+  vat               Float
+  total             Float
+  
+  // Status
+  status            QuoteStatus @default(draft)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([quoteNumber])
+  @@index([status])
+  @@index([contactEmail])
+  @@index([createdAt])
+}
+
+enum QuoteStatus {
+  draft
+  sent
+  accepted
+  rejected
+  expired
+}
+
+// Warehousing Models
+model Warehouse {
+  id              String            @id @default(cuid())
+  name            String
+  code            String            @unique
+  address         String?
+  city            String?
+  state           String?
+  country         String?
+  postalCode      String?
+  phone           String?
+  email           String?
+  managerName     String?
+  capacity        Float?            // Total capacity in cubic meters
+  status          WarehouseStatus   @default(active)
+  
+  // Relations
+  locations       WarehouseLocation[]
+  inventory       InventoryItem[]
+  movements       StockMovement[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([code])
+  @@index([status])
+}
+
+model WarehouseLocation {
+  id              String            @id @default(cuid())
+  warehouseId     String
+  warehouse       Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  
+  zone            String            // e.g., "A", "B", "C"
+  aisle           String?           // e.g., "1", "2", "3"
+  rack            String?           // e.g., "R1", "R2"
+  shelf           String?           // e.g., "S1", "S2"
+  bin             String?           // e.g., "B1", "B2"
+  
+  locationCode    String            @unique  // e.g., "A-1-R1-S1-B1"
+  capacity        Float?            // Capacity in cubic meters
+  occupied        Float?            @default(0)
+  
+  // Relations
+  inventory       InventoryItem[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([warehouseId])
+  @@index([locationCode])
+}
+
+model InventoryItem {
+  id              String            @id @default(cuid())
+  warehouseId     String
+  warehouse       Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  
+  locationId      String?
+  location        WarehouseLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  
+  sku             String
+  productName     String
+  description     String?
+  category        String?
+  
+  quantity        Int               @default(0)
+  reorderLevel    Int?              @default(10)
+  unit            String?           @default("pcs")
+  
+  costPrice       Float?
+  sellingPrice    Float?
+  
+  // Relations
+  movements       StockMovement[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([warehouseId])
+  @@index([locationId])
+  @@index([sku])
+  @@unique([warehouseId, sku, locationId])
+}
+
+model StockMovement {
+  id              String            @id @default(cuid())
+  warehouseId     String
+  warehouse       Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  
+  inventoryId     String
+  inventory       InventoryItem     @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  
+  type            MovementType
+  quantity        Int
+  
+  fromLocation    String?
+  toLocation      String?
+  
+  referenceNumber String?
+  notes           String?
+  performedBy     String?
+  
+  createdAt       DateTime          @default(now())
+  
+  @@index([warehouseId])
+  @@index([inventoryId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum WarehouseStatus {
+  active
+  inactive
+  maintenance
+}
+
+enum MovementType {
+  inbound
+  outbound
+  transfer
+  adjustment
+  return
+}
+
+model BOQ {
+  id              Int       @id @default(autoincrement())
+  boqNumber       String    @unique
+  quoteId         String?
+  projectId       String?   // Link to project if generated from project (Project.id is cuid)
+  
+  projectName     String
+  projectLocation String?
+  
+  clientName      String
+  clientEmail     String?
+  clientPhone     String?
+  
+  eventDate       DateTime?
+  duration        Int       @default(1)
+  
+  sections        String    // JSON array of BOQ sections with items (includes cost & rate)
+  
+  subtotal        String    // Client-facing subtotal (selling price)
+  vat             String
+  total           String    // Client-facing total
+  
+  internalCost    String?   // Total internal cost (for profit calculation)
+  profitAmount    String?   // Calculated profit (total - internalCost)
+  profitMargin    String?   // Profit percentage ((profit/total) * 100)
+  
+  discount        String?   // Discount amount or percentage
+  paymentTerms    String?   // e.g., "Net 30", "50% upfront"
+  validityDays    Int       @default(30)
+  
+  status          String    @default("draft") // draft, approved, sent, completed
+  remarks         String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([quoteId])
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ProjectCostReport {
+  id                Int       @id @default(autoincrement())
+  reportNumber      String    @unique
+  projectId         String    // Link to Project (Project.id is cuid)
+  projectName       String
+  
+  // Estimated vs Actual
+  estimatedCost     String
+  actualCost        String
+  variance          String    // Actual - Estimated
+  variancePercent   String    // ((Actual - Estimated) / Estimated) * 100
+  
+  // Revenue & Profit
+  revenue           String    // Total project revenue
+  profit            String    // Revenue - Actual Cost
+  profitMargin      String    // (Profit / Revenue) * 100
+  
+  // Cost Breakdown (JSON)
+  laborCosts        String?   // JSON: { estimated, actual, variance }
+  materialCosts     String?   // JSON: { estimated, actual, variance }
+  equipmentCosts    String?   // JSON: { estimated, actual, variance }
+  transportCosts    String?   // JSON: { estimated, actual, variance }
+  overheadCosts     String?   // JSON: { estimated, actual, variance }
+  otherCosts        String?   // JSON: { estimated, actual, variance }
+  
+  // Metadata
+  startDate         DateTime?
+  endDate           DateTime?
+  status            String    @default("draft") // draft, in_progress, completed
+  remarks           String?
+  generatedBy       String?   // User who generated the report
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id              String       @id @default(cuid())
+  performedById   String       // User who performed the action
+  performedBy     User         @relation(fields: [performedById], references: [id], onDelete: Cascade)
+  
+  relatedUserId   String?      // User this activity is about (optional)
+  relatedUser     User?        @relation("UserActivities", fields: [relatedUserId], references: [id], onDelete: Cascade)
+  
+  entityType      EntityType   // Type of entity (Invoice, Order, etc.)
+  entityId        String       // ID of the related entity
+  action          String       // Action performed (created, updated, deleted, etc.)
+  description     String       // Human-readable description
+  
+  icon            String?      // Tabler icon name
+  color           String?      // Color for the timeline (primary, success, warning, error, info)
+  
+  metadata        String?      @default("{}") // JSON metadata for additional context
+  
+  createdAt       DateTime     @default(now())
+  
+  @@index([performedById])
+  @@index([relatedUserId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+enum EntityType {
+  USER
+  INVOICE
+  ORDER
+  PRODUCT
+  CUSTOMER
+  PACKING_SLIP
+  WAREHOUSE
+  INVENTORY
+  PROJECT
+  BOQ
+  QUOTE
+}
+
+// ============================================
+// LOGISTICS & FLEET MANAGEMENT
+// ============================================
+
+model Driver {
+  id              String             @id @default(cuid())
+  userId          String?            @unique // Link to User model if driver is also a system user
+  name            String
+  email           String?            @unique
+  phone           String?
+  licenseNumber   String?            @unique
+  licenseExpiry   DateTime?
+  status          DriverStatus       @default(AVAILABLE)
+  vehicleId       String?            // Currently assigned vehicle
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  vehicle         Vehicle?           @relation(fields: [vehicleId], references: [id])
+  deliveries      DeliveryAssignment[]
+  
+  @@index([status])
+  @@index([vehicleId])
+}
+
+model Vehicle {
+  id              String             @id @default(cuid())
+  registrationNo  String             @unique
+  make            String             // e.g., Toyota, Isuzu
+  model           String             // e.g., Hilux, Forward
+  year            Int?
+  type            VehicleType        @default(TRUCK)
+  capacity        Float?             // Weight capacity in kg or volume in m³
+  status          VehicleStatus      @default(AVAILABLE)
+  mileage         Float?             @default(0)
+  lastService     DateTime?
+  nextService     DateTime?
+  fuelType        String?            // Diesel, Petrol, Electric
+  engineCapacity  Float?             // Engine size in liters (e.g., 2.5, 3.0)
+  fuelConsumption Float?             // Fuel consumption in km/l
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  drivers         Driver[]
+  deliveries      DeliveryAssignment[]
+  
+  @@index([status])
+  @@index([type])
+}
+
+model DeliveryAssignment {
+  id              String             @id @default(cuid())
+  orderId         String
+  driverId        String
+  vehicleId       String
+  scheduledDate   DateTime           // Date scheduled for delivery
+  scheduledTime   String?            // Time slot (e.g., "09:00-12:00")
+  status          DeliveryStatus     @default(SCHEDULED)
+  priority        DeliveryPriority   @default(NORMAL)
+  route           String?            // Route details or map link
+  notes           String?            // Special instructions
+  startTime       DateTime?          // Actual start time
+  completedTime   DateTime?          // Actual completion time
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  order           Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver          Driver             @relation(fields: [driverId], references: [id])
+  vehicle         Vehicle            @relation(fields: [vehicleId], references: [id])
+  
+  @@index([orderId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_DELIVERY
+  OFF_DUTY
+  ON_LEAVE
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum VehicleType {
+  TRUCK
+  VAN
+  PICKUP
+  MOTORCYCLE
+  OTHER
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DELAYED
+}
+
+enum DeliveryPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}

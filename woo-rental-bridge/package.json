@@ -1,0 +1,37 @@
+{
+  "name": "woorental-bridge",
+  "version": "1.0.0",
+  "description": "WooCommerce/WordPress module for event-based equipment rentals and analytics.",
+  "main": "dist/WooRentalBridge.js",
+  "types": "dist/WooRentalBridge.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start:dev": "nodemon --watch src --exec ts-node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build",
+    "dev:test": "ts-node test/devTest.ts"
+  },
+  "keywords": [
+    "woocommerce",
+    "wordpress",
+    "rental",
+    "ecommerce",
+    "analytics"
+  ],
+  "author": "Natural Options",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@woocommerce/woocommerce-rest-api": "^1.0.2",
+    "axios": "^1.12.2",
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0",
+    "node-fetch": "^2.7.0",
+    "ping": "^1.0.0",
+    "pnpm": "^10.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "dotenv": "^17.2.3",
+    "typescript": "^5.4.5"
+  }
+}

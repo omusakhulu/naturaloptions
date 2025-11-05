@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS "Product" (
+    id TEXT PRIMARY KEY,
+    "wooId" INTEGER UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    description TEXT,
+    "shortDescription" TEXT,
+    price TEXT,
+    "regularPrice" TEXT,
+    "salePrice" TEXT,
+    "stockStatus" TEXT NOT NULL DEFAULT 'instock',
+    "stockQuantity" INTEGER NOT NULL DEFAULT 0,
+    sku TEXT UNIQUE,
+    image TEXT,
+    images TEXT DEFAULT '[]',
+    categories TEXT DEFAULT '[]',
+    rating DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "ratingCount" INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'publish',
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ NOT NULL,
+    "syncedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

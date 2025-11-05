@@ -1,0 +1,16 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "Account_provider_providerAccountId_key" ON "Account"(provider, "providerAccountId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Session_sessionToken_key" ON "Session"("sessionToken");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"(email);
+CREATE UNIQUE INDEX IF NOT EXISTS "VerificationToken_token_key" ON "VerificationToken"(token);
+CREATE UNIQUE INDEX IF NOT EXISTS "VerificationToken_identifier_token_key" ON "VerificationToken"(identifier, token);
+CREATE INDEX IF NOT EXISTS "Product_wooId_idx" ON "Product"("wooId");
+CREATE INDEX IF NOT EXISTS "Product_status_idx" ON "Product"(status);
+CREATE INDEX IF NOT EXISTS "Product_syncedAt_idx" ON "Product"("syncedAt");
+CREATE INDEX IF NOT EXISTS "Order_customerId_idx" ON "Order"("customerId");
+CREATE INDEX IF NOT EXISTS "Order_status_idx" ON "Order"(status);
+CREATE INDEX IF NOT EXISTS "Order_syncedAt_idx" ON "Order"("syncedAt");
+CREATE INDEX IF NOT EXISTS "Order_dateCreated_idx" ON "Order"("dateCreated");
+CREATE INDEX IF NOT EXISTS "Customer_email_idx" ON "Customer"(email);
+CREATE INDEX IF NOT EXISTS "Customer_syncedAt_idx" ON "Customer"("syncedAt");
+CREATE INDEX IF NOT EXISTS "Invoice_status_idx" ON "Invoice"(status);
+CREATE INDEX IF NOT EXISTS "Invoice_date_idx" ON "Invoice"(date);

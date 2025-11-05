@@ -1,0 +1,3 @@
+@echo off
+echo Testing WooCommerce API connection...
+curl -v -k -X GET "https://omnishop.omnispace3d.com/wp-json/wc/v3/products?consumer_key=ck_d54ed054d0803d25e3de47b8bb5fed9c03cf0fad&consumer_secret=cs_bdcf4ac0f48fa175e438eda440011ef057a8d44d&per_page=1"
