@@ -14,16 +14,6 @@ const Security = () => {
       <Grid size={12}>
         <ChangePasswordCard />
       </Grid>
-
-      <Grid size={12}>
-        <CreateApiKey />
-      </Grid>
-      <Grid size={12}>
-        <ApiKeyList />
-      </Grid>
-      <Grid size={12}>
-        <RecentDevicesTable />
-      </Grid>
     </Grid>
   )
 }

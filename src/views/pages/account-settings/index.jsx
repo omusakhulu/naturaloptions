@@ -33,7 +33,6 @@ const AccountSettings = ({ tabContentList }) => {
               iconPosition='start'
               value='notifications'
             />
-            <Tab label='Connections' icon={<i className='tabler-link' />} iconPosition='start' value='connections' />
           </CustomTabList>
         </Grid>
         <Grid size={12}>

@@ -16,17 +16,27 @@ const cards = [
   {
     title: 'Balance Sheet',
     desc: 'Snapshot of assets, liabilities and equity at a point in time.',
-    href: (lang) => `/${lang}/apps/payment-accounts/balance-sheet`
+    href: (lang) => `/${lang}/apps/accounting/reports/balance-sheet`
   },
   {
     title: 'AR Aging (Summary)',
     desc: 'Summary of pending sales invoices by aging bucket.',
-    href: (lang) => `/${lang}/apps/accounting/reports/ar-aging`
+    href: (lang) => `/${lang}/apps/accounting/reports/ar-aging/summary`
+  },
+  {
+    title: 'AR Aging (Details)',
+    desc: 'Detailed list of AR invoices by due bucket and days past due.',
+    href: (lang) => `/${lang}/apps/accounting/reports/ar-aging/details`
   },
   {
     title: 'AP Aging (Summary)',
     desc: 'Summary of pending purchase bills by aging bucket.',
-    href: (lang) => `/${lang}/apps/accounting/reports/ap-aging`
+    href: (lang) => `/${lang}/apps/accounting/reports/ap-aging/summary`
+  },
+  {
+    title: 'AP Aging (Details)',
+    desc: 'Detailed list of AP bills by due bucket and days past due.',
+    href: (lang) => `/${lang}/apps/accounting/reports/ap-aging/details`
   }
 ]
 

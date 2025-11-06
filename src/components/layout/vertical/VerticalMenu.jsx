@@ -149,13 +149,30 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             <MenuItem href={`/${locale}/apps/accounting/journal-entries`}>Journal Entries</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/transactions`}>Transactions</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/reports`}>Reports</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/financial-reports`}>Financial Reports</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/vendors`}>Vendors</MenuItem>
           </SubMenu>
           <SubMenu label='Reports' icon={<i className='tabler-report-analytics' />}>
-            <MenuItem href={`/${locale}/apps/pos/sales-reports`}>Sales Reports</MenuItem>
-            <MenuItem href={`/${locale}/apps/accounting/financial-reports`}>Financial Reports</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/profit-loss`}>Profit / Loss Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/purchase-sale`}>Purchase & Sale</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/tax`}>Tax Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/supplier-customer`}>Supplier & Customer Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/customer-groups`}>Customer Groups Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/stock`}>Stock Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/stock-expiry`}>Stock Expiry Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/lot`}>Lot Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/stock-adjustment`}>Stock Adjustment Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/trending-products`}>Trending Products</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/items`}>Items Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/product-purchase`}>Product Purchase Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/product-sell`}>Product Sell Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/purchase-payment`}>Purchase Payment Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/sell-payment`}>Sell Payment Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/expense`}>Expense Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/register`}>Register Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/sales-representative`}>Sales Representative Report</MenuItem>
+            <MenuItem href={`/${locale}/apps/reports/activity-log`}>Activity Log</MenuItem>
           </SubMenu>
-          <MenuItem icon={<i className='tabler-mail' />} href={`/${locale}/apps/notifications/email`}>{dictionary['navigation'].emailNotifications || 'Email Notifications'}</MenuItem>
           <MenuItem icon={<i className='tabler-settings' />} href={`/${locale}/pages/account-settings`}>Settings</MenuItem>
           <MenuItem icon={<i className='tabler-brand-woocommerce' />} href={`${process.env.NEXT_PUBLIC_WOOCOMMERCE_STORE_URL || '#'}`} target='_blank'>WooCommerce</MenuItem>
 
