@@ -374,13 +374,13 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                   <div className='flex flex-col items-start gap-0.5'>
                     <div
                       className={classnames(styles.itemWrapper, {
-                        [styles.active]: settings.contentWidth === 'compact'
+                        [styles.active]: settings.contentWidth === 'wide'
                       })}
                       onClick={() =>
                         updateSettings({
-                          navbarContentWidth: 'compact',
-                          contentWidth: 'compact',
-                          footerContentWidth: 'compact'
+                          navbarContentWidth: 'wide',
+                          contentWidth: 'wide',
+                          footerContentWidth: 'wide'
                         })
                       }
                     >
@@ -390,9 +390,9 @@ const Customizer = ({ breakpoint = 'lg', dir = 'ltr', disableDirection = false }
                       className={styles.itemLabel}
                       onClick={() =>
                         updateSettings({
-                          navbarContentWidth: 'compact',
-                          contentWidth: 'compact',
-                          footerContentWidth: 'compact'
+                          navbarContentWidth: 'wide',
+                          contentWidth: 'wide',
+                          footerContentWidth: 'wide'
                         })
                       }
                     >

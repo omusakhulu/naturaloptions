@@ -185,6 +185,36 @@ const CustomerListTable = ({ customerData }) => {
           )
         }
       }),
+      columnHelper.accessor('outstanding', {
+        header: 'Outstanding',
+        cell: ({ row }) => {
+          const amount = Number(row.original.outstanding || 0)
+          const text = Number.isFinite(amount)
+            ? `KSh ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : 'KSh 0.00'
+          return (
+            <Typography className='font-medium' color='text.primary'>
+              {text}
+            </Typography>
+          )
+        }
+      }),
+      columnHelper.accessor('lastInvoice', {
+        header: 'Last Invoice',
+        cell: ({ row }) => {
+          const v = row.original.lastInvoice
+          const d = v ? new Date(v) : null
+          return <Typography>{d ? d.toLocaleString() : '-'}</Typography>
+        }
+      }),
+      columnHelper.accessor('lastOrderDate', {
+        header: 'Last Order',
+        cell: ({ row }) => {
+          const v = row.original.lastOrderDate
+          const d = v ? new Date(v) : null
+          return <Typography>{d ? d.toLocaleString() : '-'}</Typography>
+        }
+      }),
       columnHelper.display({
         id: 'actions',
         header: 'Action',

@@ -78,24 +78,17 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
               <MenuItem href={`/${locale}/apps/ecommerce/products/list`}>List Products</MenuItem>
               <MenuItem href={`/${locale}/apps/ecommerce/products/add`}>Add Product</MenuItem>
               <MenuItem href={`/${locale}/apps/ecommerce/products/update-price`}>Update Price</MenuItem>
-              <MenuItem href={`/${locale}/apps/ecommerce/products/print-labels`}>Print Labels</MenuItem>
-              <MenuItem href={`/${locale}/apps/ecommerce/products/variations`}>Variations</MenuItem>
               <MenuItem href={`/${locale}/apps/ecommerce/products/import-products`}>Import Products</MenuItem>
               <MenuItem href={`/${locale}/apps/ecommerce/products/import-opening-stock`}>Import Opening Stock</MenuItem>
-              <MenuItem href={`/${locale}/apps/ecommerce/products/selling-price-group`}>Selling Price Group</MenuItem>
-              <MenuItem href={`/${locale}/apps/ecommerce/products/units`}>Units</MenuItem>
               <MenuItem href={`/${locale}/apps/ecommerce/products/categories`}>Categories</MenuItem>
               <MenuItem href={`/${locale}/apps/ecommerce/products/brands`}>Brands</MenuItem>
               <MenuItem href={`/${locale}/apps/ecommerce/products/warranties`}>Warranties</MenuItem>
+              <MenuItem icon={<i className='tabler-adjustments' />} href={`/${locale}/apps/stock-adjustment`}>{dictionary['navigation'].stockAdjustment || 'Stock Adjustment'}</MenuItem>
             </SubMenu>
             <SubMenu label={dictionary['navigation'].orders}>
               <MenuItem href={`/${locale}/apps/ecommerce/orders/list`}>Orders {dictionary['navigation'].list}</MenuItem>
             </SubMenu>
-            <SubMenu label={dictionary['navigation'].customers}>
-              <MenuItem href={`/${locale}/apps/ecommerce/customers/list`}>
-                Customers {dictionary['navigation'].list}
-              </MenuItem>
-            </SubMenu>
+
 
             <SubMenu label={dictionary['navigation'].brands}>
               <MenuItem href={`/${locale}/apps/ecommerce/brands`}>{dictionary['navigation'].brands} {dictionary['navigation'].list}</MenuItem>
@@ -120,32 +113,36 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             <MenuItem href={`/${locale}/apps/purchases/list`}>List Purchases</MenuItem>
             <MenuItem href={`/${locale}/apps/purchases/add`}>Add Purchase</MenuItem>
             <MenuItem href={`/${locale}/apps/purchases/returns`}>List Purchase Return</MenuItem>
-            <MenuSection label='-----' />
-            <MenuItem href={`/${locale}/apps/accounting/vendors`}>Vendors</MenuItem>
-            <MenuItem href={`/${locale}/apps/accounting/accounts-payable`}>Accounts Payable</MenuItem>
+
           </SubMenu>
-          <SubMenu label='Business Intelligence' icon={<i className='tabler-brain' />}> 
+          <SubMenu label='Business Intelligence' icon={<i className='tabler-brain' />}>
             <MenuItem href={`/${locale}/apps/bi/dashboard`}>BI Dashboard</MenuItem>
             <MenuItem href={`/${locale}/apps/bi/insights`}>AI Insights</MenuItem>
             <MenuItem href={`/${locale}/apps/bi/analytics`}>Analytics</MenuItem>
-            <MenuItem href={`/${locale}/apps/bi/configuration`}>Configuration</MenuItem>
           </SubMenu>
           <SubMenu label='Sell' icon={<i className='tabler-cash-register' />}>
-            <MenuItem href={`/${locale}/apps/pos/terminal`}>POS Terminal</MenuItem>
-            <MenuItem href={`/${locale}/apps/pos/sales-reports`}>Sales Reports</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/sales-order`}>Sales Order</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/sales`}>All sales</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/pos/list`}>List POS</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/pos`}>POS</MenuItem>
+
+            <MenuItem href={`/${locale}/apps/sell/quotations/add`}>Add Quotation</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/quotations`}>List quotations</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/returns`}>List Sell Return</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/shipments`}>Shipments</MenuItem>
+            <MenuItem href={`/${locale}/apps/sell/discounts`}>Discounts</MenuItem>
           </SubMenu>
-          <MenuItem icon={<i className='tabler-arrows-exchange-2' />} href={`/${locale}/apps/stock-transfers`}>
-            {dictionary['navigation'].stockTransfers || 'Stock Transfers'}
-          </MenuItem>
-          <MenuItem icon={<i className='tabler-adjustments' />} href={`/${locale}/apps/stock-adjustment`}>
-            {dictionary['navigation'].stockAdjustment || 'Stock Adjustment'}
-          </MenuItem>
+
+
           <MenuItem icon={<i className='tabler-moneybag' />} href={`/${locale}/apps/expenses`}>
             {dictionary['navigation'].expenses || 'Expenses'}
           </MenuItem>
-          <MenuItem icon={<i className='tabler-credit-card' />} href={`/${locale}/apps/payment-accounts`}>
-            {dictionary['navigation'].paymentAccounts || 'Payment Accounts'}
-          </MenuItem>
+          <SubMenu label={dictionary['navigation'].paymentAccounts || 'Payment Accounts'} icon={<i className='tabler-credit-card' />}>
+            <MenuItem href={`/${locale}/apps/payment-accounts`}>Accounts</MenuItem>
+            <MenuItem href={`/${locale}/apps/payment-accounts/balance-sheet`}>Balance Sheet</MenuItem>
+            <MenuItem href={`/${locale}/apps/payment-accounts/trial-balance`}>Trial Balance</MenuItem>
+            <MenuItem href={`/${locale}/apps/payment-accounts/cash-flow`}>Cash Flow</MenuItem>
+          </SubMenu>
           <SubMenu label='Accounting' icon={<i className='tabler-calculator' />}>
             <MenuItem href={`/${locale}/apps/accounting/dashboard`}>Dashboard</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/chart-of-accounts`}>Chart of Accounts</MenuItem>
@@ -158,11 +155,10 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             <MenuItem href={`/${locale}/apps/pos/sales-reports`}>Sales Reports</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/financial-reports`}>Financial Reports</MenuItem>
           </SubMenu>
-          <MenuItem icon={<i className='tabler-bell-ringing' />} href={`/${locale}/apps/notifications/templates`}>{dictionary['navigation'].notificationTemplates || 'Notification Templates'}</MenuItem>
           <MenuItem icon={<i className='tabler-mail' />} href={`/${locale}/apps/notifications/email`}>{dictionary['navigation'].emailNotifications || 'Email Notifications'}</MenuItem>
           <MenuItem icon={<i className='tabler-settings' />} href={`/${locale}/pages/account-settings`}>Settings</MenuItem>
           <MenuItem icon={<i className='tabler-brand-woocommerce' />} href={`${process.env.NEXT_PUBLIC_WOOCOMMERCE_STORE_URL || '#'}`} target='_blank'>WooCommerce</MenuItem>
-          
+
         </MenuSection>
       </Menu>
       {/* <Menu

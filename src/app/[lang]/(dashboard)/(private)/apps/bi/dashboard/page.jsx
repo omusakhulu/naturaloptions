@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSettings } from '@core/hooks/useSettings'
 import { Line, Bar, Pie } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -27,9 +28,15 @@ const kpis = [
 ]
 
 export default function BIDashboardPage() {
+  const { updatePageSettings } = useSettings()
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState('month')
+
+  useEffect(() => {
+    const reset = updatePageSettings({ contentWidth: 'wide' })
+    return reset
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -72,35 +79,56 @@ export default function BIDashboardPage() {
       {loading || !metrics ? (
         <p>Loading charts…</p>
       ) : (
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-          {/* Line chart sales trend */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+          {/* Sales Trend */}
           <div className='bg-white border rounded shadow p-4'>
-            <Line
-              data={{
-                labels: metrics.dailySales.map(d=>d.date),
-                datasets:[{label:'Daily Sales',data:metrics.dailySales.map(d=>d.total),fill:false,borderColor:'#6366f1'}]
-              }}
-              options={{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }}
-            />
+            <div className='flex items-center justify-between mb-2'>
+              <h3 className='font-medium'>Sales Trend (last 30 days)</h3>
+              <div className='text-xs text-gray-500'>
+                Total: {new Intl.NumberFormat('en-KE',{style:'currency',currency:'KES',maximumFractionDigits:0}).format(metrics.totalSales)}
+              </div>
+            </div>
+            <div className='h-72'>
+              <Line
+                data={{
+                  labels: metrics.dailySales.map(d=>d.date),
+                  datasets:[{label:'Daily Sales',data:metrics.dailySales.map(d=>d.total),fill:false,borderColor:'#6366f1'}]
+                }}
+                options={{ maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }}
+              />
+            </div>
           </div>
 
-          {/* Bar chart orders vs sales */}
+          {/* Totals */}
           <div className='bg-white border rounded shadow p-4'>
-            <Bar
-              data={{
-                labels:['Sales','Orders'],
-                datasets:[{label:'Totals',data:[metrics.totalSales,metrics.totalOrders],backgroundColor:['#10b981','#3b82f6']}]}}
-              options={{ plugins:{legend:{display:false}}, indexAxis:'y' }}
-            />
+            <div className='flex items-center justify-between mb-2'>
+              <h3 className='font-medium'>Totals</h3>
+              <div className='text-xs text-gray-500'>Orders: {metrics.totalOrders}</div>
+            </div>
+            <div className='h-72'>
+              <Bar
+                data={{
+                  labels:['Sales','Orders'],
+                  datasets:[{label:'Totals',data:[metrics.totalSales,metrics.totalOrders],backgroundColor:['#10b981','#3b82f6']}]}}
+                options={{ maintainAspectRatio:false, plugins:{legend:{display:false}}, indexAxis:'y' }}
+              />
+            </div>
           </div>
 
-          {/* Pie sample payment status placeholder */}
-          <div className='bg-white border rounded shadow p-4'>
-            <Pie
-              data={{
-                labels:['Paid','Due','Partial'],
-                datasets:[{data:[50,30,20],backgroundColor:['#22c55e','#f97316','#eab308']}]}}
-            />
+          {/* Payment status (placeholder) */}
+          <div className='bg-white border rounded shadow p-4 lg:col-span-2'>
+            <div className='flex items-center justify-between mb-2'>
+              <h3 className='font-medium'>Payment Status (demo)</h3>
+              <div className='text-xs text-gray-500'>Paid 50% • Due 30% • Partial 20%</div>
+            </div>
+            <div className='h-80'>
+              <Pie
+                data={{
+                  labels:['Paid','Due','Partial'],
+                  datasets:[{data:[50,30,20],backgroundColor:['#22c55e','#f97316','#eab308']}]}}
+                options={{ maintainAspectRatio:false }}
+              />
+            </div>
           </div>
         </div>
       )}

@@ -40,7 +40,7 @@ const Navbar = props => {
   const headerDetached = themeConfig.navbar.detached === true
   const headerAttached = themeConfig.navbar.detached === false
   const headerBlur = themeConfig.navbar.blur === true
-  const headerContentCompact = navbarContentWidth === 'compact'
+  const headerContentCompact = navbarContentWidth === 'wide'
   const headerContentWide = navbarContentWidth === 'wide'
 
   return (

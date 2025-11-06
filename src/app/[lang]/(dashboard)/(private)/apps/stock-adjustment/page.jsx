@@ -1,94 +1,180 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-
-import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
-import TextField from '@mui/material/TextField'
-
-const STORAGE_KEY = 'beauty_stock_adjustments'
+import { useMemo, useState } from 'react'
 
 export default function Page() {
-  const [rows, setRows] = useState([])
-  const [open, setOpen] = useState(false)
-  const [idx, setIdx] = useState(-1)
-  const [form, setForm] = useState({ reference: '', location: '', reason: '', items: 0, date: '' })
+  const [location, setLocation] = useState('')
+  const [reference, setReference] = useState('')
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 16))
+  const [adjustmentType, setAdjustmentType] = useState('')
 
-  useEffect(() => {
-    try { setRows(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')) } catch {}
-  }, [])
+  const [productQuery, setProductQuery] = useState('')
+  const [items, setItems] = useState([])
+  const [amountRecovered, setAmountRecovered] = useState('0')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
 
-  const save = next => { setRows(next); try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {} }
-  const onNew = () => { setIdx(-1); setForm({ reference: '', location: '', reason: '', items: 0, date: new Date().toISOString().slice(0,10) }); setOpen(true) }
-  const onEdit = i => { setIdx(i); setForm(rows[i]); setOpen(true) }
-  const onDelete = i => save(rows.filter((_, k) => k !== i))
+  const totalAmount = useMemo(() => {
+    return items.reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0)
+  }, [items])
 
-  const onSubmit = () => { const next = [...rows];
+  const addItem = () => {
+    const name = productQuery.trim()
+    if (!name) return
+    setItems(prev => [...prev, { id: Date.now(), product: name, quantity: 1, unitPrice: 0 }])
+    setProductQuery('')
+  }
 
- if (idx >= 0) next[idx] = form; else next.unshift(form); save(next); setOpen(false) }
+  const updateItem = (id, key, value) => {
+    setItems(prev => prev.map(it => (it.id === id ? { ...it, [key]: value } : it)))
+  }
+
+  const removeItem = id => setItems(prev => prev.filter(it => it.id !== id))
+
+  const canSave = location && date && adjustmentType && reference
+
+  const onSave = async () => {
+    if (!canSave) return
+    setSaving(true)
+    setMessage('')
+    try {
+      const body = {
+        reference,
+        location,
+        reason,
+        items: JSON.stringify(items),
+        date,
+        adjustmentType,
+        amountRecovered: parseFloat(amountRecovered || '0')
+      }
+      const res = await fetch('/api/stock-adjustments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      if (!res.ok) throw new Error('Failed to save')
+      setMessage('Saved successfully')
+      setItems([])
+      setReference('')
+      setReason('')
+      setAmountRecovered('0')
+    } catch (e) {
+      setMessage('Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <Box display='flex' flexDirection='column' gap={4}>
-      <Box display='flex' justifyContent='space-between' alignItems='center'>
-        <Typography variant='h4'>Stock Adjustment</Typography>
-        <Button variant='contained' onClick={onNew}>New Adjustment</Button>
-      </Box>
-      <Table size='small'>
-        <TableHead>
-          <TableRow>
-            <TableCell>Reference</TableCell>
-            <TableCell>Location</TableCell>
-            <TableCell>Reason</TableCell>
-            <TableCell>Items</TableCell>
-            <TableCell>Date</TableCell>
-            <TableCell align='right'>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows?.length ? rows.map((r, i) => (
-            <TableRow key={i} hover>
-              <TableCell>{r.reference}</TableCell>
-              <TableCell>{r.location}</TableCell>
-              <TableCell>{r.reason}</TableCell>
-              <TableCell>{r.items}</TableCell>
-              <TableCell>{r.date}</TableCell>
-              <TableCell align='right'>
-                <Button size='small' onClick={() => onEdit(i)}>Edit</Button>
-                <Button size='small' color='error' onClick={() => onDelete(i)}>Delete</Button>
-              </TableCell>
-            </TableRow>
-          )) : (
-            <TableRow>
-              <TableCell colSpan={6}><Typography color='text.secondary'>No adjustments yet</Typography></TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+    <div className='p-8 space-y-6'>
+      <h1 className='text-2xl font-semibold'>Add Stock Adjustment</h1>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth='sm' fullWidth>
-        <DialogTitle>{idx >= 0 ? 'Edit Adjustment' : 'New Adjustment'}</DialogTitle>
-        <DialogContent className='flex flex-col gap-4'>
-          <TextField label='Reference' value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} />
-          <TextField label='Location' value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
-          <TextField label='Reason' value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
-          <TextField type='number' label='Items' value={form.items} onChange={e => setForm({ ...form, items: Number(e.target.value) })} />
-          <TextField type='date' label='Date' InputLabelProps={{ shrink: true }} value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant='contained' onClick={onSubmit}>Save</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Header form */}
+      <div className='bg-white border rounded shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-4'>
+        <div>
+          <label className='block text-xs text-gray-500 mb-1'>Business Location*</label>
+          <select value={location} onChange={e=>setLocation(e.target.value)} className='border rounded p-2 w-full'>
+            <option value=''>Please Select</option>
+            <option value='NATURAL OPTIONS'>NATURAL OPTIONS</option>
+            <option value='Warehouse A'>Warehouse A</option>
+          </select>
+        </div>
+        <div>
+          <label className='block text-xs text-gray-500 mb-1'>Reference No</label>
+          <input value={reference} onChange={e=>setReference(e.target.value)} className='border rounded p-2 w-full' />
+        </div>
+        <div>
+          <label className='block text-xs text-gray-500 mb-1'>Date*</label>
+          <input type='datetime-local' value={date} onChange={e=>setDate(e.target.value)} className='border rounded p-2 w-full' />
+        </div>
+        <div>
+          <label className='block text-xs text-gray-500 mb-1'>Adjustment type*</label>
+          <select value={adjustmentType} onChange={e=>setAdjustmentType(e.target.value)} className='border rounded p-2 w-full'>
+            <option value=''>Please Select</option>
+            <option value='increase'>Stock Increase</option>
+            <option value='decrease'>Stock Decrease</option>
+            <option value='damage'>Damage</option>
+            <option value='correction'>Correction</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Items */}
+      <div className='bg-white border rounded shadow p-4 space-y-3'>
+        <div className='flex items-center gap-2'>
+          <input
+            value={productQuery}
+            onChange={e=>setProductQuery(e.target.value)}
+            placeholder='Search products for stock adjustment'
+            className='border rounded p-2 flex-1'
+          />
+          <button onClick={addItem} className='border rounded px-4 py-2 text-sm'>Add</button>
+        </div>
+        <div className='overflow-auto'>
+          <table className='min-w-full text-sm'>
+            <thead>
+              <tr className='bg-gray-50 text-gray-600'>
+                <th className='text-left font-medium px-3 py-2 border-b'>Product</th>
+                <th className='text-left font-medium px-3 py-2 border-b'>Quantity</th>
+                <th className='text-left font-medium px-3 py-2 border-b'>Unit Price</th>
+                <th className='text-right font-medium px-3 py-2 border-b'>Subtotal</th>
+                <th className='px-3 py-2 border-b'>🗑️</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className='text-center text-gray-500 py-8'>No items added</td>
+                </tr>
+              ) : (
+                items.map(it => (
+                  <tr key={it.id} className='border-b'>
+                    <td className='px-3 py-2'>
+                      <input value={it.product} onChange={e=>updateItem(it.id, 'product', e.target.value)} className='border rounded p-2 w-full' />
+                    </td>
+                    <td className='px-3 py-2'>
+                      <input type='number' min='0' value={it.quantity} onChange={e=>updateItem(it.id, 'quantity', Number(e.target.value))} className='border rounded p-2 w-full' />
+                    </td>
+                    <td className='px-3 py-2'>
+                      <input type='number' min='0' step='0.01' value={it.unitPrice} onChange={e=>updateItem(it.id, 'unitPrice', Number(e.target.value))} className='border rounded p-2 w-full' />
+                    </td>
+                    <td className='px-3 py-2 text-right'>KSh {(Number(it.quantity||0)*Number(it.unitPrice||0)).toFixed(2)}</td>
+                    <td className='px-3 py-2 text-center'>
+                      <button onClick={()=>removeItem(it.id)} className='border rounded px-2 py-1 text-xs'>Remove</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td className='px-3 py-2 font-medium' colSpan={3}>Total Amount:</td>
+                <td className='px-3 py-2 text-right font-semibold'>KSh {totalAmount.toFixed(2)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className='bg-white border rounded shadow p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-start'>
+        <div>
+          <label className='block text-xs text-gray-500 mb-1'>Total amount recovered</label>
+          <input value={amountRecovered} onChange={e=>setAmountRecovered(e.target.value)} className='border rounded p-2 w-full' />
+        </div>
+        <div>
+          <label className='block text-xs text-gray-500 mb-1'>Reason</label>
+          <textarea value={reason} onChange={e=>setReason(e.target.value)} className='border rounded p-2 w-full' rows={4} placeholder='Reason' />
+        </div>
+        <div className='md:col-span-2 flex items-center justify-end gap-3'>
+          {message && <span className='text-sm text-gray-600'>{message}</span>}
+          <button disabled={!canSave || saving} onClick={onSave} className={`rounded px-5 py-2 text-sm ${!canSave || saving ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -28,7 +28,7 @@ const Footer = props => {
   const footerAttached = themeConfig.footer.detached === false
   const footerStatic = themeConfig.footer.type === 'static'
   const footerFixed = themeConfig.footer.type === 'fixed'
-  const footerContentCompact = footerContentWidth === 'compact'
+  const footerContentCompact = footerContentWidth === 'wide'
   const footerContentWide = footerContentWidth === 'wide'
 
   return (

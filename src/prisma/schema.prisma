@@ -996,6 +996,10 @@ model Vendor {
 
   isActive Boolean @default(true)
 
+  // Extra profile fields captured from supplier form (JSON string)
+  profile         String? @default("{}")
+  shippingAddress String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

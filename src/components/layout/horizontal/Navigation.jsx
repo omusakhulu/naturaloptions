@@ -37,7 +37,7 @@ const Navigation = ({ dictionary }) => {
   const { isBreakpointReached } = useHorizontalNav()
 
   // Vars
-  const headerContentCompact = settings.navbarContentWidth === 'compact'
+  const headerContentCompact = settings.navbarContentWidth === 'wide'
 
   return (
     <div

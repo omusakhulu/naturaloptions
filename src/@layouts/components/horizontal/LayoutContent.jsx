@@ -20,7 +20,7 @@ const LayoutContent = ({ children }) => {
   const { settings } = useSettings()
 
   // Vars
-  const contentCompact = settings.contentWidth === 'compact'
+  const contentCompact = settings.contentWidth === 'wide'
   const contentWide = settings.contentWidth === 'wide'
 
   return (

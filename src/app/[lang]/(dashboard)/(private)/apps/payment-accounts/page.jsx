@@ -57,7 +57,7 @@ export default function Page() {
   }
 
   return (
-    <Box display='flex' flexDirection='column' gap={4}>
+    <Box width='100%' display='flex' flexDirection='column' gap={4}>
       <Box display='flex' justifyContent='space-between' alignItems='center'>
         <Typography variant='h4'>Payment Accounts</Typography>
         <Button variant='contained' onClick={onNew}>New Account</Button>

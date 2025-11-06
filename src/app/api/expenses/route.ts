@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   }
 
   const [items, agg] = await Promise.all([
-    prisma.expense.findMany({ where, orderBy: { date: 'desc' } }),
+    prisma.expense.findMany({ where, include: { account: true }, orderBy: { date: 'desc' } }),
     prisma.expense.aggregate({ where, _sum: { amount: true } })
   ])
 
