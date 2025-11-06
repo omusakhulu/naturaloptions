@@ -11,6 +11,8 @@ import ProductListTable from '@views/apps/ecommerce/products/list/ProductListTab
 import ProductCard from '@views/apps/ecommerce/products/list/ProductCard'
 import { getValidCategory } from '@/utils/categories'
 
+import { wooClient } from '@/lib/woocommerce'
+
 // Cache key for products
 const PRODUCTS_CACHE_KEY = 'woocommerce_products'
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
@@ -110,28 +112,8 @@ async function getWooCommerceProducts() {
       hasSecret: !!process.env.WOO_CONSUMER_SECRET
     })
 
-    // Load WooRentalBridge dynamically
-    let WooRentalBridge
 
-    try {
-      const wooModule = await import('woorental-bridge')
 
-      WooRentalBridge = wooModule.default || wooModule
-    } catch (error) {
-      console.warn('Failed to load woorental-bridge:', error.message)
-      WooRentalBridge = class {
-        constructor(config) {
-          this.config = config
-        }
-      }
-    }
-
-    const wooConnector = new WooRentalBridge({
-      storeUrl: process.env.WOO_STORE_URL,
-      consumerKey: process.env.WOO_CONSUMER_KEY,
-      consumerSecret: process.env.WOO_CONSUMER_SECRET,
-      timeout: 60000 // Increased timeout to 60 seconds
-    })
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('WooCommerce Config:', {
@@ -141,45 +123,12 @@ async function getWooCommerceProducts() {
       })
     }
 
-    // Test if wooConnector is properly initialized
-    if (!wooConnector?.products?.listProducts || typeof wooConnector.products.listProducts !== 'function') {
-      const error = new Error('WooCommerce connector is not properly initialized')
-
-      console.error(error.message, { wooConnector })
-      throw error
-    }
 
     console.log('Sending request to WooCommerce API...')
     console.log('Fetching products from:', process.env.WOO_STORE_URL)
 
-    const products = await wooConnector.products
-      .listProducts({
-        status: 'publish',
-        per_page: 20,
-        orderby: 'modified',
-        order: 'desc'
-      })
-      .catch(error => {
-        // Log detailed error information
-        const errorInfo = {
-          message: error.message,
-          code: error.code,
-          status: error.status,
-          url: error.config?.url,
-          method: error.config?.method,
-          response: error.response?.data
-        }
-
-        // Log filtered headers if they exist
-        if (error.config?.headers) {
-          errorInfo.headers = Object.keys(error.config.headers).filter(
-            k => !['authorization', 'consumer-key', 'consumer-secret'].includes(k.toLowerCase())
-          )
-        }
-
-        console.error('WooCommerce API Error:', errorInfo)
-        throw error
-      })
+    const productsRes = await wooClient.get('products', { status: 'publish', per_page: 20, orderby: 'modified', order: 'desc' })
+    const products = productsRes.data || []
 
     if (!Array.isArray(products)) {
       console.error('Invalid products data received:', products)
@@ -193,11 +142,7 @@ async function getWooCommerceProducts() {
     let categories = []
 
     try {
-      categories = await wooConnector.categories.getCategories({
-        per_page: 100,
-        orderby: 'count',
-        order: 'desc'
-      })
+      categories = (await wooClient.get('products/categories', { per_page: 100, orderby: 'count', order: 'desc' })).data || []
       console.log(`✅ Fetched ${categories.length} categories`)
     } catch (error) {
       console.warn('⚠️ Failed to fetch categories:', error)

@@ -14,7 +14,7 @@ async function main() {
     // Super Admins
     {
       name: 'Super Admin User',
-      email: 'superadmin@omnishop.com',
+      email: 'superadmin@naturaloptions.com',
       password,
       role: 'SUPER_ADMIN',
       active: true,
@@ -24,7 +24,7 @@ async function main() {
     // Admins
     {
       name: 'Admin User',
-      email: 'admin@omnishop.com',
+      email: 'admin@naturaloptions.com',
       password,
       role: 'ADMIN',
       active: true,
@@ -32,7 +32,7 @@ async function main() {
     },
     {
       name: 'John Administrator',
-      email: 'john.admin@omnishop.com',
+      email: 'john.admin@naturaloptions.com',
       password,
       role: 'ADMIN',
       active: true,
@@ -42,7 +42,7 @@ async function main() {
     // Managers
     {
       name: 'Sarah Manager',
-      email: 'sarah.manager@omnishop.com',
+      email: 'sarah.manager@naturaloptions.com',
       password,
       role: 'MANAGER',
       active: true,
@@ -50,7 +50,7 @@ async function main() {
     },
     {
       name: 'Mike Operations',
-      email: 'mike.ops@omnishop.com',
+      email: 'mike.ops@naturaloptions.com',
       password,
       role: 'MANAGER',
       active: true,
@@ -58,7 +58,7 @@ async function main() {
     },
     {
       name: 'Lisa Project Manager',
-      email: 'lisa.pm@omnishop.com',
+      email: 'lisa.pm@naturaloptions.com',
       password,
       role: 'MANAGER',
       active: true,
@@ -68,7 +68,7 @@ async function main() {
     // Sales Staff
     {
       name: 'David Sales',
-      email: 'david.sales@omnishop.com',
+      email: 'david.sales@naturaloptions.com',
       password,
       role: 'SALES',
       active: true,
@@ -76,7 +76,7 @@ async function main() {
     },
     {
       name: 'Emma Thompson',
-      email: 'emma.sales@omnishop.com',
+      email: 'emma.sales@naturaloptions.com',
       password,
       role: 'SALES',
       active: true,
@@ -84,7 +84,7 @@ async function main() {
     },
     {
       name: 'Robert Wilson',
-      email: 'robert.sales@omnishop.com',
+      email: 'robert.sales@naturaloptions.com',
       password,
       role: 'SALES',
       active: true,
@@ -92,49 +92,75 @@ async function main() {
     },
     {
       name: 'Jennifer Brown',
-      email: 'jennifer.sales@omnishop.com',
+      email: 'jennifer.sales@naturaloptions.com',
       password,
       role: 'SALES',
       active: true,
       image: '/images/avatars/3.png'
     },
 
-    // Regular Users
+    // POS & Accounting Staff
     {
-      name: 'Tom Field Worker',
-      email: 'tom.field@omnishop.com',
+      name: 'Alex Cashier',
+      email: 'alex.cashier@naturaloptions.com',
       password,
-      role: 'USER',
+      role: 'CASHIER',
       active: true,
       image: '/images/avatars/4.png'
     },
     {
-      name: 'James Driver',
-      email: 'james.driver@omnishop.com',
+      name: 'Rachel Accountant',
+      email: 'rachel.accountant@naturaloptions.com',
       password,
-      role: 'USER',
+      role: 'ACCOUNTANT',
       active: true,
       image: '/images/avatars/5.png'
     },
     {
-      name: 'Maria Garcia',
-      email: 'maria.user@omnishop.com',
+      name: 'Kevin Cashier',
+      email: 'kevin.cashier@naturaloptions.com',
       password,
-      role: 'USER',
+      role: 'CASHIER',
       active: true,
       image: '/images/avatars/6.png'
     },
+
+    // Regular Users
     {
-      name: 'Carlos Martinez',
-      email: 'carlos.user@omnishop.com',
+      name: 'Tom Field Worker',
+      email: 'tom.field@naturaloptions.com',
       password,
       role: 'USER',
       active: true,
       image: '/images/avatars/7.png'
     },
     {
+      name: 'James Driver',
+      email: 'james.driver@naturaloptions.com',
+      password,
+      role: 'USER',
+      active: true,
+      image: '/images/avatars/8.png'
+    },
+    {
+      name: 'Maria Garcia',
+      email: 'maria.user@naturaloptions.com',
+      password,
+      role: 'USER',
+      active: true,
+      image: '/images/avatars/1.png'
+    },
+    {
+      name: 'Carlos Martinez',
+      email: 'carlos.user@naturaloptions.com',
+      password,
+      role: 'USER',
+      active: true,
+      image: '/images/avatars/2.png'
+    },
+    {
       name: 'Ana Rodriguez',
-      email: 'ana.user@omnishop.com',
+      email: 'ana.user@naturaloptions.com',
       password,
       role: 'USER',
       active: true,
@@ -150,7 +176,7 @@ async function main() {
         update: {},
         create: userData
       })
-      
+
       console.log(`✅ Created ${user.role}: ${user.name} (${user.email})`)
     } catch (error) {
       console.error(`❌ Error creating user ${userData.email}:`, error.message)
@@ -172,11 +198,13 @@ async function main() {
   console.log('   Email: any of the emails above')
   console.log('   Password: password123')
   console.log('\n📧 Example logins:')
-  console.log('   Super Admin: superadmin@omnishop.com')
-  console.log('   Admin: admin@omnishop.com')
-  console.log('   Manager: sarah.manager@omnishop.com')
-  console.log('   Sales: david.sales@omnishop.com')
-  console.log('   User: tom.field@omnishop.com')
+  console.log('   Super Admin: superadmin@naturaloptions.com')
+  console.log('   Admin: admin@naturaloptions.com')
+  console.log('   Manager: sarah.manager@naturaloptions.com')
+  console.log('   Accountant: rachel.accountant@naturaloptions.com')
+  console.log('   Cashier: alex.cashier@naturaloptions.com')
+  console.log('   Sales: david.sales@naturaloptions.com')
+  console.log('   User: tom.field@naturaloptions.com')
 }
 
 main()

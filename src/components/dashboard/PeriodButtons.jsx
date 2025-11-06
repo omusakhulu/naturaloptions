@@ -1,16 +1,30 @@
 'use client'
 
 import Link from 'next/link'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
 import Button from '@mui/material/Button'
 
 export default function PeriodButtons() {
   const { lang } = useParams()
+  const router = useRouter()
   const sp = useSearchParams()
   const period = (sp.get('period') || 'year').toLowerCase()
   const base = `/${lang}/apps/ecommerce/dashboard`
   const mkHref = p => `${base}?period=${p}`
+
+  // Persist selection in sessionStorage and restore if missing
+  if (typeof window !== 'undefined') {
+    const saved = window.sessionStorage.getItem('dashboard_period')
+
+    if (!sp.get('period') && saved) {
+      router.replace(mkHref(saved))
+    }
+
+    if (sp.get('period')) {
+      window.sessionStorage.setItem('dashboard_period', period)
+    }
+  }
 
   return (
     <div className='flex gap-1'>

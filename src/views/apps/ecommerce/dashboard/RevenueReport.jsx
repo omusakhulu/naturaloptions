@@ -16,6 +16,7 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
+import ExportCsvButton from '@/components/dashboard/ExportCsvButton'
 
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
@@ -222,11 +223,17 @@ const RevenueReport = ({ barSeries = [], lineSeries = [], totalLabel = '$0', bud
     }
   }
 
+  const exportRows = () => {
+    const cats = (barOptions?.xaxis?.categories || [])
+    const series0 = (barSeries?.[0]?.data || [])
+    return cats.map((c, i) => [c, series0[i] ?? 0])
+  }
+
   return (
     <Card>
       <Grid container>
         <Grid size={{ xs: 12, sm: 8 }} className='border-r'>
-          <CardHeader title='Revenue Report' />
+          <CardHeader title='Revenue Report' action={<ExportCsvButton title='revenue_report' headers={['Month','Revenue']} rows={exportRows()} />} />
           <CardContent>
             <AppReactApexCharts type='bar' height={320} width='100%' series={barSeries} options={barOptions} />
           </CardContent>

@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography'
 
 // Component Imports
 import OrderList from '@views/apps/ecommerce/orders/list'
+import { wooClient } from '@/lib/woocommerce'
 import { getAllOrders, saveOrders } from '@/lib/db/orders'
 
 /**
@@ -12,110 +13,75 @@ import { getAllOrders, saveOrders } from '@/lib/db/orders'
  */
 async function getWooCommerceOrders() {
   const requiredEnvVars = ['WOO_STORE_URL', 'WOO_CONSUMER_KEY', 'WOO_CONSUMER_SECRET']
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
+  const missingVars = requiredEnvVars.filter(v => !process.env[v])
 
-  if (missingVars.length > 0) {
-    console.error('Missing required environment variables:', missingVars.join(', '))
-    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`)
+  if (missingVars.length) {
+    console.warn('Missing Woo env vars; skipping Woo fetch')
+
+return []
   }
 
   try {
-    console.log('Fetching fresh orders from WooCommerce...')
-
-    let WooRentalBridge
-    try {
-      const wooModule = await import('woorental-bridge')
-      WooRentalBridge = wooModule.default || wooModule
-    } catch (error) {
-      console.warn('Failed to load woorental-bridge:', error.message)
-      WooRentalBridge = class {
-        constructor(config) {
-          this.config = config
-        }
-      }
-    }
-
-    const wooConnector = new WooRentalBridge({
-      storeUrl: process.env.WOO_STORE_URL,
-      consumerKey: process.env.WOO_CONSUMER_KEY,
-      consumerSecret: process.env.WOO_CONSUMER_SECRET,
-      timeout: 60000
-    })
-
-    // Fetch orders with pagination
-    let allOrders = []
-    let page = 1
+    console.log('Fetching orders from WooCommerce via wooClient...')
     const perPage = 100
+    let page = 1
     let hasMore = true
+    const allOrders = []
 
     while (hasMore) {
-      try {
-        const orders = await wooConnector.products.listOrders({
-          status: 'any',
-          per_page: perPage,
-          page: page,
-          orderby: 'date',
-          order: 'desc'
-        })
+      const res = await wooClient.get('orders', {
+        status: 'any',
+        per_page: perPage,
+        page: page,
+        orderby: 'date',
+        order: 'desc'
+      })
 
-        if (!Array.isArray(orders) || orders.length === 0) {
-          hasMore = false
-        } else {
-          allOrders = [...allOrders, ...orders]
-          console.log(`📦 Fetched ${orders.length} orders from page ${page}`)
-          page++
-        }
-      } catch (error) {
-        console.error(`Error fetching page ${page}:`, error)
+      const orders = res.data || []
+
+      if (!Array.isArray(orders) || orders.length === 0) {
         hasMore = false
+      } else {
+        allOrders.push(...orders)
+        console.log(`📦 fetched ${orders.length} orders page ${page}`)
+        page += 1
       }
     }
 
-    console.log(`Received ${allOrders.length} orders from WooCommerce`)
+    console.log(`Total Woo orders fetched: ${allOrders.length}`)
 
-    // Save orders to database
     try {
       await saveOrders(allOrders)
-      console.log(`✅ Saved ${allOrders.length} orders to database`)
-    } catch (dbError) {
-      console.warn('⚠️ Failed to save orders to database:', dbError instanceof Error ? dbError.message : 'Unknown error')
+      console.log('Saved orders to DB')
+    } catch (e) {
+      console.warn('Failed saving Woo orders to DB:', e?.message)
     }
 
-    // Transform WooCommerce orders for display
-    const transformedOrders = allOrders.map(order => ({
-      id: order.id,
-      orderNumber: order.order_number || `#${order.id}`,
-      status: order.status || 'pending',
-      total: order.total || '0',
-      subtotal: order.subtotal || '0',
-      shippingTotal: order.shipping_total || '0',
-      taxTotal: order.tax_total || '0',
-      discountTotal: order.discount_total || '0',
-      paymentMethod: order.payment_method || '',
-      paymentMethodTitle: order.payment_method_title || '',
-      customerNote: order.customer_note || '',
-      dateCreated: order.date_created ? new Date(order.date_created) : null,
-      datePaid: order.date_paid ? new Date(order.date_paid) : null,
-      dateCompleted: order.date_completed ? new Date(order.date_completed) : null,
-      shippingAddress: order.shipping || {},
-      billingAddress: order.billing || {},
-      lineItems: order.line_items || [],
-      customer: { id: order.customer_id } || {},
+    return allOrders.map(o => ({
+      id: o.id,
+      orderNumber: o.order_number || `#${o.id}`,
+      status: o.status,
+      total: o.total,
+      subtotal: o.subtotal,
+      shippingTotal: o.shipping_total,
+      taxTotal: o.tax_total,
+      discountTotal: o.discount_total,
+      paymentMethod: o.payment_method,
+      paymentMethodTitle: o.payment_method_title,
+      customerNote: o.customer_note,
+      dateCreated: o.date_created ? new Date(o.date_created) : null,
+      datePaid: o.date_paid ? new Date(o.date_paid) : null,
+      dateCompleted: o.date_completed ? new Date(o.date_completed) : null,
+      shippingAddress: o.shipping || {},
+      billingAddress: o.billing || {},
+      lineItems: o.line_items || [],
+      customer: { id: o.customer_id },
       _cachedAt: Date.now()
     }))
+  } catch (err) {
+    console.error('WooClient orders fetch failed:', err?.message)
 
-    console.log(`Transformed ${transformedOrders.length} orders for display`)
-    return transformedOrders
-  } catch (error) {
-    console.error('Failed to fetch WooCommerce orders:', {
-      name: error.name,
-      message: error.message,
-      status: error.response?.status
-    })
-
-    // Fall back to database if WooCommerce fails
-    console.log('Falling back to database orders...')
-    return []
+return []
   }
 }
 
@@ -130,7 +96,8 @@ async function getOrdersFromDatabase() {
 
     if (!Array.isArray(dbOrders) || dbOrders.length === 0) {
       console.log('No orders found in database')
-      return []
+
+return []
     }
 
     console.log(`Found ${dbOrders.length} orders in database`)
@@ -159,10 +126,12 @@ async function getOrdersFromDatabase() {
     }))
 
     console.log(`Transformed ${transformedOrders.length} orders for display`)
-    return transformedOrders
+
+return transformedOrders
   } catch (error) {
     console.error('Failed to fetch orders from database:', error instanceof Error ? error.message : 'Unknown error')
-    return []
+
+return []
   }
 }
 

@@ -69,74 +69,100 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
         renderExpandedMenuItemIcon={{ icon: <i className='tabler-circle text-xs' /> }}
         menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
       >
-        <MenuSection label='Omnishop'>
-          <SubMenu label={dictionary['navigation'].eCommerce} icon={<i className='tabler-shopping-cart' />} defaultOpen>
+        <MenuSection label='Natural Options'>
+          <MenuItem icon={<i className='tabler-home' />} href={`/${locale}/apps/ecommerce/dashboard`}>Home</MenuItem>
+          <SubMenu label={dictionary['navigation'].products} icon={<i className='tabler-shopping-cart' />} defaultOpen>
             <MenuItem href={`/${locale}/apps/ecommerce/dashboard`}>{dictionary['navigation'].dashboard}</MenuItem>
 
-            <SubMenu label={dictionary['navigation'].products}>
-              <MenuItem href={`/${locale}/apps/ecommerce/products/list`}>
-                All Products {dictionary['navigation'].list}
-              </MenuItem>
-              <MenuItem href={`/${locale}/apps/ecommerce/products/add`}>{dictionary['navigation'].add}</MenuItem>
-
-              <MenuItem href={`/${locale}/apps/ecommerce/products/category`}>
-                {dictionary['navigation'].category}
-              </MenuItem>
-              <MenuItem href={`/${locale}/apps/ecommerce/products/attributes`}>Attributes</MenuItem>
+            <SubMenu label='Products'>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/list`}>List Products</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/add`}>Add Product</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/update-price`}>Update Price</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/print-labels`}>Print Labels</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/variations`}>Variations</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/import-products`}>Import Products</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/import-opening-stock`}>Import Opening Stock</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/selling-price-group`}>Selling Price Group</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/units`}>Units</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/categories`}>Categories</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/brands`}>Brands</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/products/warranties`}>Warranties</MenuItem>
             </SubMenu>
             <SubMenu label={dictionary['navigation'].orders}>
               <MenuItem href={`/${locale}/apps/ecommerce/orders/list`}>Orders {dictionary['navigation'].list}</MenuItem>
-              <MenuItem href={`/${locale}/apps/ecommerce/orders/stands`}>Stands</MenuItem>
             </SubMenu>
             <SubMenu label={dictionary['navigation'].customers}>
               <MenuItem href={`/${locale}/apps/ecommerce/customers/list`}>
                 Customers {dictionary['navigation'].list}
               </MenuItem>
             </SubMenu>
-          </SubMenu>
 
-          <SubMenu
-            label={dictionary['navigation'].invoicing}
-            icon={<i className='tabler-file-description' />}
-            defaultOpen
-          >
-            <MenuItem href={`/${locale}/apps/invoice/list`}>{dictionary['navigation'].list}</MenuItem>
-
-            <MenuItem href={`/${locale}/apps/invoice/add`}>{dictionary['navigation'].add}</MenuItem>
+            <SubMenu label={dictionary['navigation'].brands}>
+              <MenuItem href={`/${locale}/apps/ecommerce/brands`}>{dictionary['navigation'].brands} {dictionary['navigation'].list}</MenuItem>
+            </SubMenu>
+            <SubMenu label={dictionary['navigation'].promotions}>
+              <MenuItem href={`/${locale}/apps/ecommerce/promotions`}>{dictionary['navigation'].promotions}</MenuItem>
+              <MenuItem href={`/${locale}/apps/ecommerce/promotions/create`}>{dictionary['navigation'].add}</MenuItem>
+            </SubMenu>
           </SubMenu>
-          <SubMenu label={dictionary['navigation'].user} icon={<i className='tabler-user' />}>
+          <SubMenu label='User Management' icon={<i className='tabler-users' />}>
             <MenuItem href={`/${locale}/apps/user/list`}>{dictionary['navigation'].list}</MenuItem>
             <MenuItem href={`/${locale}/apps/roles`}>Roles</MenuItem>
             <MenuItem href={`/${locale}/apps/permissions`}>Permissions</MenuItem>
           </SubMenu>
-          <SubMenu label={dictionary['navigation'].packingSlips} icon={<i className='tabler-file-invoice' />}>
-            <MenuItem href={`/${locale}/apps/packing-slips/list`}>{dictionary['navigation'].list}</MenuItem>
+          <SubMenu label='Contacts' icon={<i className='tabler-address-book' />}>
+            <MenuItem href={`/${locale}/apps/ecommerce/customers/list`}>Customers</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/vendors`}>Vendors</MenuItem>
           </SubMenu>
-          <SubMenu label='Projects' icon={<i className='tabler-briefcase' />}>
-            <MenuItem href={`/${locale}/apps/projects/list`}>{dictionary['navigation'].list}</MenuItem>
-            <MenuItem href={`/${locale}/apps/projects/create`}>Create Quote</MenuItem>
-            <MenuItem href={`/${locale}/apps/projects/boq/list`}>BOQ (Bills)</MenuItem>
-            <MenuItem href={`/${locale}/apps/projects/cost-reports/list`}>Cost Reports</MenuItem>
+          <SubMenu label='Purchases' icon={<i className='tabler-shopping-bag' />}>
+            <MenuItem href={`/${locale}/apps/purchases/requisition`}>Purchase Requisition</MenuItem>
+            <MenuItem href={`/${locale}/apps/purchases/order`}>Purchase Order</MenuItem>
+            <MenuItem href={`/${locale}/apps/purchases/list`}>List Purchases</MenuItem>
+            <MenuItem href={`/${locale}/apps/purchases/add`}>Add Purchase</MenuItem>
+            <MenuItem href={`/${locale}/apps/purchases/returns`}>List Purchase Return</MenuItem>
+            <MenuSection label='-----' />
+            <MenuItem href={`/${locale}/apps/accounting/vendors`}>Vendors</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/accounts-payable`}>Accounts Payable</MenuItem>
           </SubMenu>
-          <MenuItem href={`/${locale}/apps/projects/cost-reports/list`} icon={<i className='tabler-report-money' />}>
-            Cost Reports
+          <SubMenu label='Business Intelligence' icon={<i className='tabler-brain' />}> 
+            <MenuItem href={`/${locale}/apps/bi/dashboard`}>BI Dashboard</MenuItem>
+            <MenuItem href={`/${locale}/apps/bi/insights`}>AI Insights</MenuItem>
+            <MenuItem href={`/${locale}/apps/bi/analytics`}>Analytics</MenuItem>
+            <MenuItem href={`/${locale}/apps/bi/configuration`}>Configuration</MenuItem>
+          </SubMenu>
+          <SubMenu label='Sell' icon={<i className='tabler-cash-register' />}>
+            <MenuItem href={`/${locale}/apps/pos/terminal`}>POS Terminal</MenuItem>
+            <MenuItem href={`/${locale}/apps/pos/sales-reports`}>Sales Reports</MenuItem>
+          </SubMenu>
+          <MenuItem icon={<i className='tabler-arrows-exchange-2' />} href={`/${locale}/apps/stock-transfers`}>
+            {dictionary['navigation'].stockTransfers || 'Stock Transfers'}
           </MenuItem>
-          <SubMenu label='Quotes' icon={<i className='tabler-receipt' />} defaultOpen>
-            <MenuItem href={`/${locale}/apps/quotes/event-tent`}>New Event Tent Quote</MenuItem>
-            <MenuItem href={`/${locale}/apps/quotes/event-tent/list`}>Saved Quotes</MenuItem>
+          <MenuItem icon={<i className='tabler-adjustments' />} href={`/${locale}/apps/stock-adjustment`}>
+            {dictionary['navigation'].stockAdjustment || 'Stock Adjustment'}
+          </MenuItem>
+          <MenuItem icon={<i className='tabler-moneybag' />} href={`/${locale}/apps/expenses`}>
+            {dictionary['navigation'].expenses || 'Expenses'}
+          </MenuItem>
+          <MenuItem icon={<i className='tabler-credit-card' />} href={`/${locale}/apps/payment-accounts`}>
+            {dictionary['navigation'].paymentAccounts || 'Payment Accounts'}
+          </MenuItem>
+          <SubMenu label='Accounting' icon={<i className='tabler-calculator' />}>
+            <MenuItem href={`/${locale}/apps/accounting/dashboard`}>Dashboard</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/chart-of-accounts`}>Chart of Accounts</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/journal-entries`}>Journal Entries</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/accounts-receivable`}>Accounts Receivable</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/accounts-payable`}>Accounts Payable</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/vendors`}>Vendors</MenuItem>
           </SubMenu>
-          <SubMenu label='BOQ' icon={<i className='tabler-table' />} defaultOpen>
-            <MenuItem href={`/${locale}/apps/boq/list`}>View All BOQs</MenuItem>
+          <SubMenu label='Reports' icon={<i className='tabler-report-analytics' />}>
+            <MenuItem href={`/${locale}/apps/pos/sales-reports`}>Sales Reports</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/financial-reports`}>Financial Reports</MenuItem>
           </SubMenu>
-          <SubMenu label='Warehousing' icon={<i className='tabler-building-warehouse' />} defaultOpen>
-            <MenuItem href={`/${locale}/apps/warehouses/list`}>All Warehouses</MenuItem>
-            <MenuItem href={`/${locale}/apps/warehouses/add`}>Add Warehouse</MenuItem>
-          </SubMenu>
-          <SubMenu label='Logistics' icon={<i className='tabler-truck-delivery' />}>
-            <MenuItem href={`/${locale}/apps/logistics/dashboard`}>Dashboard</MenuItem>
-            <MenuItem href={`/${locale}/apps/logistics/fleet`}>Fleet</MenuItem>
-            <MenuItem href={`/${locale}/apps/logistics/assignments`}>Assignments</MenuItem>
-          </SubMenu>
+          <MenuItem icon={<i className='tabler-bell-ringing' />} href={`/${locale}/apps/notifications/templates`}>{dictionary['navigation'].notificationTemplates || 'Notification Templates'}</MenuItem>
+          <MenuItem icon={<i className='tabler-mail' />} href={`/${locale}/apps/notifications/email`}>{dictionary['navigation'].emailNotifications || 'Email Notifications'}</MenuItem>
+          <MenuItem icon={<i className='tabler-settings' />} href={`/${locale}/pages/account-settings`}>Settings</MenuItem>
+          <MenuItem icon={<i className='tabler-brand-woocommerce' />} href={`${process.env.NEXT_PUBLIC_WOOCOMMERCE_STORE_URL || '#'}`} target='_blank'>WooCommerce</MenuItem>
+          
         </MenuSection>
       </Menu>
       {/* <Menu

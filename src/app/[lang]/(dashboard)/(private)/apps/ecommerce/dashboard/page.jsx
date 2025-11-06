@@ -25,11 +25,12 @@ import InvoiceListTable from '@views/apps/ecommerce/dashboard/InvoiceListTable'
 import TaxesReport from '@views/apps/ecommerce/dashboard/TaxesReport'
 import PeriodButtons from '@/components/dashboard/PeriodButtons'
 import RefreshButton from '@/components/dashboard/RefreshButton'
-import WarehouseOverview from '@views/apps/ecommerce/dashboard/WarehouseOverview'
-import PackingSlipsSummary from '@views/apps/ecommerce/dashboard/PackingSlipsSummary'
-import StockAlerts from '@views/apps/ecommerce/dashboard/StockAlerts'
-import TentQuotesSummary from '@views/apps/ecommerce/dashboard/TentQuotesSummary'
-import BOQSummary from '@views/apps/ecommerce/dashboard/BOQSummary'
+import FiltersBar from '@/components/dashboard/FiltersBar'
+import LineAreaDailySalesChart from '@views/pages/widget-examples/statistics/LineAreaDailySalesChart'
+import ApexLineChart from '@views/charts/apex/ApexLineChart'
+import BeautyKpis from '@views/apps/ecommerce/dashboard/BeautyKpis'
+import TwoLineChart from '@views/apps/ecommerce/dashboard/TwoLineChart'
+import prisma from '@/lib/prisma'
 
 // Data Imports
 // import { getInvoiceData } from '@/app/server/actions'
@@ -37,7 +38,6 @@ import { getAllOrders } from '@/lib/db/orders'
 import { getAllCustomers } from '@/lib/db/customers'
 import { getAllProducts } from '@/lib/db/products'
 import { getAllInvoices } from '@/lib/db/invoices'
-import { getAllPackingSlips } from '@/lib/db/packingSlips'
 
 // Add caching - revalidate every 60 seconds
 export const revalidate = 60
@@ -56,6 +56,40 @@ export const revalidate = 60
     throw new Error('Failed to fetch invoice data')
   }
 
+  // === SALES LAST 30 DAYS vs SAME PERIOD PREVIOUS YEAR ===
+  const addDays = (date, days) => {
+    const d = new Date(date)
+    d.setDate(d.getDate() + days)
+    return d
+  }
+
+  const formatMMDD = d => {
+    const m = (d.getMonth() + 1).toString().padStart(2, '0')
+    const day = d.getDate().toString().padStart(2, '0')
+    return `${m}-${day}`
+  }
+
+  const today2 = new Date()
+  const start30 = addDays(today2, -29)
+  const dates30 = Array.from({ length: 30 }, (_, i) => addDays(start30, i))
+  const prevYearDates30 = dates30.map(d => new Date(d.getFullYear() - 1, d.getMonth(), d.getDate()))
+
+  const daySum = (list, date) => {
+    const y = date.getFullYear(), m = date.getMonth(), dd = date.getDate()
+    let sum = 0
+    ;(list || []).forEach(o => {
+      const d = toDate(o)
+      if (d && d.getFullYear() === y && d.getMonth() === m && d.getDate() === dd) {
+        sum += parseFloat(String(o.total || 0).replace(/[^0-9.-]/g, '')) || 0
+      }
+    })
+    return sum
+  }
+
+  const salesLast30 = dates30.map(d => daySum(orders, d))
+  const salesPrevYearSame30 = prevYearDates30.map(d => daySum(orders, d))
+  const sales30Categories = dates30.map(formatMMDD)
+
   return res.json()
 }
  */
@@ -69,6 +103,8 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
 
   // Date filters from query (?period=week|month|year or ?after=YYYY-MM-DD&before=YYYY-MM-DD)
   const period = (resolvedSearchParams?.period || '').toLowerCase()
+  const employeeFilter = (resolvedSearchParams?.employee || '').toLowerCase()
+  const locationFilter = (resolvedSearchParams?.location || '').toLowerCase()
   const qpAfter = resolvedSearchParams?.after
   const qpBefore = resolvedSearchParams?.before
   const today = new Date()
@@ -102,79 +138,32 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
   let customers = []
   let products = []
   let invoicesRaw = []
-  let packingSlips = []
 
   try {
-    [orders, customers, products, invoicesRaw, packingSlips] = await Promise.all([
+    [orders, customers, products, invoicesRaw] = await Promise.all([
       getAllOrders().catch(() => []),
       getAllCustomers().catch(() => []),
       getAllProducts().catch(() => []),
-      getAllInvoices().catch(() => []),
-      getAllPackingSlips().catch(() => [])
+      getAllInvoices().catch(() => [])
     ])
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
   }
 
-  // Fetch warehouse and inventory data - skip API calls during build
-  const warehousesData = typeof window === 'undefined' 
-    ? { warehouses: [] }
-    : await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/warehouses`)
-        .then(res => res.json())
-        .catch(() => ({ warehouses: [] }))
+  // Apply employee/location filters to local orders if available
+  orders = (orders || []).filter(o => {
+    const emp = String(o.createdBy || o.user || '').toLowerCase()
+    const loc = String(o.location || o.storeLocation || '').toLowerCase()
+    const okEmp = !employeeFilter || emp.includes(employeeFilter)
+    const okLoc = !locationFilter || loc.includes(locationFilter)
 
-  // Limit to first 3 warehouses for faster dashboard loading
-  const warehouses = (warehousesData.warehouses || []).slice(0, 3)
 
-  // Fetch inventory and movements in parallel for better performance
-  let inventoryItems = []
-  let stockMovements = []
+return okEmp && okLoc
+  })
 
-  if (warehouses.length > 0) {
-    try {
-      const inventoryPromises = warehouses.map(warehouse =>
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/warehouses/${warehouse.id}/inventory`)
-          .then(res => res.json())
-          .catch(() => ({ items: [] }))
-      )
+  // (Removed) Warehouse & inventory API calls for beauty store dashboard simplification
 
-      const movementPromises = warehouses.map(warehouse =>
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/warehouses/${warehouse.id}/movements`)
-          .then(res => res.json())
-          .catch(() => ({ movements: [] }))
-      )
-
-      const [inventoryResults, movementResults] = await Promise.all([
-        Promise.all(inventoryPromises),
-        Promise.all(movementPromises)
-      ])
-
-      inventoryItems = inventoryResults.flatMap(result => result.items || [])
-      stockMovements = movementResults.flatMap(result => result.movements || [])
-    } catch (error) {
-      console.error('Error fetching warehouse data:', error)
-    }
-  }
-
-  // Fetch event tent quotes - skip during SSR
-  const tentQuotesData = typeof window === 'undefined'
-    ? { quotes: [] }
-    : await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/quotes/event-tent/list`
-      )
-        .then(res => res.json())
-        .catch(() => ({ quotes: [] }))
-
-  const tentQuotes = tentQuotesData.quotes || []
-
-  // Fetch BOQs - skip during SSR
-  const boqsData = typeof window === 'undefined'
-    ? { boqs: [] }
-    : await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/boq/list`)
-        .then(res => res.json())
-        .catch(() => ({ boqs: [] }))
-
-  const boqs = boqsData.boqs || []
+  // (Removed) Quotes/BOQs data for beauty store dashboard simplification
 
   const safeFormatDate = d => {
     try {
@@ -392,19 +381,6 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
     }
   }
 
-  // Create packing slip lookup by order ID
-  const packingSlipLookup = new Map()
-
-  ;(packingSlips || []).forEach(slip => {
-    if (slip.wooOrderId) {
-      packingSlipLookup.set(slip.wooOrderId, {
-        boothNumber: slip.boothNumber,
-        status: slip.status,
-        packingSlipNumber: slip.packingSlipNumber
-      })
-    }
-  })
-
   // Create invoice lookup by order ID
   const invoiceLookup = new Map()
 
@@ -429,14 +405,10 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
     })
     .slice(0, 5) // Show only 5
     .map(o => {
-      const packingSlip = packingSlipLookup.get(o.wooId || o.id)
       const invoice = invoiceLookup.get(o.wooId || o.id)
 
       return {
         ...o,
-        boothNumber: packingSlip?.boothNumber || null,
-        packingSlipStatus: packingSlip?.status || null,
-        packingSlipNumber: packingSlip?.packingSlipNumber || null,
         invoiceNumber: invoice?.invoiceNumber || null,
         invoiceStatus: invoice?.status || null
       }
@@ -560,33 +532,41 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
   // Profit data - last 6 months
   const profitMonthlyData = (() => {
     const last6Months = Array(6).fill(0)
+
     const now = new Date()
-    
+
     ;(orders || []).forEach(o => {
       const d = toDate(o)
+
       if (d) {
         const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
+
         if (monthsAgo >= 0 && monthsAgo < 6) {
           const revenue = parseFloat(String(o.total || 0).replace(/[^0-9.-]/g, '')) || 0
+
           last6Months[5 - monthsAgo] += revenue * 0.2 // 20% profit margin estimate
         }
       }
     })
-    return last6Months
+
+return last6Months
   })()
 
   const totalMonthlyProfit = profitMonthlyData.reduce((a, b) => a + b, 0)
   const prevMonthProfit = profitMonthlyData.slice(0, 5).reduce((a, b) => a + b, 0) / 5
   const currentMonthProfit = profitMonthlyData[5]
-  const profitGrowth = prevMonthProfit > 0 
+
+  const profitGrowth = prevMonthProfit > 0
     ? `${((currentMonthProfit - prevMonthProfit) / prevMonthProfit * 100) > 0 ? '+' : ''}${((currentMonthProfit - prevMonthProfit) / prevMonthProfit * 100).toFixed(1)}%`
     : '+0.0%'
 
   // Expenses data
   const totalExpenses = summary.totalExpenses
-  const expensePercent = summary.totalIncome > 0 
+
+  const expensePercent = summary.totalIncome > 0
     ? Math.round((totalExpenses / summary.totalIncome) * 100)
     : 0
+
   const expenseDiff = summary.expenseTrend !== 0
     ? `${summary.expenseTrend > 0 ? '+' : ''}${summary.expenseTrend.toFixed(1)}% vs last week`
     : 'No change from last week'
@@ -599,14 +579,15 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
       pending: 0,
       'on-hold': 0
     }
-    
+
     ;(orders || []).forEach(o => {
       const status = (o.status || 'pending').toLowerCase()
+
       if (statusCounts.hasOwnProperty(status)) {
         statusCounts[status]++
       }
     })
-    
+
     return Object.values(statusCounts)
   })()
 
@@ -615,15 +596,16 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
     const thisYear = new Date().getFullYear()
     let thisMonthOrders = 0
     let lastMonthOrders = 0
-    
+
     ;(orders || []).forEach(o => {
       const d = toDate(o)
+
       if (d && d.getFullYear() === thisYear) {
         if (d.getMonth() === thisMonth) thisMonthOrders++
         if (d.getMonth() === thisMonth - 1) lastMonthOrders++
       }
     })
-    
+
     return { thisMonth: thisMonthOrders, lastMonth: lastMonthOrders }
   })()
 
@@ -631,26 +613,85 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
     ? `${orderGrowthData.thisMonth > orderGrowthData.lastMonth ? '+' : ''}${(((orderGrowthData.thisMonth - orderGrowthData.lastMonth) / orderGrowthData.lastMonth) * 100).toFixed(1)}%`
     : '+0.0%'
 
+  // Sales last 30 days vs same period previous year (outer scope)
+  const addDays = (date, days) => {
+    const d = new Date(date)
+
+    d.setDate(d.getDate() + days)
+
+return d
+  }
+
+  const formatMMDD = d => `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const today2 = new Date()
+  const start30 = addDays(today2, -29)
+  const dates30X = Array.from({ length: 30 }, (_, i) => addDays(start30, i))
+  const prevYearDates30X = dates30X.map(d => new Date(d.getFullYear() - 1, d.getMonth(), d.getDate()))
+
+  const daySumX = (list, date) => {
+    const y = date.getFullYear(), m = date.getMonth(), dd = date.getDate()
+    let sum = 0
+
+    ;(list || []).forEach(o => {
+      const d = toDate(o)
+
+      if (d && d.getFullYear() === y && d.getMonth() === m && d.getDate() === dd) {
+        sum += parseFloat(String(o.total || 0).replace(/[^0-9.-]/g, '')) || 0
+      }
+    })
+
+return sum
+  }
+
+  const sales30Categories = dates30X.map(formatMMDD)
+  const salesLast30 = dates30X.map(d => daySumX(orders, d))
+  const salesPrevYearSame30 = prevYearDates30X.map(d => daySumX(orders, d))
+
+  // === DB-SOURCED KPIs ===
+  const toNum = v => parseFloat(String(v ?? 0).replace(/[^0-9.-]/g, '')) || 0
+
+  const ordersInRange = (orders || []).filter(o => {
+    const d = toDate(o)
+
+
+return d ? (new Date(range.after) <= d && d <= new Date(range.before)) : false
+  })
+
+  const netSalesRange = ordersInRange.reduce((a, o) => a + toNum(o.total), 0)
+  const taxShipRange = ordersInRange.reduce((a, o) => a + toNum(o.taxTotal) + toNum(o.shippingTotal), 0)
+
+  const [expAgg, sRetAgg, pRetAgg] = await Promise.all([
+    prisma.expense.aggregate({ where: { date: { gte: new Date(range.after), lte: new Date(range.before) } }, _sum: { amount: true } }),
+    prisma.salesReturn.aggregate({ where: { date: { gte: new Date(range.after), lte: new Date(range.before) } }, _sum: { amount: true } }),
+    prisma.purchaseReturn.aggregate({ where: { date: { gte: new Date(range.after), lte: new Date(range.before) } }, _sum: { amount: true } })
+  ])
+
+  const expensesTotal = Number(expAgg._sum.amount || 0)
+  const salesReturnsTotal = Number(sRetAgg._sum.amount || 0)
+  const purchaseReturnsTotal = Number(pRetAgg._sum.amount || 0)
+  const netProfitRange = netSalesRange - taxShipRange - expensesTotal
+
   // Top sales person data (from orders)
   const topSalesPerson = (() => {
     const salesByUser = new Map()
-    
+
     ;(orders || []).forEach(o => {
       const user = o.createdBy || 'System'
       const amount = parseFloat(String(o.total || 0).replace(/[^0-9.-]/g, '')) || 0
+
       salesByUser.set(user, (salesByUser.get(user) || 0) + amount)
     })
-    
+
     let topUser = 'Admin'
     let topAmount = 0
-    
+
     salesByUser.forEach((amount, user) => {
       if (amount > topAmount) {
         topAmount = amount
         topUser = user
       }
     })
-    
+
     return {
       name: topUser === 'System' ? 'Admin' : topUser,
       amount: `$${(topAmount / 1000).toFixed(1)}k`,
@@ -669,35 +710,27 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
           <Button component={Link} href={`/${lang}/apps/ecommerce/products/list`} variant='outlined' size='small'>
             Products
           </Button>
-          <Button component={Link} href={`/${lang}/apps/invoice/list`} variant='outlined' size='small'>
-            Invoices
-          </Button>
           <Button component={Link} href={`/${lang}/apps/ecommerce/customers/list`} variant='outlined' size='small'>
             Customers
           </Button>
-          <Button component={Link} href={`/${lang}/apps/warehouses/list`} variant='outlined' size='small'>
-            Warehouses
+          <Button component={Link} href={`/${lang}/apps/ecommerce/brands`} variant='outlined' size='small'>
+            Brands
           </Button>
-          <Button component={Link} href={`/${lang}/apps/packing-slips/list`} variant='outlined' size='small'>
-            Packing Slips
+          <Button component={Link} href={`/${lang}/apps/ecommerce/promotions`} variant='outlined' size='small'>
+            Promotions
           </Button>
-          <Button component={Link} href={`/${lang}/apps/tent-quotes/create`} variant='outlined' size='small'>
-            Event Tent Quotes
-          </Button>
-          <Button component={Link} href={`/${lang}/apps/boq/list`} variant='outlined' size='small'>
-            BOQ (Bill of Quantities)
-          </Button>
-          <Button component={Link} href={`/${lang}/apps/invoice/generate`} variant='outlined' size='small'>
-            Generate Invoices
+          <Button component={Link} href={`/${lang}/apps/pos/terminal`} variant='outlined' size='small'>
+            POS Terminal
           </Button>
         </div>
       </Grid>
 
       {/* Sticky period toolbar */}
       <Grid size={12}>
-        <div className='sticky top-[64px] z-10 bg-background/80 backdrop-blur rounded px-2 py-2 flex justify-between items-center'>
+        <div className='sticky top-[64px] z-10 bg-background/80 backdrop-blur rounded px-2 py-2 flex justify-between items-center gap-3 flex-wrap'>
           <RefreshButton size='small' />
           <PeriodButtons />
+          <FiltersBar />
         </div>
       </Grid>
 
@@ -709,25 +742,36 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
         />
       </Grid>
 
+      {/* Beauty KPIs */}
+      <Grid size={12}>
+        <BeautyKpis
+          netSales={summary.totalIncome}
+          netProfit={summary.netProfit}
+          salesReturns={(orders || []).reduce((acc, o) => acc + (parseFloat(String(o.refund_total || 0).replace(/[^0-9.-]/g, '')) || 0), 0)}
+          purchaseReturns={0}
+          expenses={summary.totalExpenses}
+        />
+      </Grid>
+
       {/* Small charts */}
       <Grid size={6}>
         <Grid container spacing={6}>
           <Grid size={6}>
-            <LineChartProfit 
+            <LineChartProfit
               profitData={profitMonthlyData}
               totalProfit={`$${(totalMonthlyProfit / 1000).toFixed(1)}k`}
               growthPercent={profitGrowth}
             />
           </Grid>
           <Grid size={6}>
-            <RadialBarChart 
+            <RadialBarChart
               totalExpenses={`$${(totalExpenses / 1000).toFixed(1)}k`}
               expensePercent={expensePercent}
               expenseDiff={expenseDiff}
             />
           </Grid>
           <Grid size={12}>
-            <DonutChartGeneratedLeads 
+            <DonutChartGeneratedLeads
               categorySales={ordersByStatus}
               totalLeads={totalOrders.toLocaleString()}
               growthPercent={orderGrowth}
@@ -744,6 +788,17 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
           lineSeries={lineSeries}
           totalLabel={`$${totalRevenue.toLocaleString()}`}
           budgetLabel={'—'}
+        />
+      </Grid>
+
+      {/* Sales last 30 days vs same period previous year */}
+      <Grid size={12}>
+        <TwoLineChart
+          title='Sales last 30 days'
+          categories={sales30Categories}
+          seriesA={salesLast30}
+          seriesB={salesPrevYearSame30}
+          labels={['Current', 'Prev Year']}
         />
       </Grid>
 
@@ -770,80 +825,48 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
                   const total = parseFloat(String(o.total || 0).replace(/[^0-9.-]/g, '')) || 0
 
                   if (total)
-                    tx.push({
-                      title: `Order #${o.id}`,
-                      subtitle: o.status || 'payment',
-                      amount: total,
-                      avatarColor: 'success',
-                      avatarIcon: 'tabler-brand-paypal'
-                    })
+                    tx.push({ title: `Order #${o.id}`, subtitle: o.status || 'payment', amount: total, avatarColor: 'success', avatarIcon: 'tabler-brand-paypal' })
                   const refund = parseFloat(String(o.refund_total || 0).replace(/[^0-9.-]/g, '')) || 0
 
                   if (refund)
-                    tx.push({
-                      title: `Refund #${o.id}`,
-                      subtitle: 'refund',
-                      amount: -Math.abs(refund),
-                      avatarColor: 'info',
-                      avatarIcon: 'tabler-currency-dollar'
-                    })
+                    tx.push({ title: `Refund #${o.id}`, subtitle: 'refund', amount: -Math.abs(refund), avatarColor: 'info', avatarIcon: 'tabler-currency-dollar' })
                 })
 
-                return tx.slice(0, 7)
+return tx.slice(0, 7)
               })()}
             />
           </div>
         </Masonry>
       </Grid>
 
-      {/* === ORDER MANAGEMENT & FULFILLMENT === */}
+      {/* === ORDER MANAGEMENT === */}
       <Grid size={12}>
         <Typography variant='h5' className='font-semibold mbs-6 mbe-4'>
-          Order Management & Fulfillment
+          Order Management
         </Typography>
       </Grid>
-      <Grid size={{ sm: 12, md: 6 }}>
+      <Grid size={12}>
         <Orders recentOrders={recentOrders} lang={lang} />
       </Grid>
-      <Grid size={{ sm: 12, md: 6 }}>
-        <PackingSlipsSummary packingSlips={packingSlips} lang={lang} />
-      </Grid>
 
-      {/* === QUOTES & PROPOSALS === */}
       <Grid size={12}>
-        <Typography variant='h5' className='font-semibold mbs-6 mbe-4'>
-          Quotes & Proposals
-        </Typography>
-      </Grid>
-      <Grid size={{ sm: 12, md: 6 }}>
-        <TentQuotesSummary quotes={tentQuotes} lang={lang} />
-      </Grid>
-      <Grid size={{ sm: 12, md: 6 }}>
-        <BOQSummary boqs={boqs} lang={lang} />
-      </Grid>
-
-      {/* === INVENTORY & WAREHOUSE MANAGEMENT === */}
-      <Grid size={12}>
-        <Typography variant='h5' className='font-semibold mbs-6 mbe-4'>
-          Inventory & Warehouse Management
-        </Typography>
-      </Grid>
-      <Grid size={12}>
-        <Masonry columns={{ sm: 1, lg: 3 }} spacing={2}>
+        <Masonry columns={{ sm: 1, lg: 2 }} spacing={2}>
           <div>
-            <PopularProducts products={popularProducts} />
+            <ApexLineChart />
           </div>
           <div>
-            <WarehouseOverview
-              warehouses={warehouses}
-              inventoryItems={inventoryItems}
-              stockMovements={stockMovements}
-            />
-          </div>
-          <div>
-            <StockAlerts inventoryItems={inventoryItems} lang={lang} />
+            <LineAreaDailySalesChart />
           </div>
         </Masonry>
+      </Grid>
+
+      <Grid size={12}>
+        <Typography variant='h5' className='font-semibold mbs-6 mbe-4'>
+          Popular Products
+        </Typography>
+      </Grid>
+      <Grid size={12}>
+        <PopularProducts products={popularProducts} />
       </Grid>
 
       {/* === INVOICES === */}

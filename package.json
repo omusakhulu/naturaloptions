@@ -24,6 +24,8 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "react-chartjs-2": "^5.2.0",
+    "chart.js": "^4.4.1",
     "@auth/prisma-adapter": "2.7.4",
     "@emoji-mart/data": "1.2.1",
     "@emoji-mart/react": "1.1.1",

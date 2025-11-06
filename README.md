@@ -1,17 +1,29 @@
-# 🛍️ Natural Options Admin Dashboard
+# 🏪 Natural Options POS & Accounting System
 
-A comprehensive admin dashboard for managing WooCommerce stores with integrated warehousing, inventory, orders, and packing slip management.
+A comprehensive Point of Sale and accounting software with integrated inventory management, financial reporting, multi-location support, and complete business operations management.
 
 ## 🌟 Features
 
-- **📦 WooCommerce Integration** - Full sync with WooCommerce products, orders, and customers
-- **🏭 Warehouse Management** - Multi-warehouse inventory tracking with locations
-- **📊 Order Management** - Real-time order processing with status updates
-- **📄 Packing Slips** - Automated packing slip generation and tracking
-- **💰 Invoice System** - Generate and manage invoices from orders
-- **📈 Analytics Dashboard** - Sales, inventory, and performance metrics
-- **🔒 Secure Authentication** - NextAuth.js with session management
-- **📱 Responsive Design** - Mobile-friendly Material-UI interface
+### 🏪 Point of Sale
+- **💳 POS Terminal** - Touch-friendly interface for in-store sales
+- **💰 Payment Processing** - Cash, card, and digital payment support
+- **🧾 Receipt Printing** - Thermal printer integration
+- **📱 Mobile POS** - Tablet and mobile-friendly interface
+- **🔄 Real-time Sync** - Instant inventory and sales updates
+
+### 📊 Accounting & Finance
+- **📚 General Ledger** - Complete chart of accounts
+- **💸 Accounts Receivable/Payable** - Customer and vendor management
+- **📈 Financial Reports** - P&L, Balance Sheet, Cash Flow statements
+- **🧮 Tax Management** - Sales tax calculation and reporting
+- **💰 Multi-currency Support** - Handle multiple currencies
+
+### 📦 Inventory & Operations
+- **📦 Real-time Inventory** - Live stock tracking across locations
+- **🏭 Multi-location Support** - Manage multiple stores/warehouses
+- **👥 Employee Management** - Time tracking and role-based access
+- **📊 Business Intelligence** - Advanced analytics and reporting
+- **🔒 Security** - Role-based permissions and audit trails
 
 ## 🚀 Quick Start
 

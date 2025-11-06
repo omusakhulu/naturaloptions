@@ -102,6 +102,9 @@
     "menuLevel2": "Menu Level 2",
     "menuLevel3": "Menu Level 3",
     "disabledMenu": "Disabled Menu",
-    "invoicing": "Invoicing"
+    "invoicing": "Invoicing",
+    "catalog": "Catalog",
+    "brands": "Brands",
+    "promotions": "Promotions"
   }
 }
