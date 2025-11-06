@@ -71,7 +71,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
       >
         <MenuSection label='Natural Options'>
           <MenuItem icon={<i className='tabler-home' />} href={`/${locale}/apps/ecommerce/dashboard`}>Home</MenuItem>
-          <SubMenu label={dictionary['navigation'].products} icon={<i className='tabler-shopping-cart' />} defaultOpen>
+          <SubMenu label={dictionary['navigation'].products} icon={<i className='tabler-shopping-cart' />} >
             <MenuItem href={`/${locale}/apps/ecommerce/dashboard`}>{dictionary['navigation'].dashboard}</MenuItem>
 
             <SubMenu label='Products'>
@@ -148,6 +148,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             <MenuItem href={`/${locale}/apps/accounting/chart-of-accounts`}>Chart of Accounts</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/journal-entries`}>Journal Entries</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/transactions`}>Transactions</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/reports`}>Reports</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/vendors`}>Vendors</MenuItem>
           </SubMenu>
           <SubMenu label='Reports' icon={<i className='tabler-report-analytics' />}>
