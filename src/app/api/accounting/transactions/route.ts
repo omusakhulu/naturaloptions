@@ -51,7 +51,7 @@ export async function GET(request: Request) {
           sale: { select: { saleNumber: true, customer: { select: { firstName: true, lastName: true } } } }
         }
       })
-      items = rows.map(r => ({
+      items = rows.map((r: any) => ({
         id: r.id,
         date: r.paymentDate,
         ref: r.reference || r.sale?.saleNumber || '-',
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
         orderBy: { date: 'desc' },
         select: { id: true, amount: true, date: true, note: true, category: true, account: { select: { name: true } } }
       })
-      items = rows.map(r => ({
+      items = rows.map((r: any) => ({
         id: r.id,
         date: r.date,
         ref: r.category,
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
         orderBy: { billDate: 'desc' },
         select: { id: true, billNumber: true, billDate: true, amount: true, vendor: { select: { name: true } }, reference: true }
       })
-      items = rows.map(r => ({
+      items = rows.map((r: any) => ({
         id: r.id,
         date: r.billDate,
         ref: r.billNumber || r.reference || '-',
@@ -137,7 +137,7 @@ export async function GET(request: Request) {
         orderBy: { billDate: 'desc' },
         select: { id: true, billNumber: true, billDate: true, paidAmount: true, vendor: { select: { name: true } }, reference: true }
       })
-      items = rows.map(r => ({
+      items = rows.map((r: any) => ({
         id: r.id,
         date: r.billDate,
         ref: r.billNumber || r.reference || '-',
@@ -166,7 +166,7 @@ export async function GET(request: Request) {
         orderBy: { dateCreated: 'desc' },
         select: { id: true, orderNumber: true, dateCreated: true, total: true, status: true }
       })
-      items = rows.map(r => ({
+      items = rows.map((r: any) => ({
         id: r.id,
         date: r.dateCreated,
         ref: r.orderNumber,

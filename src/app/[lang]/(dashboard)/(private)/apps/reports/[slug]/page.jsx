@@ -1,12 +1,32 @@
 "use client"
 
-import PurchaseSaleReport from '@/components/reports/PurchaseSaleReport'
+import React from 'react'
+import PurchaseSaleReport from '@/components/reports/PurchaseSaleReportTSX'
+import TaxReport from '@/components/reports/TaxReportTSX'
+import StockReport from '@/components/reports/StockReportTSX'
+import ItemsReport from '@/components/reports/ItemsReportTSX'
+import ProfitLossReport from '@/components/reports/ProfitLossReport'
+import SupplierReport from '@/components/reports/SupplierReportTSX'
+import CustomerReport from '@/components/reports/CustomerReportTSX'
+import CustomerGroupsReport from '@/components/reports/CustomerGroupsReportTSX'
+import StockExpiryReport from '@/components/reports/StockExpiryReportTSX'
+import LotReport from '@/components/reports/LotReportTSX'
+import StockAdjustmentReport from '@/components/reports/StockAdjustmentReportTSX'
+import TrendingProductsReport from '@/components/reports/TrendingProductsReportTSX'
+import ProductPurchaseReport from '@/components/reports/ProductPurchaseReportTSX'
+import ProductSellReport from '@/components/reports/ProductSellReportTSX'
+import PurchasePaymentReport from '@/components/reports/PurchasePaymentReportTSX'
+import SellPaymentReport from '@/components/reports/SellPaymentReportTSX'
+import ExpenseReport from '@/components/reports/ExpenseReportTSX'
+import RegisterReport from '@/components/reports/RegisterReportTSX'
 
 const TITLES = {
   'profit-loss': 'Profit / Loss Report',
   'purchase-sale': 'Purchase & Sale',
   'tax': 'Tax Report',
   'supplier-customer': 'Supplier & Customer Report',
+  'supplier': 'Supplier Report',
+  'customers': 'Customer Report',
   'customer-groups': 'Customer Groups Report',
   'stock': 'Stock Report',
   'stock-expiry': 'Stock Expiry Report',
@@ -25,11 +45,64 @@ const TITLES = {
 }
 
 export default function ReportPage({ params }) {
-  const slug = params?.slug
+  const p = React.use(params)
+  const slug = p?.slug
+  const lang = p?.lang || 'en'
   const title = TITLES[slug] || 'Report'
 
+  if (slug === 'profit-loss') {
+    return <ProfitLossReport lang={lang} />
+  }
   if (slug === 'purchase-sale') {
-    return <PurchaseSaleReport lang={params?.lang || 'en'} />
+    return <PurchaseSaleReport lang={lang} />
+  }
+  if (slug === 'tax') {
+    return <TaxReport lang={lang} />
+  }
+  if (slug === 'stock') {
+    return <StockReport lang={lang} />
+  }
+  if (slug === 'items') {
+    return <ItemsReport lang={lang} />
+  }
+  if (slug === 'supplier') {
+    return <SupplierReport lang={lang} />
+  }
+  if (slug === 'customers') {
+    return <CustomerReport lang={lang} />
+  }
+  if (slug === 'customer-groups') {
+    return <CustomerGroupsReport lang={lang} />
+  }
+  if (slug === 'stock-expiry') {
+    return <StockExpiryReport lang={lang} />
+  }
+  if (slug === 'lot') {
+    return <LotReport lang={lang} />
+  }
+  if (slug === 'stock-adjustment') {
+    return <StockAdjustmentReport lang={lang} />
+  }
+  if (slug === 'trending-products') {
+    return <TrendingProductsReport lang={lang} />
+  }
+  if (slug === 'product-purchase') {
+    return <ProductPurchaseReport lang={lang} />
+  }
+  if (slug === 'product-sell') {
+    return <ProductSellReport lang={lang} />
+  }
+  if (slug === 'purchase-payment') {
+    return <PurchasePaymentReport lang={lang} />
+  }
+  if (slug === 'sell-payment') {
+    return <SellPaymentReport lang={lang} />
+  }
+  if (slug === 'expense') {
+    return <ExpenseReport lang={lang} />
+  }
+  if (slug === 'register') {
+    return <RegisterReport lang={lang} />
   }
 
   return (

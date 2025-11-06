@@ -164,10 +164,22 @@ export default function PurchaseSaleReport({ lang = 'en' }) {
     </div>
   )
 
+  const MiniBars = ({ series, color = '#4f46e5' }) => {
+    const max = Math.max(1, ...series.map(s => Number(s.total || s.salesTax || s.amount || 0)))
+    return (
+      <div className="flex items-end gap-1 h-24">
+        {series.map((s) => (
+          <div key={s.date} title={`${s.date}: ${Number(s.total || 0).toLocaleString()}`} style={{ height: `${Math.max(4, (Number(s.total || 0) / max) * 100)}%`, width: '8px', backgroundColor: color }} />
+        ))}
+      </div>
+    )
+  }
+
   const PeriodTables = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <div className="text-sm font-semibold mb-2">Sales by Date</div>
+        <div className="mb-3"><MiniBars series={data.sales.byPeriod || []} color="#16a34a" /></div>
         <div className="border rounded">
           <div className="grid grid-cols-2 text-xs font-medium text-gray-700 border-b py-2 px-3">
             <div>Date</div>
@@ -183,6 +195,7 @@ export default function PurchaseSaleReport({ lang = 'en' }) {
       </div>
       <div>
         <div className="text-sm font-semibold mb-2">Purchases by Date</div>
+        <div className="mb-3"><MiniBars series={data.purchases.byPeriod || []} color="#ef4444" /></div>
         <div className="border rounded">
           <div className="grid grid-cols-2 text-xs font-medium text-gray-700 border-b py-2 px-3">
             <div>Date</div>

@@ -190,3 +190,6 @@ code {
 .mui-1v2byy1-MuiAutocomplete-root {
   inline-size: 400px !important;
 }
+.flex.flex-col p {
+    white-space: normal;
+}

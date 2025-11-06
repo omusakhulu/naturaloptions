@@ -387,6 +387,10 @@ model Warehouse {
   capacity    Float? // Total capacity in cubic meters
   status      WarehouseStatus @default(active)
 
+  // Optional mapping to POS Location (store/branch)
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+
   // Relations
   locations WarehouseLocation[]
   inventory InventoryItem[]
@@ -397,6 +401,7 @@ model Warehouse {
 
   @@index([code])
   @@index([status])
+  @@index([locationId])
 }
 
 // ==========================================
@@ -910,6 +915,7 @@ model ChartOfAccounts {
   accountCode String            @unique
   accountName String
   accountType AccountType
+  accountCategory String?       // Flexible category label, e.g. 'COGS'
   parentId    String?
   parent      ChartOfAccounts?  @relation("AccountHierarchy", fields: [parentId], references: [id])
   children    ChartOfAccounts[] @relation("AccountHierarchy")
@@ -925,6 +931,7 @@ model ChartOfAccounts {
   JournalLineItem JournalLineItem[]
 
   @@index([accountType])
+  @@index([accountCategory])
   @@index([parentId])
 }
 
