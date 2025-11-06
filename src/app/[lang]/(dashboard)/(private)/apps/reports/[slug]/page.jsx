@@ -1,5 +1,7 @@
 "use client"
 
+import PurchaseSaleReport from '@/components/reports/PurchaseSaleReport'
+
 const TITLES = {
   'profit-loss': 'Profit / Loss Report',
   'purchase-sale': 'Purchase & Sale',
@@ -25,6 +27,10 @@ const TITLES = {
 export default function ReportPage({ params }) {
   const slug = params?.slug
   const title = TITLES[slug] || 'Report'
+
+  if (slug === 'purchase-sale') {
+    return <PurchaseSaleReport lang={params?.lang || 'en'} />
+  }
 
   return (
     <div className="p-6 space-y-4">
