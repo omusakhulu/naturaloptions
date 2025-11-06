@@ -147,8 +147,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
             <MenuItem href={`/${locale}/apps/accounting/dashboard`}>Dashboard</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/chart-of-accounts`}>Chart of Accounts</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/journal-entries`}>Journal Entries</MenuItem>
-            <MenuItem href={`/${locale}/apps/accounting/accounts-receivable`}>Accounts Receivable</MenuItem>
-            <MenuItem href={`/${locale}/apps/accounting/accounts-payable`}>Accounts Payable</MenuItem>
+            <MenuItem href={`/${locale}/apps/accounting/transactions`}>Transactions</MenuItem>
             <MenuItem href={`/${locale}/apps/accounting/vendors`}>Vendors</MenuItem>
           </SubMenu>
           <SubMenu label='Reports' icon={<i className='tabler-report-analytics' />}>
