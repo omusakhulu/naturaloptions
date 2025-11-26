@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+
 import { PrismaClient } from '@prisma/client'
 import { getServerSession } from 'next-auth/next'
+
 import { authOptions } from '@/lib/auth'
 import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
 
@@ -21,14 +23,16 @@ function mapPaymentMethod(method: string): string {
     'bank': 'DIGITAL_WALLET', // Map bank transfer to digital wallet
     'split': 'CASH', // Default to CASH for split payments
   }
-  
+
   const normalized = method.toLowerCase()
+
   return methodMap[normalized] || 'CASH'
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+
     const {
       items,
       subtotal,
@@ -45,8 +49,10 @@ export async function POST(request: Request) {
 
     // Get current user (employee)
     const session = await getServerSession(authOptions)
+
     if (!session?.user?.email) {
       console.log('❌ No session found')
+
       return NextResponse.json(
         {
           success: false,
@@ -67,9 +73,10 @@ export async function POST(request: Request) {
 
     if (!terminal) {
       console.log('📍 Creating terminal...')
+
       // Get default location or create one
       let location = await prisma.location.findFirst()
-      
+
       if (!location) {
         console.log('📍 Creating location...')
         location = await prisma.location.create({
@@ -94,12 +101,14 @@ export async function POST(request: Request) {
 
     // Get employee (user)
     console.log('👤 Looking for user:', session.user.email)
+
     const employee = await prisma.user.findUnique({
       where: { email: session.user.email }
     })
 
     if (!employee) {
       console.log('❌ Employee not found for email:', session.user.email)
+
       return NextResponse.json(
         {
           success: false,
@@ -108,6 +117,7 @@ export async function POST(request: Request) {
         { status: 404 }
       )
     }
+    
     console.log('✅ Employee found:', employee.id)
 
     // Prepare sale data
@@ -179,11 +189,12 @@ export async function POST(request: Request) {
 
     // Create WooCommerce order
     let wooOrder = null
+
     try {
       console.log('🛒 Creating WooCommerce order...')
-      
+
       const wooService = WooCommerceService.getInstance()
-      
+
       // Map POS items to WooCommerce line items
       const lineItems = items.map((item: any) => ({
         product_id: item.wooId || item.id, // Use WooCommerce product ID if available
@@ -199,7 +210,7 @@ export async function POST(request: Request) {
         payment_method: paymentMethod,
         payment_method_title: paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1),
         set_paid: true, // Mark as paid since POS payment is complete
-        
+
         // Customer information
         billing: customer ? {
           first_name: customer.firstName || '',
@@ -217,7 +228,7 @@ export async function POST(request: Request) {
           city: 'Nairobi',
           country: 'KE'
         },
-        
+
         shipping: customer ? {
           first_name: customer.firstName || '',
           last_name: customer.lastName || '',
@@ -231,16 +242,16 @@ export async function POST(request: Request) {
           city: 'Nairobi',
           country: 'KE'
         },
-        
+
         // Line items
         line_items: lineItems,
-        
+
         // Totals
         total: total.toString(),
         subtotal: subtotal.toString(),
         total_tax: tax.toString(),
         discount_total: discountAmount.toString(),
-        
+
         // Meta data to link with POS sale
         meta_data: [
           {
@@ -264,7 +275,7 @@ export async function POST(request: Request) {
             value: 'POS Terminal'
           }
         ],
-        
+
         // Notes
         customer_note: `POS Sale ${sale.saleNumber} - ${items.length} item(s)`,
         notes: `Created from POS Terminal - Sale ID: ${sale.id}, Employee: ${session.user.email}`
@@ -272,7 +283,7 @@ export async function POST(request: Request) {
 
       wooOrder = await wooService.createOrder(wooOrderData)
       console.log('✅ WooCommerce order created:', wooOrder.id)
-      
+
       // Update POS sale with WooCommerce order ID
       await prisma.pOSSale.update({
         where: { id: sale.id },
@@ -280,9 +291,10 @@ export async function POST(request: Request) {
           notes: `WooCommerce Order #${wooOrder.id} created`
         }
       })
-      
+
     } catch (wooError) {
       console.error('❌ Failed to create WooCommerce order:', wooError)
+
       // Don't fail the entire sale if WooCommerce fails, just log it
     }
 
@@ -298,7 +310,8 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('❌ Error creating POS sale:', error)
-    return NextResponse.json(
+
+return NextResponse.json(
       {
         success: false,
         error: 'Failed to create sale',
@@ -380,7 +393,8 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('❌ Error fetching POS sales:', error)
-    return NextResponse.json(
+
+return NextResponse.json(
       {
         success: false,
         error: 'Failed to fetch sales'

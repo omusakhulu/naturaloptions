@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+
 import {
   Box,
   Card,
@@ -45,7 +46,7 @@ const POSTerminal = () => {
   const [subtotal, setSubtotal] = useState(0)
   const [tax, setTax] = useState(0)
   const [total, setTotal] = useState(0)
-  
+
   // UI state
   const [searchQuery, setSearchQuery] = useState('')
   const [products, setProducts] = useState([])
@@ -69,6 +70,7 @@ const POSTerminal = () => {
   useEffect(() => {
     const newSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
     const newTax = newSubtotal * 0.08 // 8% tax rate
+
     setSubtotal(newSubtotal)
     setTax(newTax)
     setTotal(newSubtotal + newTax)
@@ -76,9 +78,10 @@ const POSTerminal = () => {
 
   const addToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id)
+
     if (existingItem) {
-      setCart(cart.map(item => 
-        item.id === product.id 
+      setCart(cart.map(item =>
+        item.id === product.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ))
@@ -91,7 +94,7 @@ const POSTerminal = () => {
     if (newQuantity <= 0) {
       removeFromCart(id)
     } else {
-      setCart(cart.map(item => 
+      setCart(cart.map(item =>
         item.id === id ? { ...item, quantity: newQuantity } : item
       ))
     }
@@ -107,6 +110,7 @@ const POSTerminal = () => {
 
   const handlePayment = () => {
     setPaymentDialog(true)
+
     if (paymentMethod === 'cash') {
       setCashTendered(total.toFixed(2))
     }
@@ -122,12 +126,12 @@ const POSTerminal = () => {
       paymentMethod,
       cashTendered: paymentMethod === 'cash' ? cashTendered : null
     })
-    
+
     // Clear cart after successful payment
     setCart([])
     setPaymentDialog(false)
     setCashTendered('')
-    
+
     // Show success message or receipt
     alert('Payment processed successfully!')
   }
@@ -135,6 +139,7 @@ const POSTerminal = () => {
   const calculateChange = () => {
     if (paymentMethod === 'cash' && cashTendered) {
       const changeAmount = parseFloat(cashTendered) - total
+
       setChange(changeAmount > 0 ? changeAmount : 0)
     }
   }
@@ -180,8 +185,8 @@ const POSTerminal = () => {
           <Grid container spacing={2}>
             {filteredProducts.map((product) => (
               <Grid item xs={6} sm={4} md={3} key={product.id}>
-                <Card 
-                  sx={{ 
+                <Card
+                  sx={{
                     cursor: 'pointer',
                     transition: 'transform 0.2s',
                     '&:hover': { transform: 'scale(1.05)' }
@@ -360,8 +365,8 @@ const POSTerminal = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPaymentDialog(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={processPayment}
             disabled={paymentMethod === 'cash' && (!cashTendered || parseFloat(cashTendered) < total)}
           >

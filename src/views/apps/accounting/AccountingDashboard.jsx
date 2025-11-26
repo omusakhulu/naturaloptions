@@ -38,23 +38,19 @@ import {
 } from '@mui/icons-material'
 
 const AccountingDashboard = () => {
+  const [loading, setLoading] = useState(true)
+
   // Sample financial data - Replace with real data
   const [financialSummary, setFinancialSummary] = useState({
-    totalRevenue: 125430.50,
-    totalExpenses: 78920.25,
-    netIncome: 46510.25,
-    accountsReceivable: 15420.75,
-    accountsPayable: 8930.50,
-    cashBalance: 32150.80
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netIncome: 0,
+    accountsReceivable: 15420.75, // Mock
+    accountsPayable: 8930.50,     // Mock
+    cashBalance: 32150.80         // Mock
   })
 
-  const [recentTransactions, setRecentTransactions] = useState([
-    { id: 1, date: '2025-11-06', description: 'Sale #1001', amount: 245.50, type: 'income', status: 'completed' },
-    { id: 2, date: '2025-11-06', description: 'Office Supplies', amount: -89.99, type: 'expense', status: 'completed' },
-    { id: 3, date: '2025-11-05', description: 'Customer Payment', amount: 1250.00, type: 'income', status: 'completed' },
-    { id: 4, date: '2025-11-05', description: 'Rent Payment', amount: -2500.00, type: 'expense', status: 'pending' },
-    { id: 5, date: '2025-11-04', description: 'Product Sales', amount: 890.25, type: 'income', status: 'completed' }
-  ])
+  const [recentTransactions, setRecentTransactions] = useState([])
 
   const [outstandingInvoices, setOutstandingInvoices] = useState([
     { id: 'INV-001', customer: 'ABC Corp', amount: 1250.00, dueDate: '2025-11-10', overdue: false },
@@ -63,10 +59,77 @@ const AccountingDashboard = () => {
   ])
 
   const [accountingMetrics, setAccountingMetrics] = useState({
-    monthlyRevenue: { current: 25430, previous: 22150, growth: 14.8 },
-    averageTransaction: { current: 127.50, previous: 115.25, growth: 10.6 },
+    monthlyRevenue: { current: 0, previous: 0, growth: 0 },
+    averageTransaction: { current: 0, previous: 0, growth: 0 },
     customerPayments: { pending: 8, completed: 45, overdue: 3 }
   })
+
+  // Fetch Data
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        // Date range: First day of current month to now
+        const now = new Date()
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+        const endOfToday = now.toISOString()
+
+        // 1. Fetch Sales (Revenue)
+        const salesRes = await fetch(`/api/pos/sales?startDate=${startOfMonth}&endDate=${endOfToday}&limit=10`)
+        const salesData = await salesRes.json()
+
+        // 2. Fetch Expenses
+        const expensesRes = await fetch(`/api/expenses?after=${startOfMonth}&before=${endOfToday}`)
+        const expensesData = await expensesRes.json()
+
+        if (salesData.success && expensesData) {
+          const totalRevenue = salesData.summary.totalAmount || 0
+          const totalExpenses = expensesData.total || 0
+          const netIncome = totalRevenue - totalExpenses
+
+          setFinancialSummary(prev => ({
+            ...prev,
+            totalRevenue,
+            totalExpenses,
+            netIncome
+          }))
+
+          // Merge and format transactions
+          const salesTransactions = (salesData.sales || []).map(sale => ({
+            id: sale.id,
+            date: new Date(sale.saleDate).toLocaleDateString(),
+            rawDate: new Date(sale.saleDate),
+            description: `Sale #${sale.saleNumber}`,
+            amount: sale.total,
+            type: 'income',
+            status: 'completed'
+          }))
+
+          const expenseTransactions = (expensesData.items || []).map(exp => ({
+            id: exp.id,
+            date: new Date(exp.date).toLocaleDateString(),
+            rawDate: new Date(exp.date),
+            description: exp.category || 'Expense',
+            amount: -exp.amount, // Negative for display logic if needed, or handle in UI
+            type: 'expense',
+            status: 'completed'
+          }))
+
+          const allTransactions = [...salesTransactions, ...expenseTransactions]
+            .sort((a, b) => b.rawDate - a.rawDate)
+            .slice(0, 10)
+
+          setRecentTransactions(allTransactions)
+        }
+      } catch (error) {
+        console.error('Failed to fetch accounting data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -290,8 +353,8 @@ const AccountingDashboard = () => {
                             <Typography variant="caption" display="block">
                               {invoice.customer}
                             </Typography>
-                            <Typography 
-                              variant="caption" 
+                            <Typography
+                              variant="caption"
                               sx={{ color: invoice.overdue ? 'error.main' : 'text.secondary' }}
                             >
                               Due: {invoice.dueDate}

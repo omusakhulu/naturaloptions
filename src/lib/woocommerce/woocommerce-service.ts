@@ -516,7 +516,9 @@ export class WooCommerceService {
     console.log(`🚀 Deleting product ${id}`)
     const path = `/wp-json/wc/v3/products/${id}?force=${force ? 'true' : 'false'}`
     const response = await this.executeApiRequest<any>(path, 'DELETE')
+
     console.log(`✅ Product ${id} deleted`)
+    
     return response
   }
 

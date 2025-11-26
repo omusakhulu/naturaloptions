@@ -31,6 +31,210 @@ export default function POSTerminalModern() {
   // Customer search state
   const [customerSearch, setCustomerSearch] = useState('')
 
+  // Shift/Cash Drawer State
+  const [shift, setShift] = useState({
+    isOpen: false,
+    startTime: null,
+    openingFloat: 0,
+    sales: [], // Track sales in this shift
+    expectedCash: 0
+  })
+
+  const [showShiftModal, setShowShiftModal] = useState(false)
+  const [shiftModalMode, setShiftModalMode] = useState('open') // 'open' | 'close'
+  const [shiftInputAmount, setShiftInputAmount] = useState('')
+  const [shiftClosingNotes, setShiftClosingNotes] = useState('')
+
+  // Payout State
+  const [showPayoutModal, setShowPayoutModal] = useState(false)
+  const [payoutAmount, setPayoutAmount] = useState('')
+  const [payoutReason, setPayoutReason] = useState('')
+
+  // Load shift from local storage on mount
+  useEffect(() => {
+    const savedShift = localStorage.getItem('pos_active_shift')
+
+    if (savedShift) {
+      setShift(JSON.parse(savedShift))
+    } else {
+      // If no shift is open, prompt to open one
+      setShiftModalMode('open')
+      setShowShiftModal(true)
+    }
+  }, [])
+
+  // Save shift to local storage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('pos_active_shift', JSON.stringify(shift))
+  }, [shift])
+
+  // Shift Management Functions
+  const handleOpenShift = () => {
+    const floatAmount = parseFloat(shiftInputAmount)
+
+    if (isNaN(floatAmount) || floatAmount < 0) {
+      toast.error('Please enter a valid opening float amount')
+
+return
+    }
+
+    const newShift = {
+      isOpen: true,
+      startTime: new Date().toISOString(),
+      openingFloat: floatAmount,
+      sales: [],
+      expectedCash: floatAmount
+    }
+
+    setShift(newShift)
+    setShowShiftModal(false)
+    setShiftInputAmount('')
+    toast.success(`Shift opened with $${floatAmount.toFixed(2)}`)
+  }
+
+  const handleCloseShift = () => {
+    const actualCash = parseFloat(shiftInputAmount)
+
+    if (isNaN(actualCash) || actualCash < 0) {
+      toast.error('Please enter the actual cash count')
+
+return
+    }
+
+    // Calculate totals using the same logic as shiftStats
+    const validSales = shift.sales.filter(s => s.type !== 'payout')
+    const payouts = shift.sales.filter(s => s.type === 'payout')
+
+    const cashSales = validSales
+      .filter(s => s.method === 'cash' || s.method === 'split')
+      .reduce((sum, s) => sum + (s.cashAmount || s.total), 0)
+
+    const totalPayouts = payouts.reduce((sum, s) => sum + Math.abs(s.cashAmount), 0)
+
+    const expectedCash = shift.openingFloat + cashSales - totalPayouts
+    const difference = actualCash - expectedCash
+
+    // Here you would typically send this data to your backend
+    console.log('📝 Closing Shift Report:', {
+      startTime: shift.startTime,
+      endTime: new Date().toISOString(),
+      openingFloat: shift.openingFloat,
+      cashSales,
+      totalPayouts,
+      expectedCash,
+      actualCash,
+      difference,
+      notes: shiftClosingNotes
+    })
+
+    // Create a closing report/receipt (simulated)
+    toast.success(`Shift closed. ${difference >= 0 ? 'Over' : 'Short'}: $${Math.abs(difference).toFixed(2)}`)
+
+    // Reset shift
+    setShift({
+      isOpen: false,
+      startTime: null,
+      openingFloat: 0,
+      sales: [],
+      expectedCash: 0
+    })
+
+    localStorage.removeItem('pos_active_shift')
+    setShowShiftModal(false)
+    setShiftInputAmount('')
+    setShiftClosingNotes('')
+
+    // Prompt to open new shift immediately
+    setTimeout(() => {
+      setShiftModalMode('open')
+      setShowShiftModal(true)
+    }, 1000)
+  }
+
+  const handlePayout = async () => {
+    const amount = parseFloat(payoutAmount)
+
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount')
+
+return
+    }
+
+    if (!payoutReason.trim()) {
+      toast.error('Please enter a reason')
+
+return
+    }
+
+    try {
+      // 1. Save expense to backend
+      await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          category: 'Payout',
+          accountId: 'cash_drawer',
+          date: new Date(),
+          note: `POS Payout: ${payoutReason}`
+        })
+      })
+
+      // 2. Update shift
+      setShift(prev => ({
+        ...prev,
+        sales: [...prev.sales, {
+          id: `PAYOUT-${Date.now()}`,
+          total: -amount,
+          method: 'cash',
+          cashAmount: -amount,
+          type: 'payout',
+          note: payoutReason,
+          timestamp: new Date().toISOString()
+        }]
+      }))
+
+      toast.success(`Payout of $${amount.toFixed(2)} recorded`)
+      setShowPayoutModal(false)
+      setPayoutAmount('')
+      setPayoutReason('')
+    } catch (error) {
+      console.error('Payout error:', error)
+      toast.error('Failed to record payout')
+    }
+  }
+
+  // Calculate current shift stats
+  const shiftStats = useMemo(() => {
+    if (!shift.isOpen) return null
+
+    const validSales = shift.sales.filter(s => s.type !== 'payout')
+    const payouts = shift.sales.filter(s => s.type === 'payout')
+
+    const totalSales = validSales.reduce((sum, s) => sum + s.total, 0)
+
+    const cashSales = validSales
+      .filter(s => s.method === 'cash' || s.method === 'split')
+      .reduce((sum, s) => sum + (s.cashAmount || s.total), 0)
+
+    const cardSales = validSales
+      .filter(s => s.method === 'card' || s.method === 'credit_card' || s.method === 'debit_card')
+      .reduce((sum, s) => sum + s.total, 0)
+
+    const otherSales = totalSales - cashSales - cardSales
+
+    const totalPayouts = payouts.reduce((sum, s) => sum + Math.abs(s.cashAmount), 0)
+
+    return {
+      totalSales,
+      cashSales,
+      cardSales,
+      otherSales,
+      totalPayouts,
+      transactionCount: validSales.length
+    }
+  }, [shift])
+
   // Data state
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([{ id: 'all', name: 'All', icon: '🏪' }])
@@ -238,6 +442,7 @@ return
       }, 100)
     } else {
       toast.error(`Product with SKU "${sku}" not found`)
+
       // Don't clear input so user can correct it
     }
   }
@@ -330,8 +535,17 @@ return
   }
 
   const processPayment = async () => {
+    if (!shift.isOpen) {
+      toast.error('Shift is closed. Please open a shift to process payments.')
+      setShiftModalMode('open')
+      setShowShiftModal(true)
+
+return
+    }
+
     if (cart.length === 0) {
       toast.error('Cart is empty')
+
       return
     }
 
@@ -339,6 +553,7 @@ return
     if (splitPayments.length > 0) {
       if (remainingBalance > 0) {
         toast.error(`Insufficient payment. $${remainingBalance.toFixed(2)} remaining`)
+
         return
       }
 
@@ -357,7 +572,7 @@ return
         }
 
         console.log('💾 Saving split payment sale:', saleData)
-        
+
         const response = await fetch('/api/pos/sales', {
           method: 'POST',
           headers: {
@@ -370,11 +585,25 @@ return
 
         if (result.success) {
           console.log('✅ Sale saved:', result.sale)
-          const message = result.sale.wooOrderId 
+
+          const message = result.sale.wooOrderId
             ? `Sale #${result.sale.saleNumber} completed! WooCommerce Order #${result.sale.wooOrderId} created.`
             : `Sale #${result.sale.saleNumber} completed with ${splitPayments.length} payment method(s)!`
+
           toast.success(message)
-          
+
+          // Record to active shift
+          setShift(prev => ({
+            ...prev,
+            sales: [...prev.sales, {
+              id: result.sale.id,
+              total: result.sale.totalAmount || total,
+              method: 'split',
+              cashAmount: splitPayments.filter(p => p.method === 'cash').reduce((sum, p) => sum + p.amount, 0),
+              timestamp: new Date().toISOString()
+            }]
+          }))
+
           // Clear everything
           setCart([])
           setDiscount({ type: 'none', value: 0 })
@@ -391,12 +620,14 @@ return
         console.error('❌ Error saving sale:', error)
         toast.error('Failed to save sale to database')
       }
+
       return
     }
 
     // Single payment method
     if (paymentMethod === 'cash' && (!amountTendered || parseFloat(amountTendered) < total)) {
       toast.error('Insufficient cash amount')
+
       return
     }
 
@@ -415,7 +646,7 @@ return
       }
 
       console.log('💾 Saving single payment sale:', saleData)
-      
+
       const response = await fetch('/api/pos/sales', {
         method: 'POST',
         headers: {
@@ -428,11 +659,25 @@ return
 
       if (result.success) {
         console.log('✅ Sale saved:', result.sale)
-        const message = result.sale.wooOrderId 
+
+        const message = result.sale.wooOrderId
           ? `Sale #${result.sale.saleNumber} completed! WooCommerce Order #${result.sale.wooOrderId} created.`
           : `Sale #${result.sale.saleNumber} completed!`
+
         toast.success(message)
-        
+
+        // Record to active shift
+        setShift(prev => ({
+          ...prev,
+          sales: [...prev.sales, {
+            id: result.sale.id,
+            total: result.sale.totalAmount || total,
+            method: paymentMethod,
+            cashAmount: paymentMethod === 'cash' ? (result.sale.totalAmount || total) : 0,
+            timestamp: new Date().toISOString()
+          }]
+        }))
+
         // Clear everything
         setCart([])
         setDiscount({ type: 'none', value: 0 })
@@ -505,6 +750,20 @@ return
             <p className='text-xs md:text-sm text-indigo-100'>Terminal #1 - Main Register</p>
           </div>
           <div className='flex items-center gap-2'>
+            <button
+              onClick={() => {
+                setShiftModalMode(shift.isOpen ? 'close' : 'open')
+                setShowShiftModal(true)
+              }}
+              className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition font-medium ${
+                shift.isOpen
+                  ? 'bg-green-500/20 hover:bg-green-500/30 text-green-100 border border-green-500/30'
+                  : 'bg-red-500/20 hover:bg-red-500/30 text-red-100 border border-red-500/30'
+              }`}
+            >
+              <i className={`text-lg ${shift.isOpen ? 'tabler-lock-open' : 'tabler-lock'}`} />
+              <span>{shift.isOpen ? 'Shift Open' : 'Shift Closed'}</span>
+            </button>
             <button className='hidden md:flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm transition'>
               <i className='tabler-user-circle text-lg' />
               <span>Cashier</span>
@@ -815,10 +1074,175 @@ return
                 <i className='tabler-bookmark text-xl' />
                 <span className='text-xs'>Hold</span>
               </button>
+
+              <button
+                onClick={() => setShowPayoutModal(true)}
+                disabled={!shift.isOpen}
+                className='bg-red-100 hover:bg-red-200 disabled:bg-gray-100 disabled:text-gray-400 text-red-700 font-medium py-3 rounded-lg transition flex flex-col items-center justify-center gap-1'
+              >
+                <i className='tabler-cash-banknote-off text-xl' />
+                <span className='text-xs'>Expense</span>
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Shift Management Modal */}
+      {showShiftModal && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50' onClick={(e) => e.target === e.currentTarget && setShowShiftModal(false)}>
+          <div className='bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden'>
+            <div className='p-6 border-b bg-gray-50'>
+              <div className='flex items-center justify-between'>
+                <h3 className='text-xl font-bold text-gray-900'>
+                  {shiftModalMode === 'open' ? 'Open Shift' : 'Close Shift (Z-Report)'}
+                </h3>
+                <button onClick={() => setShowShiftModal(false)} className='text-gray-400 hover:text-gray-600 p-1'>
+                  <i className='tabler-x text-2xl' />
+                </button>
+              </div>
+            </div>
+
+            <div className='p-6 space-y-4'>
+              {shiftModalMode === 'open' ? (
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Opening Float Amount</label>
+                  <div className='relative'>
+                    <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500'>$</span>
+                    <input
+                      type='number'
+                      step='0.01'
+                      value={shiftInputAmount}
+                      onChange={(e) => setShiftInputAmount(e.target.value)}
+                      className='w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
+                      placeholder='0.00'
+                      autoFocus
+                    />
+                  </div>
+                  <p className='text-sm text-gray-500 mt-2'>Enter the total cash currently in the drawer.</p>
+                </div>
+              ) : (
+                <div className='space-y-4'>
+                  {/* Shift Summary */}
+                  <div className='bg-gray-50 p-4 rounded-xl space-y-2'>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-gray-600'>Opening Float</span>
+                      <span className='font-medium'>${shift.openingFloat.toFixed(2)}</span>
+                    </div>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-gray-600'>Cash Sales</span>
+                      <span className='font-medium text-green-600'>+${shiftStats?.cashSales.toFixed(2) || '0.00'}</span>
+                    </div>
+                     <div className='flex justify-between text-sm'>
+                      <span className='text-gray-600'>Card Sales</span>
+                      <span className='font-medium text-indigo-600'>${shiftStats?.cardSales.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-gray-600'>Payouts/Expenses</span>
+                      <span className='font-medium text-red-600'>-${shiftStats?.totalPayouts.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className='border-t border-gray-200 pt-2 flex justify-between font-bold'>
+                      <span>Expected Cash in Drawer</span>
+                      <span>${(shift.openingFloat + (shiftStats?.cashSales || 0)).toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-2'>Closing Cash Count</label>
+                    <div className='relative'>
+                      <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500'>$</span>
+                      <input
+                        type='number'
+                        step='0.01'
+                        value={shiftInputAmount}
+                        onChange={(e) => setShiftInputAmount(e.target.value)}
+                        className='w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
+                        placeholder='0.00'
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                   <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-2'>Notes</label>
+                    <textarea
+                      value={shiftClosingNotes}
+                      onChange={(e) => setShiftClosingNotes(e.target.value)}
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm'
+                      rows={2}
+                      placeholder='Any discrepancies or notes...'
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={shiftModalMode === 'open' ? handleOpenShift : handleCloseShift}
+                className={`w-full py-3 rounded-xl font-bold text-white transition shadow-lg ${
+                  shiftModalMode === 'open'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {shiftModalMode === 'open' ? 'Open Shift' : 'Close Shift & Print Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payout Modal */}
+      {showPayoutModal && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50' onClick={(e) => e.target === e.currentTarget && setShowPayoutModal(false)}>
+          <div className='bg-white rounded-2xl max-w-md w-full shadow-2xl'>
+            <div className='p-6 border-b'>
+              <div className='flex items-center justify-between'>
+                <h3 className='text-xl font-bold text-gray-900'>Record Expense / Payout</h3>
+                <button onClick={() => setShowPayoutModal(false)} className='text-gray-400 hover:text-gray-600 p-1'>
+                  <i className='tabler-x text-2xl' />
+                </button>
+              </div>
+            </div>
+
+            <div className='p-6 space-y-4'>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Amount</label>
+                <div className='relative'>
+                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500'>$</span>
+                  <input
+                    type='number'
+                    step='0.01'
+                    value={payoutAmount}
+                    onChange={(e) => setPayoutAmount(e.target.value)}
+                    className='w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
+                    placeholder='0.00'
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Reason / Description</label>
+                <textarea
+                  value={payoutReason}
+                  onChange={(e) => setPayoutReason(e.target.value)}
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm'
+                  rows={3}
+                  placeholder='e.g., Supplies, Lunch, Vendor Payment...'
+                />
+              </div>
+
+              <button
+                onClick={handlePayout}
+                className='w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2'
+              >
+                <i className='tabler-check text-xl' />
+                Record Expense
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Discount Modal */}
       {showDiscountModal && (
