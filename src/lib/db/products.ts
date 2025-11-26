@@ -37,8 +37,19 @@ export async function saveProduct(productData: ProductData) {
   }
 
   try {
+    // Use wooId if present, otherwise slug (must be unique in schema)
+    let where: any = {};
+    if (typeof productData.wooId !== 'undefined' && productData.wooId !== null) {
+      where.wooId = productData.wooId;
+    } else if (typeof productData.id !== 'undefined' && productData.id !== null) {
+      where.id = productData.id;
+    } else if (typeof productData.slug === 'string' && productData.slug.length > 0) {
+      where.slug = productData.slug;
+    } else {
+      throw new Error('No unique key (wooId, id, slug) provided for product upsert');
+    }
     const product = await prisma.product.upsert({
-      where: { wooId: productData.id },
+      where,
       update: {
         name: productData.name,
         slug: productData.slug,

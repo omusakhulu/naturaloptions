@@ -14,12 +14,23 @@ function toNumber(v: any): number {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const warehouseId = searchParams.get('warehouseId')
+  const locationId = searchParams.get('locationId')
   const sku = searchParams.get('sku') || ''
   const q = searchParams.get('q') || ''
 
   try {
     const where: any = {}
-    if (warehouseId) where.warehouseId = warehouseId
+    if (warehouseId) {
+      where.warehouseId = warehouseId
+    } else if (locationId) {
+      // Map store/branch (Location) to its warehouses
+      const warehouses = await prisma.warehouse.findMany({ where: { locationId }, select: { id: true } })
+      const ids = warehouses.map(w => w.id)
+      if (ids.length === 0) {
+        return NextResponse.json({ items: [], totals: { quantity: 0, value: 0 } })
+      }
+      where.warehouseId = { in: ids }
+    }
     if (sku) where.sku = { contains: sku, mode: 'insensitive' }
     if (q) {
       where.OR = [

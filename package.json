@@ -21,11 +21,9 @@
     "seed:logistics": "node scripts/seed-logistics.js"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"
+    "schema": "./src/prisma/schema.prisma"
   },
   "dependencies": {
-    "react-chartjs-2": "^5.2.0",
-    "chart.js": "^4.4.1",
     "@auth/prisma-adapter": "2.7.4",
     "@emoji-mart/data": "1.2.1",
     "@emoji-mart/react": "1.1.1",
@@ -68,8 +66,10 @@
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bootstrap-icons": "1.11.3",
+    "chart.js": "^4.4.1",
     "classnames": "2.5.1",
     "cmdk": "1.0.4",
+    "csv-parse": "^6.1.0",
     "date-fns": "4.1.0",
     "emoji-mart": "5.6.0",
     "fs-extra": "11.2.0",
@@ -87,6 +87,7 @@
     "path": "^0.12.7",
     "react": "18.3.1",
     "react-apexcharts": "1.4.1",
+    "react-chartjs-2": "^5.2.0",
     "react-colorful": "5.6.1",
     "react-datepicker": "7.3.0",
     "react-dom": "18.3.1",
@@ -118,9 +119,9 @@
     "@types/react-dom": "^19.2.2",
     "autoprefixer": "10.4.20",
     "consola": "3.3.0",
+    "cross-env": "7.0.3",
     "dotenv": "^17.2.3",
     "dotenv-cli": "7.4.4",
-    "cross-env": "7.0.3",
     "eslint": "8.57.1",
     "eslint-config-next": "15.1.2",
     "eslint-config-prettier": "9.1.0",
@@ -145,8 +146,5 @@
   },
   "overrides": {
     "rimraf": "^5.0.7"
-  },
-  "prisma": {
-    "schema": "./src/prisma/schema.prisma"
   }
 }

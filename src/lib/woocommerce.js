@@ -23,7 +23,10 @@ const createWooCommerceClient = () => {
   const consumerSecret = process.env.NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET
 
   if (!baseURL || !consumerKey || !consumerSecret) {
-    console.warn('[WooCommerce] Environment variables not configured - using dummy client');
+    // Only log warning in development mode and on server side
+    if (process.env.NODE_ENV === 'development' && typeof window === 'undefined') {
+      console.warn('[WooCommerce] Environment variables not configured - using dummy client');
+    }
     // Return a dummy client that won't crash the app
     return {
       get: async () => {

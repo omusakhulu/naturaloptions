@@ -30,6 +30,9 @@ import SaveIcon from '@mui/icons-material/SaveAlt'
 import ProductAddHeader from '@views/apps/ecommerce/products/add/ProductAddHeader'
 import MediaUploader, { type UploadedMedia } from '@/components/products/MediaUploader'
 
+// Local buying price utilities
+import { getBuyingPriceBySku, setBuyingPriceBySku } from '@/utils/buyingPriceUtils'
+
 // Save product is now handled via API route
 
 type StockStatus = 'instock' | 'outofstock' | 'onbackorder'
@@ -40,6 +43,7 @@ interface ProductFormData {
   price: string | number
   regular_price: string | number
   sale_price: string | number
+  buying_price?: string | number
   stock_status: StockStatus
   stock_quantity: string | number
 
@@ -133,6 +137,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
   const [tags, setTags] = useState<Array<{ id: number; name: string }>>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
+  const [buyingPrice, setBuyingPrice] = useState<string>('')
 
   const [upsellOptions, setUpsellOptions] = useState<
     Array<{ id: string; wooId: number | null; name: string; sku: string | null }>
@@ -205,6 +210,13 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
       setValue('width', initialProduct.dimensions?.width || '')
       setValue('height', initialProduct.dimensions?.height || '')
       setValue('shipping_class', initialProduct.shipping_class || '')
+
+      // Load buying price from local storage
+      if (initialProduct.sku) {
+        const storedBuyingPrice = getBuyingPriceBySku(initialProduct.sku)
+        setBuyingPrice(storedBuyingPrice ? storedBuyingPrice.toString() : '')
+        setValue('buying_price', storedBuyingPrice ? storedBuyingPrice.toString() : '')
+      }
 
       // Advanced fields removed from UI
 
@@ -289,6 +301,16 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
       if (res.ok && json?.success)
         setTermsByAttr(prev => ({ ...prev, [attrId]: Array.isArray(json.terms) ? json.terms : [] }))
     } catch {}
+  }
+
+  // Handle buying price change
+  const handleBuyingPriceChange = (value: string) => {
+    setBuyingPrice(value)
+    // Save to local storage when SKU exists
+    const currentSku = initialProduct?.sku || watch('sku') || ''
+    if (currentSku && value && !isNaN(parseFloat(value))) {
+      setBuyingPriceBySku(currentSku, parseFloat(value))
+    }
   }
 
   // Build attribute defs for variation generation (groups duplicate attributes)
@@ -426,6 +448,11 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
     try {
       if (!initialProduct) {
         throw new Error('No product data available')
+      }
+
+      // Save buying price to local storage
+      if (data.sku && data.buying_price && !isNaN(Number(data.buying_price))) {
+        setBuyingPriceBySku(data.sku.trim(), Number(data.buying_price))
       }
 
       // Use WooCommerce ID if available, otherwise fall back to internal ID
@@ -913,6 +940,32 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                     })}
                     error={!!errors.regular_price}
                     helperText={errors.regular_price?.message}
+                    disabled={isLoading}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    label='Buying Price'
+                    fullWidth
+                    margin='normal'
+                    type='number'
+                    value={buyingPrice}
+                    inputProps={{
+                      min: 0,
+                      step: '0.01'
+                    }}
+                    {...register('buying_price', {
+                      min: { value: 0, message: 'Buying price cannot be negative' },
+                      validate: value => {
+                        if (value === '') return true
+                        const num = typeof value === 'string' ? parseFloat(value) : value
+
+                        return !isNaN(num) || 'Must be a valid number'
+                      }
+                    })}
+                    onChange={(e) => handleBuyingPriceChange(e.target.value)}
+                    error={!!errors.buying_price}
+                    helperText={errors.buying_price?.message || 'Stored locally for stock calculations'}
                     disabled={isLoading}
                   />
                 </Grid>

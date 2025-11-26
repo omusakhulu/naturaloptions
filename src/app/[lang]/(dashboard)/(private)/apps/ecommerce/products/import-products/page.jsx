@@ -16,14 +16,18 @@ export default function ImportProductsPage() {
     e.preventDefault()
     if (!file) return
     setLoading(true)
-    setLog('Uploading…')
+    setLog('📤 Uploading file and processing...\n\nThis may take a while depending on the number of products.\nPlease do not close this page.\n\n')
     const form = new FormData()
     form.append('file', file)
     try {
-      const res = await axios.post('/api/products/bulk-import', form)
-      setLog(res.data || 'Import complete')
+      const res = await axios.post('/api/products/bulk-import', form, {
+        timeout: 300000 // 5 minutes timeout for large imports
+      })
+      setLog(res.data || '✅ Import complete')
     } catch (err) {
-      setLog(err?.response?.data || 'Import failed')
+      console.error('Import error:', err)
+      const errorMsg = err?.response?.data || err?.message || 'Import failed'
+      setLog(`❌ Import failed:\n\n${errorMsg}`)
     } finally {
       setLoading(false)
     }
@@ -82,7 +86,11 @@ export default function ImportProductsPage() {
             Download template file
           </button>
         </div>
-        {log && <p className='text-sm mt-2'>{log}</p>}
+        {log && (
+          <div className='mt-4 p-4 bg-gray-50 border rounded max-h-96 overflow-y-auto'>
+            <pre className='text-sm whitespace-pre-wrap font-mono'>{log}</pre>
+          </div>
+        )}
       </form>
 
       {/* Instructions */}

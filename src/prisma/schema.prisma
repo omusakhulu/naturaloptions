@@ -124,7 +124,16 @@ model Product {
   regularPrice     String?
   salePrice        String?
   stockStatus      String   @default("instock")
-  stockQuantity    Int      @default(0)
+  stockQuantity    Int      @default(0) // Legacy field - synced from WooCommerce
+  
+  // Dual Stock System
+  actualStock      Int      @default(0) // Physical inventory (POS/warehouse)
+  websiteStock     Int      @default(0) // What's displayed on WooCommerce
+  reservedStock    Int      @default(0) // Stock reserved for pending orders
+  lowStockAlert    Int      @default(10) // Alert threshold
+  autoSyncStock    Boolean  @default(false) // Auto-sync actual to website
+  lastStockSync    DateTime? // Last time stock was synced to WooCommerce
+  
   sku              String?
   image            String?
   images           String?  @default("[]")
@@ -137,12 +146,15 @@ model Product {
   syncedAt         DateTime @default(now())
 
   // POS Relations
-  posSaleItems       POSSaleItem[]       @relation("POSSaleItems")
-  inventoryLocations InventoryLocation[] @relation("InventoryLocations")
+  posSaleItems       POSSaleItem[]            @relation("POSSaleItems")
+  inventoryLocations InventoryLocation[]      @relation("InventoryLocations")
+  stockMovements     ProductStockMovement[]   @relation("ProductStockMovements")
 
   @@index([wooId])
   @@index([status])
   @@index([syncedAt])
+  @@index([actualStock])
+  @@index([websiteStock])
 }
 
 model Order {
@@ -1105,6 +1117,7 @@ model Location {
   posTerminals   POSTerminal[]
   inventoryItems InventoryLocation[]
   employees      EmployeeLocation[]
+  warehouses     Warehouse[]        // NEW: opposite side of Warehouse.location
 
   @@index([isActive])
 }
@@ -1116,7 +1129,7 @@ model InventoryLocation {
   locationId String
   location   Location @relation(fields: [locationId], references: [id])
 
-  quantity    Int  @default(0)
+  quantity    Int  @default(0) // Actual physical stock at this location
   minQuantity Int  @default(0)
   maxQuantity Int?
 
@@ -1125,6 +1138,39 @@ model InventoryLocation {
   @@unique([productId, locationId])
   @@index([productId])
   @@index([locationId])
+}
+
+// Product Stock Movement Tracking (for dual stock system)
+model ProductStockMovement {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation("ProductStockMovements", fields: [productId], references: [id])
+  
+  type        ProductStockMovementType // SALE, PURCHASE, ADJUSTMENT, TRANSFER, SYNC, RETURN
+  quantity    Int // Positive for increase, negative for decrease
+  
+  // Stock levels before and after
+  beforeActual   Int
+  afterActual    Int
+  beforeWebsite  Int?
+  afterWebsite   Int?
+  
+  // Context
+  reference   String? // Order ID, Transfer ID, etc.
+  locationId  String?
+  reason      String?
+  notes       String?
+  
+  // User tracking
+  userId      String?
+  userName    String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([reference])
 }
 
 // ==========================================
@@ -1294,5 +1340,15 @@ enum TimeClockStatus {
 enum RefundStatus {
   PENDING
   COMPLETED
-  FAILED
+}
+
+enum ProductStockMovementType {
+  SALE           // Stock sold via POS or online
+  PURCHASE       // Stock received from supplier
+  ADJUSTMENT     // Manual stock adjustment
+  TRANSFER       // Transfer between locations
+  SYNC           // Synced to/from WooCommerce
+  RETURN         // Customer return
+  DAMAGE         // Damaged/lost stock
+  RECOUNT        // Physical stock count correction
 }

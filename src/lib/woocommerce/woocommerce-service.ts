@@ -196,6 +196,15 @@ export class WooCommerceService {
   }
 
   /**
+   * Create an order
+   */
+  public async createOrder(orderData: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/orders`
+
+    return this.executeApiRequest(path, 'POST', orderData)
+  }
+
+  /**
    * Update an order
    */
   public async updateOrder(orderId: number | string, data: Record<string, any>): Promise<any> {

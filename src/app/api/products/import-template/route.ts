@@ -1,20 +1,20 @@
 export const runtime = 'nodejs'
 
 const headers = [
-  'product_name',
+  'product_name', // required
   'brand',
   'unit',
   'category',
   'sub_category',
   'sku',
   'barcode_type',
-  'manage_stock(Yes/No)',
+  'manage_stock', // Yes/No
   'alert_quantity',
   'expiration_period_days',
   'selling_price',
   'tax_percent',
-  'product_type(simple/variable)',
-  'variation_attributes(comma_separated)',
+  'product_type', // simple/variable
+  'variation_attributes', // comma_separated
   'opening_stock',
   'location',
   'image_url'

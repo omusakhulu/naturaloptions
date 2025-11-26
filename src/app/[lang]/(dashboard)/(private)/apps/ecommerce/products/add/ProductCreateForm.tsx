@@ -29,6 +29,9 @@ import SaveIcon from '@mui/icons-material/SaveAlt'
 import ProductAddHeader from '@views/apps/ecommerce/products/add/ProductAddHeader'
 import MediaUploader, { type UploadedMedia } from '@/components/products/MediaUploader'
 
+// Local buying price utilities
+import { getBuyingPriceBySku, setBuyingPriceBySku } from '@/utils/buyingPriceUtils'
+
 type StockStatus = 'instock' | 'outofstock' | 'onbackorder'
 
 interface ProductCreateFormData {
@@ -36,6 +39,7 @@ interface ProductCreateFormData {
   sku: string
   regular_price: string | number
   sale_price?: string | number
+  buying_price?: string | number
   stock_status: StockStatus
   stock_quantity: string | number
   description?: string
@@ -65,6 +69,7 @@ const ProductCreateForm: React.FC = () => {
   const [tags, setTags] = useState<Array<{ id: number; name: string }>>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
+  const [buyingPrice, setBuyingPrice] = useState('')
 
   // Attributes & Terms
   type WooAttribute = { id: number; name: string; slug: string }
@@ -226,11 +231,25 @@ const ProductCreateForm: React.FC = () => {
     } catch {}
   }
 
+  // Handle buying price change
+  const handleBuyingPriceChange = (value: string, sku: string) => {
+    setBuyingPrice(value)
+    // Save to local storage when SKU exists
+    if (sku && value && !isNaN(parseFloat(value))) {
+      setBuyingPriceBySku(sku, parseFloat(value))
+    }
+  }
+
   const onSubmit: SubmitHandler<ProductCreateFormData> = async data => {
     setIsLoading(true)
     setError('')
 
     try {
+      // Save buying price to local storage
+      if (data.sku && data.buying_price && !isNaN(Number(data.buying_price))) {
+        setBuyingPriceBySku(data.sku.trim(), Number(data.buying_price))
+      }
+
       const payload: any = {
         name: (data.name || '').trim(),
         sku: (data.sku || '').trim(),
@@ -382,6 +401,19 @@ const ProductCreateForm: React.FC = () => {
                   disabled={isLoading}
                 />
               </Box>
+              <TextField
+                label='Buying Price'
+                type='number'
+                inputProps={{ min: 0, step: '0.01' }}
+                value={buyingPrice}
+                {...register('buying_price')}
+                onChange={(e) => {
+                  const sku = watch('sku') || ''
+                  handleBuyingPriceChange(e.target.value, sku)
+                }}
+                disabled={isLoading}
+                helperText='Stored locally for stock calculations'
+              />
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
                 <FormControl margin='normal' fullWidth disabled={isLoading}>
                   <InputLabel>Stock Status</InputLabel>

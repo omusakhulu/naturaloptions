@@ -24,7 +24,7 @@ function toDateInputValue(d: Date) {
 export default function StockReportTSX({ lang = 'en' }: { lang?: string }) {
   const monthStart = useMemo(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1), [])
   const today = useMemo(() => new Date(), [])
-  const { params, setParams } = useReportQuery({ from: toDateInputValue(monthStart), to: toDateInputValue(today), warehouseId: '' })
+  const { params, setParams } = useReportQuery({ from: toDateInputValue(monthStart), to: toDateInputValue(today), locationId: '' })
 
   const [data, setData] = useState<Data>({
     range: { from: toDateInputValue(monthStart), to: toDateInputValue(today) },
@@ -34,17 +34,17 @@ export default function StockReportTSX({ lang = 'en' }: { lang?: string }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([])
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch('/api/warehouses?status=active', { cache: 'no-store' })
+        const res = await fetch('/api/locations?isActive=true', { cache: 'no-store' })
         const json = await res.json()
-        const list = Array.isArray(json?.warehouses) ? json.warehouses : []
-        setWarehouses(list.map((w: any) => ({ id: w.id, name: w.name })))
+        const list = Array.isArray(json?.items) ? json.items : []
+        setLocations(list.map((l: any) => ({ id: l.id, name: l.name })))
       } catch {
-        setWarehouses([])
+        setLocations([])
       }
     })()
   }, [])
@@ -56,7 +56,7 @@ export default function StockReportTSX({ lang = 'en' }: { lang?: string }) {
       const sp = new URLSearchParams()
       if (params.from) sp.set('from', params.from)
       if (params.to) sp.set('to', params.to)
-      if ((params as any).warehouseId) sp.set('warehouseId', String((params as any).warehouseId))
+      if ((params as any).locationId) sp.set('locationId', String((params as any).locationId))
       const res = await fetch(`/api/reports/stock${sp.toString() ? `?${sp.toString()}` : ''}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load report')
       const json = await res.json()
@@ -68,13 +68,13 @@ export default function StockReportTSX({ lang = 'en' }: { lang?: string }) {
         { sku: 'SKU-002', productName: 'Sample Product B', quantity: 45, avgCost: 12.0, value: 540, warehouse: 'Main', location: 'A-2' }
       ]
       const totals = items.reduce((s, r) => ({ quantity: s.quantity + (r.quantity || 0), value: s.value + (r.value || 0) }), { quantity: 0, value: 0 })
-      setData({ range: { from: params.from || toDateInputValue(monthStart), to: params.to || toDateInputValue(today) }, locationId: (params as any).warehouseId || '', items, totals })
+      setData({ range: { from: params.from || toDateInputValue(monthStart), to: params.to || toDateInputValue(today) }, locationId: (params as any).locationId || '', items, totals })
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { fetchReport() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [params.from, params.to, (params as any).warehouseId])
+  useEffect(() => { fetchReport() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [params.from, params.to, (params as any).locationId])
 
   const breadcrumbs = [
     { label: 'Reports', href: `/${lang}/apps/reports` },
@@ -97,10 +97,10 @@ export default function StockReportTSX({ lang = 'en' }: { lang?: string }) {
             <input type="date" className="border rounded px-3 py-2 w-full" value={params.to || ''} onChange={e => setParams({ to: e.target.value })} />
           </div>
           <div>
-            <div className="text-xs text-gray-600 mb-1">Warehouse</div>
-            <select className="border rounded px-3 py-2 w-full" value={(params as any).warehouseId || ''} onChange={e => setParams({ warehouseId: e.target.value })}>
-              <option value="">All Warehouses</option>
-              {warehouses.map(w => (<option key={w.id} value={w.id}>{w.name}</option>))}
+            <div className="text-xs text-gray-600 mb-1">Store / Branch</div>
+            <select className="border rounded px-3 py-2 w-full" value={(params as any).locationId || ''} onChange={e => setParams({ locationId: e.target.value })}>
+              <option value="">All Stores / Branches</option>
+              {locations.map(l => (<option key={l.id} value={l.id}>{l.name}</option>))}
             </select>
           </div>
         </div>

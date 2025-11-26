@@ -20,18 +20,24 @@ import {
   Select,
   MenuItem,
   FormHelperText,
-  Paper
+  Paper,
+  InputAdornment
 } from '@mui/material'
+
+// Local buying price utilities
+import { getBuyingPriceBySku, setBuyingPriceBySku } from '@/utils/buyingPriceUtils'
 
 export default function ProductForm({ product = null }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [buyingPrice, setBuyingPrice] = useState('')
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors }
   } = useForm({
     defaultValues: {
@@ -48,6 +54,7 @@ export default function ProductForm({ product = null }) {
     }
   })
 
+  // Load buying price when product changes or SKU changes
   useEffect(() => {
     if (product) {
       reset({
@@ -62,14 +69,36 @@ export default function ProductForm({ product = null }) {
         description: product.description || '',
         short_description: product.short_description || ''
       })
+      
+      // Load buying price from local storage
+      if (product.sku) {
+        const storedBuyingPrice = getBuyingPriceBySku(product.sku)
+        setBuyingPrice(storedBuyingPrice ? storedBuyingPrice.toString() : '')
+        setValue('buying_price', storedBuyingPrice ? storedBuyingPrice.toString() : '')
+      }
     }
-  }, [product, reset])
+  }, [product, reset, setValue])
+
+  // Handle buying price change
+  const handleBuyingPriceChange = (value) => {
+    setBuyingPrice(value)
+    // Save to local storage when SKU exists
+    const currentSku = product?.sku || document.querySelector('input[name="sku"]')?.value
+    if (currentSku && value && !isNaN(value)) {
+      setBuyingPriceBySku(currentSku, parseFloat(value))
+    }
+  }
 
   const onSubmit = async formData => {
     setIsLoading(true)
     setError('')
 
     try {
+      // Save buying price to local storage
+      if (formData.sku && formData.buying_price && !isNaN(formData.buying_price)) {
+        setBuyingPriceBySku(formData.sku, parseFloat(formData.buying_price))
+      }
+
       // Prepare product data
       const productData = {
         name: formData.name,
@@ -182,6 +211,24 @@ export default function ProductForm({ product = null }) {
               error={!!errors.regular_price}
               helperText={errors.regular_price?.message}
               margin='normal'
+            />
+
+            <TextField
+              fullWidth
+              label='Buying Price ($)'
+              type='number'
+              step='0.01'
+              value={buyingPrice}
+              {...register('buying_price', {
+                min: { value: 0, message: 'Buying price must be positive' }
+              })}
+              onChange={(e) => handleBuyingPriceChange(e.target.value)}
+              error={!!errors.buying_price}
+              helperText={errors.buying_price?.message || 'Stored locally for stock calculations'}
+              margin='normal'
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
             />
 
             <TextField

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import AsyncProductAutocomplete from './AsyncProductAutocomplete'
 
 export default function Page() {
   const [location, setLocation] = useState('')
@@ -32,7 +33,7 @@ export default function Page() {
 
   const removeItem = id => setItems(prev => prev.filter(it => it.id !== id))
 
-  const canSave = location && date && adjustmentType && reference
+  const canSave = location && date && adjustmentType && reference && items.length > 0
 
   const onSave = async () => {
     if (!canSave) return
@@ -103,13 +104,13 @@ export default function Page() {
       {/* Items */}
       <div className='bg-white border rounded shadow p-4 space-y-3'>
         <div className='flex items-center gap-2'>
-          <input
+          <AsyncProductAutocomplete
             value={productQuery}
-            onChange={e=>setProductQuery(e.target.value)}
-            placeholder='Search products for stock adjustment'
-            className='border rounded p-2 flex-1'
+            onSelect={prod => {
+              setItems(prev => [...prev, { id: Date.now(), product: prod.name, productId: prod.id, sku: prod.sku, quantity: 1, unitPrice: 0 }])
+              setProductQuery('')
+            }}
           />
-          <button onClick={addItem} className='border rounded px-4 py-2 text-sm'>Add</button>
         </div>
         <div className='overflow-auto'>
           <table className='min-w-full text-sm'>

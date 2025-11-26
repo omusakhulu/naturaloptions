@@ -10,7 +10,16 @@ export async function GET(_req: NextRequest) {
     const headers = ['wooId', 'sku', 'name', 'current_price']
     const rows = products.map(p => [p.wooId, p.sku || '', p.name, p.price || ''])
 
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    function escapeCsv(val: any) {
+  if (val == null) return ''
+  const str = String(val)
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+const csv = [headers.join(','), ...rows.map(r => r.map(escapeCsv).join(','))].join('\n')
 
     return new Response(csv, {
       headers: {

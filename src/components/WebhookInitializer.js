@@ -2,19 +2,23 @@
 
 import { useEffect } from 'react'
 
-import { registerWebhooks } from '@/lib/woocommerce'
-
 export default function WebhookInitializer() {
   useEffect(() => {
     // Only run on the client side in production
+    // Call the API route instead of importing woocommerce client directly
     if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
-      registerWebhooks().then(result => {
-        if (result.success) {
-          console.log('Webhooks registered successfully')
-        } else {
-          console.error('Failed to register webhooks:', result.error)
-        }
-      })
+      fetch('/api/webhooks/register', { method: 'POST' })
+        .then(res => res.json())
+        .then(result => {
+          if (result.success) {
+            console.log('Webhooks registered successfully')
+          } else {
+            console.error('Failed to register webhooks:', result.error)
+          }
+        })
+        .catch(err => {
+          console.error('Error registering webhooks:', err)
+        })
     }
   }, [])
 
