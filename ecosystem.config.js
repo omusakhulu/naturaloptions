@@ -1,17 +1,19 @@
 module.exports = {
   apps: [
     {
-      name: 'natural-options-admin',
-      script: 'node_modules/next/dist/bin/next',
-      args: 'start',
-      cwd: '/var/www/natural-options-admin',
+    name: "naturaloptions-admin",
+    cwd: "/var/www/naturaloptions",
+    script: "node_modules/.bin/next",
+    args: "start",
       instances: 1, // Change to 'max' for cluster mode
       exec_mode: 'fork', // Change to 'cluster' for multiple instances
       watch: false,
       max_memory_restart: '1G',
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 3000,
+        BASEPATH: "/admin",
+        NEXTAUTH_URL: "http://102.212.246.251/admin"
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
