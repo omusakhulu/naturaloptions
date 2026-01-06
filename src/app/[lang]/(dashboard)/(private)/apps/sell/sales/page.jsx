@@ -95,24 +95,57 @@ export default function AllSalesPage() {
           <div className='px-4 pb-4 grid grid-cols-1 md:grid-cols-4 gap-4'>
             <div>
               <label className='block text-xs text-gray-500 mb-1'>From</label>
-              <input type='date' className='border rounded p-2 w-full' />
+              <input 
+                type='date' 
+                className='border rounded p-2 w-full'
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
             </div>
             <div>
               <label className='block text-xs text-gray-500 mb-1'>To</label>
-              <input type='date' className='border rounded p-2 w-full' />
+              <input 
+                type='date' 
+                className='border rounded p-2 w-full'
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
             </div>
             <div>
               <label className='block text-xs text-gray-500 mb-1'>Payment Status</label>
-              <select className='border rounded p-2 w-full'>
+              <select 
+                className='border rounded p-2 w-full'
+                value={paymentStatusFilter}
+                onChange={(e) => setPaymentStatusFilter(e.target.value)}
+              >
                 <option value=''>All</option>
-                <option>Paid</option>
-                <option>Partial</option>
-                <option>Due</option>
+                <option value='PAID'>Paid</option>
+                <option value='PARTIAL'>Partial</option>
+                <option value='PENDING'>Pending</option>
+                <option value='DUE'>Due</option>
               </select>
             </div>
             <div>
               <label className='block text-xs text-gray-500 mb-1'>Location</label>
-              <input className='border rounded p-2 w-full' placeholder='Any' />
+              <input 
+                className='border rounded p-2 w-full' 
+                placeholder='Any'
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+              />
+            </div>
+            <div className='md:col-span-4'>
+              <button
+                onClick={() => {
+                  setDateFrom('')
+                  setDateTo('')
+                  setPaymentStatusFilter('')
+                  setLocationFilter('')
+                }}
+                className='text-sm text-blue-600 hover:underline'
+              >
+                Clear Filters
+              </button>
             </div>
           </div>
         )}
@@ -198,17 +231,28 @@ export default function AllSalesPage() {
             </tbody>
             <tfoot>
               <tr className='bg-gray-50 text-gray-700'>
-                {visibleCols.map((c, i) => (
-                  <td key={c.key} className={`px-3 py-2 font-medium ${i === 0 ? 'w-[140px]' : ''}`}>
-                    {i === 0 ? 'Total:' : (
-                      c.key === 'totalAmount' ? totals.totalAmount :
-                      c.key === 'totalPaid' ? totals.totalPaid :
-                      c.key === 'sellDue' ? totals.sellDue :
-                      c.key === 'sellReturnDue' ? totals.sellReturnDue :
-                      c.key === 'totalItems' ? totals.totalItems : ''
-                    )}
-                  </td>
-                ))}
+                {visibleCols.map((c, i) => {
+                  let value = ''
+                  if (i === 0) {
+                    value = 'Total:'
+                  } else if (c.key === 'totalAmount') {
+                    value = `$${totals.totalAmount.toFixed(2)}`
+                  } else if (c.key === 'totalPaid') {
+                    value = `$${totals.totalPaid.toFixed(2)}`
+                  } else if (c.key === 'sellDue') {
+                    value = `$${totals.sellDue.toFixed(2)}`
+                  } else if (c.key === 'sellReturnDue') {
+                    value = `$${totals.sellReturnDue.toFixed(2)}`
+                  } else if (c.key === 'totalItems') {
+                    value = totals.totalItems
+                  }
+                  
+                  return (
+                    <td key={c.key} className='px-3 py-2 font-medium'>
+                      {value}
+                    </td>
+                  )
+                })}
               </tr>
             </tfoot>
           </table>

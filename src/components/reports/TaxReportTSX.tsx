@@ -164,15 +164,15 @@ export default function TaxReportTSX({ lang = 'en' }: { lang?: string }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="border rounded p-3">
               <div className="text-sm">Taxable Base</div>
-              <div className="text-lg font-semibold">{Number(data.totals.taxableBase || 0).toLocaleString()}</div>
+              <div className="text-lg font-semibold">{Number(data?.totals?.taxableBase || 0).toLocaleString()}</div>
             </div>
             <div className="border rounded p-3">
               <div className="text-sm">Sales Tax</div>
-              <div className="text-lg font-semibold">{Number(data.totals.salesTax || 0).toLocaleString()}</div>
+              <div className="text-lg font-semibold">{Number(data?.totals?.salesTax || 0).toLocaleString()}</div>
             </div>
             <div className="border rounded p-3">
               <div className="text-sm">Effective Rate</div>
-              <div className="text-lg font-semibold">{((Number(data.totals.salesTax||0) / Math.max(1, Number(data.totals.taxableBase||0))) * 100).toFixed(2)}%</div>
+              <div className="text-lg font-semibold">{((Number(data?.totals?.salesTax || 0) / Math.max(1, Number(data?.totals?.taxableBase || 0))) * 100).toFixed(2)}%</div>
             </div>
           </div>
 
@@ -182,11 +182,11 @@ export default function TaxReportTSX({ lang = 'en' }: { lang?: string }) {
               <div className="text-right">Taxable Base</div>
               <div className="text-right">Sales Tax</div>
             </div>
-            {(data.byPeriod || []).map(r => (
+            {(data?.byPeriod || []).map(r => (
               <div key={r.date} className="grid grid-cols-3 text-sm border-b py-2 px-3">
                 <div>{r.date}</div>
-                <div className="text-right">{Number(r.taxableBase || 0).toLocaleString()}</div>
-                <div className="text-right">{Number(r.salesTax || 0).toLocaleString()}</div>
+                <div className="text-right">{Number(r?.taxableBase || 0).toLocaleString()}</div>
+                <div className="text-right">{Number(r?.salesTax || 0).toLocaleString()}</div>
               </div>
             ))}
           </div>

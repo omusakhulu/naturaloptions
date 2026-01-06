@@ -1,12 +1,50 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 
 export default function AddPurchasePage() {
   const [purchaseDate, setPurchaseDate] = useState(new Date())
   const [paidOn, setPaidOn] = useState(new Date())
+  const [suppliers, setSuppliers] = useState([])
+  const [paymentTerms, setPaymentTerms] = useState([])
+  const [businessLocations, setBusinessLocations] = useState([])
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false)
+  const [newSupplier, setNewSupplier] = useState({ name: '', email: '', phone: '', address: '' })
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      const [suppliersRes, termsRes, locationsRes] = await Promise.all([
+        axios.get('/api/suppliers'),
+        axios.get('/api/payment-terms'),
+        axios.get('/api/business-locations')
+      ])
+      setSuppliers(suppliersRes.data)
+      setPaymentTerms(termsRes.data)
+      setBusinessLocations(locationsRes.data)
+    } catch (err) {
+      console.error('Error loading data:', err)
+    }
+  }
+
+  const handleAddSupplier = async () => {
+    try {
+      const res = await axios.post('/api/suppliers', newSupplier)
+      setSuppliers([...suppliers, res.data])
+      setShowSupplierDialog(false)
+      setNewSupplier({ name: '', email: '', phone: '', address: '' })
+      alert('Supplier added successfully')
+    } catch (err) {
+      console.error('Error adding supplier:', err)
+      alert('Failed to add supplier')
+    }
+  }
 
   return (
     <div className='p-8 space-y-6'>
@@ -20,8 +58,17 @@ export default function AddPurchasePage() {
             <div className='flex'>
               <select className='w-full border p-2 rounded text-sm'>
                 <option value=''>Please Select</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
               </select>
-              <button className='border rounded p-2 ml-1'><i className='tabler-plus' /></button>
+              <button 
+                type='button'
+                onClick={() => setShowSupplierDialog(true)}
+                className='border rounded p-2 ml-1 hover:bg-gray-100'
+              >
+                <i className='tabler-plus' />
+              </button>
             </div>
           </div>
           <div>
@@ -46,13 +93,26 @@ export default function AddPurchasePage() {
           <div>
             <label className='block text-sm font-medium mb-1'>Business Location*:</label>
             <select className='w-full border p-2 rounded text-sm'>
-              <option>NATURAL OPTIONS (BL0001)</option>
+              {businessLocations.length > 0 ? (
+                businessLocations.map(loc => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name} ({loc.code || 'N/A'})
+                  </option>
+                ))
+              ) : (
+                <option>NATURAL OPTIONS (BL0001)</option>
+              )}
             </select>
           </div>
           <div>
             <label className='block text-sm font-medium mb-1'>Pay term:</label>
             <select className='w-full border p-2 rounded text-sm'>
               <option value=''>Please Select</option>
+              {paymentTerms.map(term => (
+                <option key={term.id} value={term.id}>
+                  {term.name} ({term.days} days)
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -178,6 +238,71 @@ export default function AddPurchasePage() {
       <div className='text-center'>
         <button className='bg-purple-600 text-white px-8 py-2 rounded text-lg'>Save</button>
       </div>
+
+      {/* Add Supplier Dialog */}
+      {showSupplierDialog && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-lg p-6 w-full max-w-md'>
+            <h2 className='text-xl font-semibold mb-4'>Add New Supplier</h2>
+            <div className='space-y-3'>
+              <div>
+                <label className='block text-sm font-medium mb-1'>Name*</label>
+                <input
+                  type='text'
+                  className='w-full border p-2 rounded text-sm'
+                  value={newSupplier.name}
+                  onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium mb-1'>Email</label>
+                <input
+                  type='email'
+                  className='w-full border p-2 rounded text-sm'
+                  value={newSupplier.email}
+                  onChange={(e) => setNewSupplier({...newSupplier, email: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium mb-1'>Phone</label>
+                <input
+                  type='text'
+                  className='w-full border p-2 rounded text-sm'
+                  value={newSupplier.phone}
+                  onChange={(e) => setNewSupplier({...newSupplier, phone: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium mb-1'>Address</label>
+                <textarea
+                  className='w-full border p-2 rounded text-sm'
+                  rows={2}
+                  value={newSupplier.address}
+                  onChange={(e) => setNewSupplier({...newSupplier, address: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className='flex gap-2 mt-4'>
+              <button
+                onClick={handleAddSupplier}
+                disabled={!newSupplier.name}
+                className='bg-purple-600 text-white px-4 py-2 rounded disabled:bg-gray-400'
+              >
+                Add Supplier
+              </button>
+              <button
+                onClick={() => {
+                  setShowSupplierDialog(false)
+                  setNewSupplier({ name: '', email: '', phone: '', address: '' })
+                }}
+                className='border px-4 py-2 rounded'
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

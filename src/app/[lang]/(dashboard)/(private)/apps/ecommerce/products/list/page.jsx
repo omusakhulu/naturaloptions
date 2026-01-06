@@ -260,7 +260,17 @@ async function getWooCommerceProducts() {
 
 // ** MODIFY: Your main page component **
 // Ensure it's an async function
-const ProductListPage = async () => {
+const ProductListPage = async ({ searchParams }) => {
+  // Await searchParams before accessing properties (Next.js 15 requirement)
+  const params = await searchParams
+  
+  console.log('SearchParams received:', params)
+  
+  // Get category filter from query params
+  const categoryId = params?.category ? parseInt(params.category) : null
+  
+  console.log('Category ID parsed:', categoryId, 'Type:', typeof categoryId)
+
   // Try to fetch products from database first
   let productsData = await getProductsFromDatabase()
 
@@ -268,6 +278,32 @@ const ProductListPage = async () => {
   if (!productsData || productsData.length === 0) {
     console.log('No products in database, fetching from WooCommerce API...')
     productsData = await getWooCommerceProducts()
+  }
+
+  // Filter by category if specified
+  if (categoryId && Array.isArray(productsData)) {
+    console.log(`Filtering products by category ID: ${categoryId}`)
+    const originalCount = productsData.length
+    
+    productsData = productsData.filter(product => {
+      if (Array.isArray(product.categories)) {
+        // Check if any category matches the ID
+        const hasCategory = product.categories.some(cat => {
+          // Handle both number and string IDs
+          const catId = typeof cat.id === 'string' ? parseInt(cat.id) : cat.id
+          return catId === categoryId
+        })
+        
+        if (hasCategory) {
+          console.log(`Product ${product.id} matches category ${categoryId}:`, product.categories)
+        }
+        
+        return hasCategory
+      }
+      return false
+    })
+    
+    console.log(`Filtered from ${originalCount} to ${productsData.length} products in category ${categoryId}`)
   }
 
   // ** Keep original structure, but pass the new data **
@@ -299,7 +335,9 @@ const ProductListPage = async () => {
           <ProductListTable productData={productsData} />
         ) : (
           <div className='flex items-center justify-center p-8'>
-            <Typography variant='h6'>No products found or failed to load products.</Typography>
+            <Typography variant='h6'>
+              {categoryId ? 'No products found in this category.' : 'No products found or failed to load products.'}
+            </Typography>
           </div>
         )}
       </Grid>

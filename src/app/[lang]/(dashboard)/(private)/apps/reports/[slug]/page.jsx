@@ -19,6 +19,8 @@ import PurchasePaymentReport from '@/components/reports/PurchasePaymentReportTSX
 import SellPaymentReport from '@/components/reports/SellPaymentReportTSX'
 import ExpenseReport from '@/components/reports/ExpenseReportTSX'
 import RegisterReport from '@/components/reports/RegisterReportTSX'
+import ActivityLogReport from '@/components/reports/ActivityLogReportTSX'
+import SalesRepresentativeReport from '@/components/reports/SalesRepresentativeReportTSX'
 
 const TITLES = {
   'profit-loss': 'Profit / Loss Report',
@@ -103,6 +105,12 @@ export default function ReportPage({ params }) {
   }
   if (slug === 'register') {
     return <RegisterReport lang={lang} />
+  }
+  if (slug === 'activity-log') {
+    return <ActivityLogReport lang={lang} />
+  }
+  if (slug === 'sales-representative') {
+    return <SalesRepresentativeReport lang={lang} />
   }
 
   return (

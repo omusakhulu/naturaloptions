@@ -32,16 +32,23 @@ export async function GET(request: Request) {
   const to = toStr ? new Date(toStr) : today
 
   try {
-    const invoiceWhere: any = { date: { gte: from, lte: to } }
-    if (customerIdStr) invoiceWhere.customerId = Number(customerIdStr)
+    const salesWhere: any = { saleDate: { gte: from, lte: to }, status: 'COMPLETED' }
+    if (customerIdStr) salesWhere.customerId = customerIdStr
 
     const billWhere: any = { billDate: { gte: from, lte: to } }
-    if (vendorIdStr) billWhere.vendorId = Number(vendorIdStr)
+    if (vendorIdStr) billWhere.vendorId = vendorIdStr
 
-    const [invoices, bills, salesRetAgg, purchaseRetAgg] = await Promise.all([
-      prisma.invoice.findMany({
-        where: invoiceWhere,
-        select: { date: true, amount: true }
+    const [sales, wooOrders, bills, salesRetAgg, purchaseRetAgg] = await Promise.all([
+      prisma.pOSSale.findMany({
+        where: salesWhere,
+        select: { saleDate: true, totalAmount: true }
+      }),
+      prisma.order.findMany({
+        where: {
+          dateCreated: { gte: from, lte: to },
+          status: { in: ['completed', 'processing'] }
+        },
+        select: { dateCreated: true, total: true }
       }),
       prisma.bill.findMany({
         where: billWhere,
@@ -52,15 +59,21 @@ export async function GET(request: Request) {
     ])
 
     const salesByDay: Record<string, number> = {}
-    for (const inv of invoices) {
-      const key = ymd(inv.date as unknown as Date)
-      salesByDay[key] = (salesByDay[key] || 0) + toNumber((inv as any).amount)
+    for (const sale of sales) {
+      const key = ymd(sale.saleDate)
+      salesByDay[key] = (salesByDay[key] || 0) + toNumber(sale.totalAmount)
+    }
+    for (const order of wooOrders) {
+      if (order.dateCreated) {
+        const key = ymd(order.dateCreated)
+        salesByDay[key] = (salesByDay[key] || 0) + toNumber(order.total)
+      }
     }
 
     const purchasesByDay: Record<string, number> = {}
     for (const b of bills) {
-      const key = ymd((b as any).billDate)
-      purchasesByDay[key] = (purchasesByDay[key] || 0) + toNumber((b as any).amount)
+      const key = ymd(b.billDate)
+      purchasesByDay[key] = (purchasesByDay[key] || 0) + toNumber(b.amount)
     }
 
     const byDates = Array.from(new Set([...Object.keys(salesByDay), ...Object.keys(purchasesByDay)])).sort()
@@ -71,8 +84,8 @@ export async function GET(request: Request) {
     const salesTotal = Object.values(salesByDay).reduce((s, v) => s + v, 0)
     const purchasesTotal = Object.values(purchasesByDay).reduce((s, v) => s + v, 0)
 
-    const salesReturns = toNumber(salesRetAgg._sum.amount)
-    const purchaseReturns = toNumber(purchaseRetAgg._sum.amount)
+    const salesReturns = toNumber(salesRetAgg._sum?.amount)
+    const purchaseReturns = toNumber(purchaseRetAgg._sum?.amount)
 
     return NextResponse.json({
       range: { from, to },
