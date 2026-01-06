@@ -1,9 +1,12 @@
 // React Imports
 import React from 'react'
 
-const SelectIcon = () => {
-  return <i className='tabler-chevron-down' />
-}
+// Define SelectIcon outside to ensure stable reference across renders
+const SelectIcon = React.forwardRef((props, ref) => {
+  return <i className='tabler-chevron-down' ref={ref} {...props} />
+})
+
+SelectIcon.displayName = 'SelectIcon'
 
 const iconStyles = theme => ({
   userSelect: 'none',

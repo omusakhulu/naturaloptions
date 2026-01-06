@@ -191,8 +191,8 @@ const FinancialReports = () => {
                   -
                 </TableCell>
               </TableRow>
-              {category.accounts.map((account) => (
-                <TableRow key={account.name}>
+              {category.accounts.map((account, idx) => (
+                <TableRow key={`${category.category}-${idx}`}>
                   <TableCell sx={{ pl: 4 }}>{account.name}</TableCell>
                   <TableCell align="right">{formatCurrency(account.amount)}</TableCell>
                   <TableCell align="right">{account.percentage?.toFixed(1)}%</TableCell>
@@ -241,8 +241,8 @@ const FinancialReports = () => {
                 <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
                   {category.category}
                 </Typography>
-                {category.accounts.map((account) => (
-                  <Box key={account.name} sx={{ display: 'flex', justifyContent: 'space-between', pl: 2, mb: 0.5 }}>
+                {category.accounts.map((account, idx) => (
+                  <Box key={`assets-${category.category}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 2, mb: 0.5 }}>
                     <Typography variant="body2">{account.name}</Typography>
                     <Typography variant="body2">{formatCurrency(account.amount)}</Typography>
                   </Box>
@@ -269,8 +269,8 @@ const FinancialReports = () => {
                 <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
                   {category.category}
                 </Typography>
-                {category.accounts.map((account) => (
-                  <Box key={account.name} sx={{ display: 'flex', justifyContent: 'space-between', pl: 2, mb: 0.5 }}>
+                {category.accounts.map((account, idx) => (
+                  <Box key={`liabilities-${category.category}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 2, mb: 0.5 }}>
                     <Typography variant="body2">{account.name}</Typography>
                     <Typography variant="body2">{formatCurrency(account.amount)}</Typography>
                   </Box>
@@ -297,8 +297,8 @@ const FinancialReports = () => {
                 <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
                   {category.category}
                 </Typography>
-                {category.accounts.map((account) => (
-                  <Box key={account.name} sx={{ display: 'flex', justifyContent: 'space-between', pl: 2, mb: 0.5 }}>
+                {category.accounts.map((account, idx) => (
+                  <Box key={`equity-${category.category}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 2, mb: 0.5 }}>
                     <Typography variant="body2">{account.name}</Typography>
                     <Typography variant="body2">{formatCurrency(account.amount)}</Typography>
                   </Box>
@@ -350,8 +350,8 @@ const FinancialReports = () => {
                     {formatCurrency(category.total)}
                   </TableCell>
                 </TableRow>
-                {category.items.map((item) => (
-                  <TableRow key={item.name}>
+                {category.items.map((item, idx) => (
+                  <TableRow key={`${category.category}-${idx}`}>
                     <TableCell sx={{ pl: 4 }}>{item.name}</TableCell>
                     <TableCell align="right" sx={{ color: item.amount >= 0 ? 'success.main' : 'error.main' }}>
                       {item.amount >= 0 ? '' : '('}{formatCurrency(item.amount)}{item.amount >= 0 ? '' : ')'}

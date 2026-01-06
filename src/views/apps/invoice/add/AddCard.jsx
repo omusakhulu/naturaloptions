@@ -115,7 +115,7 @@ const AddAction = ({ invoiceData }) => {
       <Card>
         <CardContent className='sm:!p-12'>
           <Grid container spacing={6}>
-            <Grid size={12}>
+            <Grid xs={12}>
               <div className='p-6 bg-actionHover rounded'>
                 <div className='flex justify-between gap-4 flex-col sm:flex-row'>
                   <div className='flex flex-col gap-6'>
@@ -175,7 +175,7 @@ const AddAction = ({ invoiceData }) => {
               </div>
             </Grid>
 
-            <Grid size={12}>
+            <Grid xs={12}>
               <div className='flex justify-between flex-col gap-4 flex-wrap sm:flex-row'>
                 <div className='flex flex-col gap-3'>
                   <Typography className='font-medium mb-1' color='text.primary'>
@@ -259,16 +259,16 @@ const AddAction = ({ invoiceData }) => {
               </div>
             </Grid>
 
-            <Grid size={12}>
+            <Grid xs={12}>
               <Divider className='border-dashed' />
             </Grid>
-            <Grid size={12}>
+            <Grid xs={12}>
               <OrderLineItems lineItems={lineItems} onUpdate={setLineItems} />
             </Grid>
-            <Grid size={12}>
+            <Grid xs={12}>
               <Divider className='border-dashed' />
             </Grid>
-            <Grid size={12}>
+            <Grid xs={12}>
               <div className='flex justify-between flex-col gap-4 sm:flex-row'>
                 <div className='flex flex-col gap-4 order-2 sm:order-[unset]'>
                   <div className='flex items-center gap-2'>
@@ -308,10 +308,10 @@ const AddAction = ({ invoiceData }) => {
                 </div>
               </div>
             </Grid>
-            <Grid size={12}>
+            <Grid xs={12}>
               <Divider className='border-dashed' />
             </Grid>
-            <Grid size={12}>
+            <Grid xs={12}>
               <InputLabel htmlFor='invoice-note' className='inline-flex mbe-1 text-textPrimary'>
                 Note:
               </InputLabel>

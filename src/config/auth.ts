@@ -124,6 +124,7 @@ const authOptions = {
       return token
     },
     async session({ session, token }: { session: Session; token: JWT }) {
+      console.log('Debug: Session callback executed', { token, session });
       if (session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id

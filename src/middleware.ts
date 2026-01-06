@@ -3,11 +3,11 @@ import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 // This should log when the middleware file is loaded
-console.log('🚀 MIDDLEWARE FILE LOADED')
+//console.log('🚀 MIDDLEWARE FILE LOADED')
 
 // Middleware to enforce authentication on ALL routes
 export default async function middleware(request: NextRequest) {
-  console.log('🔒 Middleware running for path:', request.nextUrl.pathname)
+  //console.log('🔒 Middleware running for path:', request.nextUrl.pathname)
   
   // Get token using getToken (works in middleware)
   const token = await getToken({ 
@@ -16,7 +16,7 @@ export default async function middleware(request: NextRequest) {
   })
 
   const isAuthenticated = !!token
-  console.log('Session status:', isAuthenticated ? '✅ Authenticated' : '❌ Unauthenticated')
+  //console.log('Session status:', isAuthenticated ? '✅ Authenticated' : '❌ Unauthenticated')
   
   // Define public/allowed paths
   const isLoginPage = request.nextUrl.pathname === '/login' || 
@@ -33,14 +33,14 @@ export default async function middleware(request: NextRequest) {
 
   const isRootPath = request.nextUrl.pathname === '/'
 
-  console.log('Path analysis:', {
-    path: request.nextUrl.pathname,
-    isAuthenticated,
-    isLoginPage,
-    isAuthApi,
-    isPublicAsset,
-    isRootPath
-  })
+  //console.log('Path analysis:', {
+  //   path: request.nextUrl.pathname,
+  //   isAuthenticated,
+  //   isLoginPage,
+  //   isAuthApi,
+  //   isPublicAsset,
+  //   isRootPath
+  // })
 
   // Handle root path and language roots - redirect to login if not authenticated, dashboard if authenticated
   if (isRootPath || request.nextUrl.pathname === '/en' || request.nextUrl.pathname === '/fr' || request.nextUrl.pathname === '/ar') {
@@ -56,24 +56,24 @@ export default async function middleware(request: NextRequest) {
 
   // Allow public assets and auth API
   if (isPublicAsset || isAuthApi) {
-    console.log('🟢 Allowing public asset or auth API')
+    //console.log('🟢 Allowing public asset or auth API')
     return NextResponse.next()
   }
 
   // If not authenticated and trying to access protected route, redirect to login
   if (!isAuthenticated && !isLoginPage) {
-    console.log('🚫 Unauthenticated user trying to access protected route, redirecting to login')
+  //console.log('🚫 Unauthenticated user trying to access protected route, redirecting to login')
     return NextResponse.redirect(new URL('/en/pages/auth/login-v2', request.url))
   }
 
   // If authenticated and trying to access login page, redirect to dashboard
   if (isAuthenticated && isLoginPage) {
-    console.log('🔄 Authenticated user on login page, redirecting to dashboard')
+    //console.log('🔄 Authenticated user on login page, redirecting to dashboard')
     return NextResponse.redirect(new URL('/en/dashboard', request.url))
   }
 
   // Allow the request to continue
-  console.log('✅ Request allowed to continue')
+  //console.log('✅ Request allowed to continue')
   return NextResponse.next()
 }
 

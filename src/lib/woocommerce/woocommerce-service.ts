@@ -329,6 +329,13 @@ export class WooCommerceService {
       process.env.NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET ||
       ''
 
+    if (!this.consumerSecret) {
+      console.error('Consumer secret is not set or invalid. Please check environment variables.');
+      throw new Error('Missing or invalid consumer secret');
+    }
+
+    console.log(`Debug: Consumer Secret is ${this.consumerSecret}`)
+
     if (this.consumerKey && this.consumerSecret) {
       this.baseAuthHeader = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64')
     }
@@ -371,8 +378,21 @@ export class WooCommerceService {
       // 1. Build the full URL string first
       const fullServiceUrl = this.baseURL.replace(/\/$/, '') + path
 
+      // Ensure URL has a scheme to avoid invalid URL error
+      let fullServiceUrlWithScheme: string;
+      if (!fullServiceUrl.startsWith('http://') && !fullServiceUrl.startsWith('https://')) {
+        fullServiceUrlWithScheme = 'https://' + fullServiceUrl;
+      } else {
+        fullServiceUrlWithScheme = fullServiceUrl;
+      }
+      try {
+        const parsedUrl = new URL(fullServiceUrlWithScheme);
+      } catch (urlError) {
+        throw new Error(`Invalid URL: ${urlError.message}`);
+      }
+
       // 2. Let the native URL parser handle everything
-      const parsedUrl = new URL(fullServiceUrl)
+      const parsedUrl = new URL(fullServiceUrlWithScheme)
       const postData = data ? JSON.stringify(data) : null
 
       const options: RequestOptions = {
@@ -406,7 +426,7 @@ export class WooCommerceService {
       // Attach keep-alive agent per protocol
       options.agent = isSecure ? this.httpsAgent : this.httpAgent
 
-      console.log(`📡 Executing Node.js request: ${method} ${parsedUrl.protocol}//${options.hostname}${options.path}`)
+      console.log(`📡 Executing Node.js request: ${method} ${parsedUrl.protocol}//${options.hostname}${options.path}, Authorization: ${(options.headers as any)?.Authorization ? 'set' : 'not set'}`)
 
       const req = requestClient(options, res => {
         let responseBody = ''
@@ -743,5 +763,15 @@ export class WooCommerceService {
     }
 
     return results
+  }
+
+  async testUrlValidation(): Promise<boolean> {
+    try {
+      const testUrl = this.baseURL + '/wp-json/wc/v3/products';
+      new URL(testUrl);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
