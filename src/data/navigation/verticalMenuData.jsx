@@ -143,6 +143,11 @@ const verticalMenuData = dictionary => [
         href: '/apps/chat'
       },
       {
+        label: 'Shopper Assistant',
+        icon: 'tabler-robot',
+        href: '/apps/shopper-assistant'
+      },
+      {
         label: dictionary['navigation'].calendar,
         icon: 'tabler-calendar',
         href: '/apps/calendar'
