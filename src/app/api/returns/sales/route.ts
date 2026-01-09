@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
-
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/config/auth'
 import prisma from '@/lib/prisma'
 
 export async function GET(request: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const after = searchParams.get('after')
   const before = searchParams.get('before')
@@ -24,6 +30,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await request.json()
   const { orderId, amount, date, reason } = body || {}
 

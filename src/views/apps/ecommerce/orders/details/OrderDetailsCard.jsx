@@ -138,7 +138,7 @@ const OrderTable = ({ tableData = [] }) => {
         header: 'Price',
         cell: ({ row }) => {
           const price = row.original.price || row.original.subtotal || 0
-          return <Typography>{`$${price}`}</Typography>
+          return <Typography>{`KSh ${Number(price).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}</Typography>
         }
       }),
       columnHelper.accessor('quantity', {
@@ -149,7 +149,7 @@ const OrderTable = ({ tableData = [] }) => {
         header: 'Total',
         cell: ({ row }) => {
           const total = row.original.total || (row.original.quantity * row.original.price) || 0
-          return <Typography>{`$${total}`}</Typography>
+          return <Typography>{`KSh ${Number(total).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}</Typography>
         }
       })
     ],
@@ -269,7 +269,7 @@ const OrderDetailsCard = ({ orderData }) => {
               Subtotal:
             </Typography>
             <Typography color='text.primary' className='font-medium'>
-              ${orderData?.subtotal || '0'}
+              {`KSh ${Number(orderData?.subtotal || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}
             </Typography>
           </div>
           <div className='flex items-center gap-12'>
@@ -277,7 +277,7 @@ const OrderDetailsCard = ({ orderData }) => {
               Shipping Fee:
             </Typography>
             <Typography color='text.primary' className='font-medium'>
-              ${orderData?.shippingTotal || '0'}
+              {`KSh ${Number(orderData?.shippingTotal || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}
             </Typography>
           </div>
           <div className='flex items-center gap-12'>
@@ -285,7 +285,7 @@ const OrderDetailsCard = ({ orderData }) => {
               Tax:
             </Typography>
             <Typography color='text.primary' className='font-medium'>
-              ${orderData?.taxTotal || '0'}
+              {`KSh ${Number(orderData?.taxTotal || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}
             </Typography>
           </div>
           <div className='flex items-center gap-12'>
@@ -293,7 +293,7 @@ const OrderDetailsCard = ({ orderData }) => {
               Total:
             </Typography>
             <Typography color='text.primary' className='font-medium'>
-              ${orderData?.total || '0'}
+              {`KSh ${Number(orderData?.total || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}
             </Typography>
           </div>
         </div>

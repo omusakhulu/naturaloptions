@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
 
-const CongratulationsJohn = ({ userName = 'John', totalSales = '$48.9k', role = 'Best seller of the month' }) => {
+const CongratulationsJohn = ({ userName = 'John', totalSales = 'KSh 0', role = 'Best seller of the month' }) => {
   return (
     <Card>
       <Grid container>

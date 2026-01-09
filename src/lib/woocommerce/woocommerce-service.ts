@@ -387,12 +387,40 @@ export class WooCommerceService {
   }
 
   /**
-   * Update store setting
+   * List product reviews
    */
-  public async updateSetting(groupId: string, id: string, data: Record<string, any>): Promise<any> {
-    const path = `/wp-json/wc/v3/settings/${groupId}/${id}`
+  public async listReviews(params: Record<string, any> = {}): Promise<any[]> {
+    const queryParams = new URLSearchParams(params)
+    const path = `/wp-json/wc/v3/products/reviews?${queryParams.toString()}`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * Create a product review
+   */
+  public async createReview(data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/products/reviews`
+
+    return this.executeApiRequest(path, 'POST', data)
+  }
+
+  /**
+   * Update a product review
+   */
+  public async updateReview(id: number | string, data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/products/reviews/${id}`
 
     return this.executeApiRequest(path, 'PUT', data)
+  }
+
+  /**
+   * Delete a product review
+   */
+  public async deleteReview(id: number | string, force: boolean = true): Promise<any> {
+    const path = `/wp-json/wc/v3/products/reviews/${id}?force=${force}`
+
+    return this.executeApiRequest(path, 'DELETE')
   }
 
   /**

@@ -26,8 +26,17 @@ import { getEcommerceData } from '@/app/server/actions'
   return res.json()
 } */
 const eCommerceManageReviews = async () => {
-  // Vars
-  const data = await getEcommerceData()
+  // Fetch reviews from API
+  let reviewsData = []
+  try {
+    const res = await fetch(`${process.env.NEXTAUTH_URL || ''}/api/ecommerce/reviews`, { cache: 'no-store' })
+    const json = await res.json()
+    if (json.success) {
+      reviewsData = json.reviews
+    }
+  } catch (error) {
+    console.error('Error fetching reviews:', error)
+  }
 
   return (
     <Grid container spacing={6}>
@@ -38,7 +47,7 @@ const eCommerceManageReviews = async () => {
         <ReviewsStatistics />
       </Grid>
       <Grid size={12}>
-        <ManageReviewsTable reviewsData={data?.reviews} />
+        <ManageReviewsTable reviewsData={reviewsData} />
       </Grid>
     </Grid>
   )

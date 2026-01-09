@@ -4,6 +4,57 @@ import { getAllCustomers, saveCustomers } from '@/lib/db/customers'
 import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
 import prisma from '@/lib/prisma'
 
+async function getCustomerAggregates() {
+  const byCustomerId = {}
+  const byEmail = {}
+
+  try {
+    const invoices = await prisma.invoice.findMany({
+      select: { customerId: true, customerEmail: true, amount: true, invoiceStatus: true, date: true }
+    })
+
+    for (const inv of invoices) {
+      const keyId = inv.customerId != null ? String(inv.customerId) : undefined
+      const keyEmail = (inv.customerEmail || '').toLowerCase()
+      const target =
+        (keyId ? byCustomerId[keyId] : null) || (keyEmail ? byEmail[keyEmail] : null) || {
+          outstanding: 0,
+          lastInvoice: null,
+          orders: 0,
+          lastOrderDate: null
+        }
+
+      if (keyId) byCustomerId[keyId] = target
+      if (keyEmail) byEmail[keyEmail] = target
+
+      const amt = typeof inv.amount === 'string' ? parseFloat(inv.amount) : Number(inv.amount || 0)
+      const status = String(inv.invoiceStatus || '').toLowerCase()
+
+      if (status && status !== 'paid') target.outstanding += Number.isFinite(amt) ? amt : 0
+      const d = inv.date ? new Date(inv.date) : null
+
+      if (d && (!target.lastInvoice || d > target.lastInvoice)) target.lastInvoice = d
+    }
+
+    const orders = await prisma.order.findMany({ select: { customerId: true, dateCreated: true } })
+
+    for (const o of orders) {
+      const keyId = o.customerId != null ? String(o.customerId) : undefined
+      const target = keyId ? (byCustomerId[keyId] ||= { outstanding: 0, lastInvoice: null, orders: 0, lastOrderDate: null }) : null
+
+      if (!target) continue
+      target.orders += 1
+      const d = o.dateCreated ? new Date(o.dateCreated) : null
+
+      if (d && (!target.lastOrderDate || d > target.lastOrderDate)) target.lastOrderDate = d
+    }
+  } catch (e) {
+    console.error('Error fetching customer aggregates:', e)
+  }
+
+  return { byCustomerId, byEmail }
+}
+
 /**
  * Fetches customers from WooCommerce API
  */
@@ -32,44 +83,6 @@ async function getWooCommerceCustomers() {
           console.log(`👥 Fetched ${customers.length} customers from page ${page}`)
           page++
         }
-
-async function getCustomerAggregates() {
-  const byCustomerId = {}
-  const byEmail = {}
-
-  try {
-    const invoices = await prisma.invoice.findMany({
-      select: { customerId: true, customerEmail: true, amount: true, invoiceStatus: true, date: true }
-    })
-    for (const inv of invoices) {
-      const keyId = inv.customerId != null ? String(inv.customerId) : undefined
-      const keyEmail = (inv.customerEmail || '').toLowerCase()
-      const target = keyId
-        ? (byCustomerId[keyId] ||= { outstanding: 0, lastInvoice: null, orders: 0, lastOrderDate: null })
-        : keyEmail
-          ? (byEmail[keyEmail] ||= { outstanding: 0, lastInvoice: null, orders: 0, lastOrderDate: null })
-          : null
-      if (!target) continue
-      const amt = typeof inv.amount === 'string' ? parseFloat(inv.amount) : Number(inv.amount || 0)
-      const status = String(inv.invoiceStatus || '').toLowerCase()
-      if (status && status !== 'paid') target.outstanding += Number.isFinite(amt) ? amt : 0
-      const d = inv.date ? new Date(inv.date) : null
-      if (d && (!target.lastInvoice || d > target.lastInvoice)) target.lastInvoice = d
-    }
-
-    const orders = await prisma.order.findMany({ select: { customerId: true, dateCreated: true } })
-    for (const o of orders) {
-      const keyId = o.customerId != null ? String(o.customerId) : undefined
-      const target = keyId ? (byCustomerId[keyId] ||= { outstanding: 0, lastInvoice: null, orders: 0, lastOrderDate: null }) : null
-      if (!target) continue
-      target.orders += 1
-      const d = o.dateCreated ? new Date(o.dateCreated) : null
-      if (d && (!target.lastOrderDate || d > target.lastOrderDate)) target.lastOrderDate = d
-    }
-  } catch (e) {}
-
-  return { byCustomerId, byEmail }
-}
       } catch (error) {
         console.error(`Error fetching customers page ${page}:`, error)
         hasMore = false

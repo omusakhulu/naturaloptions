@@ -15,7 +15,7 @@ import CustomAvatar from '@core/components/mui/Avatar'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-const toMoney = v => `$${Number.parseFloat(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+const toMoney = v => `KSh ${Number.parseFloat(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const EarningReports = ({
   weeklySeries = [{ data: [0, 0, 0, 0, 0, 0, 0] }],

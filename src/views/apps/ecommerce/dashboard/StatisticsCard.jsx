@@ -13,7 +13,7 @@ import Button from '@mui/material/Button'
 // Component Imports
 import CustomAvatar from '@core/components/mui/Avatar'
 
-const toMoney = v => `$${Number.parseFloat(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+const toMoney = v => `KSh ${Number.parseFloat(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const StatisticsCard = ({ totals = {}, lang = 'en' }) => {
   const data = [

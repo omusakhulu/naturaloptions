@@ -186,7 +186,7 @@ const OrderListTable = ({ orderData }) => {
             <div className='flex flex-col'>
               <Typography
                 component={Link}
-                href={getLocalizedUrl('/apps/ecommerce/customers/details/879861', locale)}
+                href={getLocalizedUrl(`/apps/ecommerce/customers/details/${row.original.customer?.id || row.original.customerId}`, locale)}
                 color='text.primary'
                 className='font-medium hover:text-primary'
               >

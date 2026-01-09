@@ -1188,7 +1188,7 @@ export default function EventTentQuoteForm() {
                     Live Estimate
                   </Typography>
                   <Typography variant='h3' fontWeight='bold'>
-                    KSh {livePrice.total.toLocaleString()}
+                    KSh {livePrice.total.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                   </Typography>
                   {livePrice.breakdown.length > 0 && (
                     <Typography variant='body2' sx={{ mt: 1, opacity: 0.9 }}>
@@ -1199,7 +1199,7 @@ export default function EventTentQuoteForm() {
                 <Box textAlign='right'>
                   {livePrice.breakdown.slice(0, 3).map((item, idx) => (
                     <Typography key={idx} variant='body2' sx={{ opacity: 0.9 }}>
-                      {item.label}: KSh {item.amount.toLocaleString()}
+                      {item.label}: KSh {item.amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                     </Typography>
                   ))}
                   {livePrice.breakdown.length > 3 && (

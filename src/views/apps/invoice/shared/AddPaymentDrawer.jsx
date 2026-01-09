@@ -75,7 +75,7 @@ const AddPaymentDrawer = ({ open, handleClose }) => {
             type='number'
             slotProps={{
               input: {
-                startAdornment: <InputAdornment position='start'>$</InputAdornment>
+                startAdornment: <InputAdornment position='start'>KSh</InputAdornment>
               }
             }}
             value={formData.paymentAmount}

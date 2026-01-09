@@ -43,9 +43,27 @@ import { getEcommerceData, getStatisticsData } from '@/app/server/actions'
   return res.json()
 } */
 const eCommerceReferrals = async () => {
-  // Vars
-  const statsData = await getStatisticsData()
-  const ecommerceData = await getEcommerceData()
+  // Fetch referrals from API
+  let referralsData = []
+  try {
+    const res = await fetch(`${process.env.NEXTAUTH_URL || ''}/api/ecommerce/referrals`, { cache: 'no-store' })
+    const json = await res.json()
+    if (json.success) {
+      referralsData = json.referrals
+    }
+  } catch (error) {
+    console.error('Error fetching referrals:', error)
+  }
+
+  // Fetch statistics for referrals
+  let statsData = {}
+  try {
+    const res = await fetch(`${process.env.NEXTAUTH_URL || ''}/api/pages/widget-examples`, { cache: 'no-store' })
+    const json = await res.json()
+    statsData = json
+  } catch (error) {
+    console.error('Error fetching stats:', error)
+  }
 
   return (
     <Grid container spacing={6}>
@@ -59,7 +77,7 @@ const eCommerceReferrals = async () => {
         <InviteAndShare />
       </Grid>
       <Grid size={12}>
-        <ReferredUsersTable referralsData={ecommerceData?.referrals} />
+        <ReferredUsersTable referralsData={referralsData} />
       </Grid>
     </Grid>
   )

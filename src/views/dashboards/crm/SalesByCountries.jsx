@@ -13,40 +13,40 @@ import OptionMenu from '@core/components/option-menu'
 // Vars
 const data = [
   {
-    title: '$8.45k',
-    subtitle: 'United States',
+    title: 'KSh 8.45k',
+    subtitle: 'Nairobi',
     trendNumber: 25.8,
     imgSrc: '/images/cards/us.png'
   },
   {
-    title: '$7.78k',
-    subtitle: 'Brazil',
+    title: 'KSh 7.78k',
+    subtitle: 'Mombasa',
     trendNumber: 16.2,
     trend: 'negative',
     imgSrc: '/images/cards/brazil.png'
   },
   {
-    title: '$6.48k',
-    subtitle: 'India',
+    title: 'KSh 6.48k',
+    subtitle: 'Kisumu',
     trendNumber: 12.3,
     imgSrc: '/images/cards/india.png'
   },
   {
-    title: '$5.12k',
-    subtitle: 'Australia',
+    title: 'KSh 5.12k',
+    subtitle: 'Nakuru',
     trendNumber: 11.9,
     trend: 'negative',
     imgSrc: '/images/cards/australia.png'
   },
   {
-    title: '$4.45k',
-    subtitle: 'France',
+    title: 'KSh 4.45k',
+    subtitle: 'Eldoret',
     trendNumber: 16.2,
     imgSrc: '/images/cards/france.png'
   },
   {
-    title: '$3.90k',
-    subtitle: 'China',
+    title: 'KSh 3.90k',
+    subtitle: 'Thika',
     trendNumber: 14.8,
     imgSrc: '/images/cards/china.png'
   }

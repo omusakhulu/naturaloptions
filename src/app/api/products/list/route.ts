@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/config/auth'
 import { getAllProducts } from '@/lib/db/products'
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Fetch all products from database
     const products = await getAllProducts()
 

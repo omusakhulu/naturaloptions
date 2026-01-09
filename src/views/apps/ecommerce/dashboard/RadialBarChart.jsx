@@ -10,7 +10,7 @@ import CardHeader from '@mui/material/CardHeader'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-const RadialBarChart = ({ totalExpenses = '82.5k', expensePercent = 78, expenseDiff = '$21k Expenses more than last month' }) => {
+const RadialBarChart = ({ totalExpenses = 'KSh 82.5k', expensePercent = 78, expenseDiff = 'KSh 21k Expenses more than last month' }) => {
   // Vars
   const options = {
     chart: {

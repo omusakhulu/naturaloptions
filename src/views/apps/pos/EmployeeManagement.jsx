@@ -53,6 +53,15 @@ import {
   Timer
 } from '@mui/icons-material'
 
+const userRoles = [
+  { value: 'ADMIN', label: 'Administrator', color: 'error' },
+  { value: 'MANAGER', label: 'Manager', color: 'warning' },
+  { value: 'ACCOUNTANT', label: 'Accountant', color: 'info' },
+  { value: 'CASHIER', label: 'Cashier', color: 'success' },
+  { value: 'SALES', label: 'Sales', color: 'primary' },
+  { value: 'USER', label: 'User', color: 'default' }
+]
+
 const EmployeeManagement = () => {
   const [activeTab, setActiveTab] = useState(0)
   const [employees, setEmployees] = useState([])

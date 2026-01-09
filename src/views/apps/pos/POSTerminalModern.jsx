@@ -40,6 +40,9 @@ export default function POSTerminalModern() {
     expectedCash: 0
   })
 
+  const [showParkedSales, setShowParkedSales] = useState(false)
+  const [parkedSales, setParkedSales] = useState([])
+  const [loadingParked, setLoadingParked] = useState(false)
   const [showShiftModal, setShowShiftModal] = useState(false)
   const [shiftModalMode, setShiftModalMode] = useState('open') // 'open' | 'close'
   const [shiftInputAmount, setShiftInputAmount] = useState('')
@@ -75,7 +78,7 @@ export default function POSTerminalModern() {
     if (isNaN(floatAmount) || floatAmount < 0) {
       toast.error('Please enter a valid opening float amount')
 
-return
+      return
     }
 
     const newShift = {
@@ -89,7 +92,7 @@ return
     setShift(newShift)
     setShowShiftModal(false)
     setShiftInputAmount('')
-    toast.success(`Shift opened with $${floatAmount.toFixed(2)}`)
+    toast.success(`Shift opened with KSh ${floatAmount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
   }
 
   const handleCloseShift = () => {
@@ -98,7 +101,7 @@ return
     if (isNaN(actualCash) || actualCash < 0) {
       toast.error('Please enter the actual cash count')
 
-return
+      return
     }
 
     // Calculate totals using the same logic as shiftStats
@@ -128,27 +131,7 @@ return
     })
 
     // Create a closing report/receipt (simulated)
-    toast.success(`Shift closed. ${difference >= 0 ? 'Over' : 'Short'}: $${Math.abs(difference).toFixed(2)}`)
-
-    // Reset shift
-    setShift({
-      isOpen: false,
-      startTime: null,
-      openingFloat: 0,
-      sales: [],
-      expectedCash: 0
-    })
-
-    localStorage.removeItem('pos_active_shift')
-    setShowShiftModal(false)
-    setShiftInputAmount('')
-    setShiftClosingNotes('')
-
-    // Prompt to open new shift immediately
-    setTimeout(() => {
-      setShiftModalMode('open')
-      setShowShiftModal(true)
-    }, 1000)
+    toast.success(`Shift closed. ${difference >= 0 ? 'Over' : 'Short'}: KSh ${Math.abs(difference).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
   }
 
   const handlePayout = async () => {
@@ -157,13 +140,13 @@ return
     if (isNaN(amount) || amount <= 0) {
       toast.error('Please enter a valid amount')
 
-return
+      return
     }
 
     if (!payoutReason.trim()) {
       toast.error('Please enter a reason')
 
-return
+      return
     }
 
     try {
@@ -194,7 +177,7 @@ return
         }]
       }))
 
-      toast.success(`Payout of $${amount.toFixed(2)} recorded`)
+      toast.success(`Payout of KSh ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })} recorded`)
       setShowPayoutModal(false)
       setPayoutAmount('')
       setPayoutReason('')
@@ -465,14 +448,72 @@ return
     }
   }
 
-  const saveOrder = () => {
+  const saveOrder = async () => {
     if (cart.length === 0) {
       toast.error('Cart is empty')
-
-return
+      return
     }
 
-    toast.success('Order saved for later')
+    try {
+      const response = await fetch('/api/pos/parked-sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cart,
+          subtotal,
+          discountAmount,
+          tax,
+          total,
+          customer,
+          notes: '' // Could add a prompt for notes
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        toast.success('Sale parked successfully')
+        setCart([])
+        setCustomer(null)
+        setDiscount({ type: 'none', value: 0 })
+      } else {
+        toast.error('Failed to park sale')
+      }
+    } catch (error) {
+      console.error('Error parking sale:', error)
+      toast.error('Connection error')
+    }
+  }
+
+  const fetchParkedSales = async () => {
+    setLoadingParked(true)
+    try {
+      const response = await fetch('/api/pos/parked-sales')
+      const data = await response.json()
+      if (data.success) {
+        setParkedSales(data.parkedSales)
+      }
+    } catch (error) {
+      console.error('Error fetching parked sales:', error)
+    } finally {
+      setLoadingParked(false)
+    }
+  }
+
+  const loadParkedSale = async (parkedSale) => {
+    try {
+      const items = JSON.parse(parkedSale.cartItems)
+      setCart(items)
+      setCustomer(parkedSale.customer)
+      setDiscount({ type: 'fixed', value: parseFloat(parkedSale.discountAmount || 0) })
+      
+      // Delete the parked sale after loading
+      await fetch(`/api/pos/parked-sales?id=${parkedSale.id}`, { method: 'DELETE' })
+      setShowParkedSales(false)
+      toast.success('Parked sale loaded')
+    } catch (error) {
+      console.error('Error loading parked sale:', error)
+      toast.error('Failed to load parked sale')
+    }
   }
 
   const totalPaid = useMemo(() => {
@@ -503,7 +544,7 @@ return
     }
 
     if (amount > remainingBalance) {
-      toast.error(`Amount cannot exceed remaining balance of $${remainingBalance.toFixed(2)}`)
+      toast.error(`Amount cannot exceed remaining balance of KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
 
 return
     }
@@ -516,7 +557,7 @@ return
 
     setSplitPayments([...splitPayments, newPayment])
     setCurrentPaymentAmount('')
-    toast.success(`$${amount.toFixed(2)} added via ${paymentMethod}`)
+    toast.success(`KSh ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })} added via ${paymentMethod}`)
 
     // If fully paid, show success
     if (amount === remainingBalance) {
@@ -552,7 +593,7 @@ return
     // Check if using split payments
     if (splitPayments.length > 0) {
       if (remainingBalance > 0) {
-        toast.error(`Insufficient payment. $${remainingBalance.toFixed(2)} remaining`)
+        toast.error(`Insufficient payment. KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })} remaining`)
 
         return
       }
@@ -863,7 +904,7 @@ return
                   </h3>
                   <div className='flex items-center justify-between mt-auto'>
                     <span className='text-lg md:text-xl font-bold text-indigo-600'>
-                      ${product.price.toFixed(2)}
+                      KSh {product.price.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                     </span>
                     <span className='text-xs text-gray-500'>#{product.sku}</span>
                   </div>
@@ -958,8 +999,8 @@ return
                       </button>
                     </div>
                     <div className='text-right'>
-                      <div className='text-xs text-gray-500'>${item.price.toFixed(2)} each</div>
-                      <div className='font-bold text-indigo-600'>${(item.price * item.quantity).toFixed(2)}</div>
+                      <div className='text-xs text-gray-500'>KSh {item.price.toLocaleString('en-KE', { minimumFractionDigits: 2 })} each</div>
+                      <div className='font-bold text-indigo-600'>KSh {(item.price * item.quantity).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</div>
                     </div>
                   </div>
 
@@ -1008,7 +1049,7 @@ return
           <div className='border-t bg-gray-50 p-4 space-y-2'>
             <div className='flex justify-between text-sm'>
               <span className='text-gray-600'>Subtotal</span>
-              <span className='font-medium'>${subtotal.toFixed(2)}</span>
+              <span className='font-medium'>KSh {subtotal.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
             </div>
 
             {discountAmount > 0 && (
@@ -1020,19 +1061,19 @@ return
                     <i className='tabler-x text-xs' />
                   </button>
                 </span>
-                <span className='font-medium text-green-600'>-${discountAmount.toFixed(2)}</span>
+                <span className='font-medium text-green-600'>-KSh {discountAmount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
               </div>
             )}
 
             <div className='flex justify-between text-sm'>
               <span className='text-gray-600'>Tax (8%)</span>
-              <span className='font-medium'>${tax.toFixed(2)}</span>
+              <span className='font-medium'>KSh {tax.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
             </div>
 
             <div className='pt-2 border-t border-gray-300'>
               <div className='flex justify-between items-center'>
                 <span className='text-lg font-bold text-gray-900'>Total</span>
-                <span className='text-2xl font-bold text-indigo-600'>${total.toFixed(2)}</span>
+                <span className='text-2xl font-bold text-indigo-600'>KSh {total.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
@@ -1045,7 +1086,7 @@ return
               className='w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition text-lg flex items-center justify-center gap-2 shadow-lg'
             >
               <i className='tabler-credit-card text-2xl' />
-              Pay ${total.toFixed(2)}
+              Pay KSh {total.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
             </button>
 
             <div className='grid grid-cols-3 gap-2'>
@@ -1064,6 +1105,17 @@ return
               >
                 <i className='tabler-user-search text-xl' />
                 <span className='text-xs'>Customer</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  fetchParkedSales()
+                  setShowParkedSales(true)
+                }}
+                className='bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-3 rounded-lg transition flex flex-col items-center justify-center gap-1'
+              >
+                <i className='tabler-history text-xl' />
+                <span className='text-xs'>Recall</span>
               </button>
 
               <button
@@ -1088,6 +1140,46 @@ return
         </div>
       </div>
 
+      {/* Parked Sales Modal */}
+      {showParkedSales && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50' onClick={(e) => e.target === e.currentTarget && setShowParkedSales(false)}>
+          <div className='bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden'>
+            <div className='p-6 border-b bg-gray-50 flex items-center justify-between'>
+              <h3 className='text-xl font-bold text-gray-900'>Parked Sales (Held)</h3>
+              <button onClick={() => setShowParkedSales(false)} className='text-gray-400 hover:text-gray-600'>
+                <i className='tabler-x text-2xl' />
+              </button>
+            </div>
+            <div className='p-6 max-h-[60vh] overflow-auto'>
+              {loadingParked ? (
+                <div className='flex justify-center py-8'><CircularProgress /></div>
+              ) : parkedSales.length === 0 ? (
+                <div className='text-center py-8 text-gray-500'>No parked sales found</div>
+              ) : (
+                <div className='space-y-3'>
+                  {parkedSales.map(sale => (
+                    <div key={sale.id} className='border rounded-xl p-4 hover:border-indigo-500 transition-colors cursor-pointer group' onClick={() => loadParkedSale(sale)}>
+                      <div className='flex justify-between items-start'>
+                        <div>
+                          <div className='font-bold text-gray-900'>{sale.saleNumber}</div>
+                          <div className='text-sm text-gray-500'>{new Date(sale.createdAt).toLocaleString()}</div>
+                          <div className='text-sm mt-1'>
+                            <span className='text-gray-600'>Customer:</span> {sale.customer?.firstName ? `${sale.customer.firstName} ${sale.customer.lastName}` : 'Walk-in'}
+                          </div>
+                        </div>
+                        <div className='text-right'>
+                          <div className='text-lg font-bold text-indigo-600'>KSh {parseFloat(sale.totalAmount).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</div>
+                          <div className='text-xs text-gray-400'>{JSON.parse(sale.cartItems).length} items</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Shift Management Modal */}
       {showShiftModal && (
         <div className='fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50' onClick={(e) => e.target === e.currentTarget && setShowShiftModal(false)}>
@@ -1108,13 +1200,13 @@ return
                 <div>
                   <label className='block text-sm font-medium text-gray-700 mb-2'>Opening Float Amount</label>
                   <div className='relative'>
-                    <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500'>$</span>
+                    <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold'>KSh</span>
                     <input
                       type='number'
                       step='0.01'
                       value={shiftInputAmount}
                       onChange={(e) => setShiftInputAmount(e.target.value)}
-                      className='w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
+                      className='w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
                       placeholder='0.00'
                       autoFocus
                     />
@@ -1127,36 +1219,36 @@ return
                   <div className='bg-gray-50 p-4 rounded-xl space-y-2'>
                     <div className='flex justify-between text-sm'>
                       <span className='text-gray-600'>Opening Float</span>
-                      <span className='font-medium'>${shift.openingFloat.toFixed(2)}</span>
+                      <span className='font-medium'>KSh {shift.openingFloat.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className='flex justify-between text-sm'>
                       <span className='text-gray-600'>Cash Sales</span>
-                      <span className='font-medium text-green-600'>+${shiftStats?.cashSales.toFixed(2) || '0.00'}</span>
+                      <span className='font-medium text-green-600'>+KSh {shiftStats?.cashSales.toLocaleString('en-KE', { minimumFractionDigits: 2 }) || '0.00'}</span>
                     </div>
                      <div className='flex justify-between text-sm'>
                       <span className='text-gray-600'>Card Sales</span>
-                      <span className='font-medium text-indigo-600'>${shiftStats?.cardSales.toFixed(2) || '0.00'}</span>
+                      <span className='font-medium text-indigo-600'>KSh {shiftStats?.cardSales.toLocaleString('en-KE', { minimumFractionDigits: 2 }) || '0.00'}</span>
                     </div>
                     <div className='flex justify-between text-sm'>
                       <span className='text-gray-600'>Payouts/Expenses</span>
-                      <span className='font-medium text-red-600'>-${shiftStats?.totalPayouts.toFixed(2) || '0.00'}</span>
+                      <span className='font-medium text-red-600'>-KSh {shiftStats?.totalPayouts.toLocaleString('en-KE', { minimumFractionDigits: 2 }) || '0.00'}</span>
                     </div>
                     <div className='border-t border-gray-200 pt-2 flex justify-between font-bold'>
                       <span>Expected Cash in Drawer</span>
-                      <span>${(shift.openingFloat + (shiftStats?.cashSales || 0)).toFixed(2)}</span>
+                      <span>KSh {(shift.openingFloat + (shiftStats?.cashSales || 0)).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
                     </div>
                   </div>
 
                   <div>
                     <label className='block text-sm font-medium text-gray-700 mb-2'>Closing Cash Count</label>
                     <div className='relative'>
-                      <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500'>$</span>
+                      <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold'>KSh</span>
                       <input
                         type='number'
                         step='0.01'
                         value={shiftInputAmount}
                         onChange={(e) => setShiftInputAmount(e.target.value)}
-                        className='w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
+                        className='w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
                         placeholder='0.00'
                         autoFocus
                       />
@@ -1208,13 +1300,13 @@ return
               <div>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>Amount</label>
                 <div className='relative'>
-                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500'>$</span>
+                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500'>KSh</span>
                   <input
                     type='number'
                     step='0.01'
                     value={payoutAmount}
                     onChange={(e) => setPayoutAmount(e.target.value)}
-                    className='w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
+                    className='w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
                     placeholder='0.00'
                     autoFocus
                   />
@@ -1280,7 +1372,7 @@ return
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div className='text-2xl mb-1'>$</div>
+                    <div className='text-2xl mb-1'>KSh</div>
                     <div className='font-medium'>Fixed Amount</div>
                   </button>
                 </div>
@@ -1288,17 +1380,22 @@ return
 
               <div>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>
-                  {discountType === 'percentage' ? 'Percentage (%)' : 'Amount ($)'}
+                  {discountType === 'percentage' ? 'Percentage (%)' : 'Amount (KSh)'}
                 </label>
-                <input
-                  type='number'
-                  step='0.01'
-                  value={discountInput}
-                  onChange={(e) => setDiscountInput(e.target.value)}
-                  placeholder='0'
-                  className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-lg'
-                  autoFocus
-                />
+                <div className='relative'>
+                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold'>
+                    {discountType === 'percentage' ? '%' : 'KSh'}
+                  </span>
+                  <input
+                    type='number'
+                    step='0.01'
+                    value={discountInput}
+                    onChange={(e) => setDiscountInput(e.target.value)}
+                    placeholder='0'
+                    className='w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-lg'
+                    autoFocus
+                  />
+                </div>
               </div>
 
               {discountInput && (
@@ -1307,7 +1404,7 @@ return
                   <div className='text-2xl font-bold text-indigo-600 mt-1'>
                     {discountType === 'percentage'
                       ? `${discountInput}% off`
-                      : `$${parseFloat(discountInput || 0).toFixed(2)} off`
+                      : `KSh ${parseFloat(discountInput || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })} off`
                     }
                   </div>
                 </div>
@@ -1419,18 +1516,18 @@ return
               <div className='grid grid-cols-3 gap-3 text-center'>
                 <div className='bg-gray-50 rounded-lg p-3'>
                   <div className='text-xs text-gray-600'>Total</div>
-                  <div className='text-lg font-bold text-gray-900'>${total.toFixed(2)}</div>
+                  <div className='text-lg font-bold text-gray-900'>KSh {total.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div className='bg-green-50 rounded-lg p-3'>
                   <div className='text-xs text-green-600'>Paid</div>
-                  <div className='text-lg font-bold text-green-700'>${totalPaid.toFixed(2)}</div>
+                  <div className='text-lg font-bold text-green-700'>KSh {totalPaid.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div className={`rounded-lg p-3 ${remainingBalance > 0 ? 'bg-red-50' : 'bg-blue-50'}`}>
                   <div className={`text-xs ${remainingBalance > 0 ? 'text-red-600' : 'text-blue-600'}`}>
                     {remainingBalance > 0 ? 'Remaining' : 'Complete'}
                   </div>
                   <div className={`text-lg font-bold ${remainingBalance > 0 ? 'text-red-700' : 'text-blue-700'}`}>
-                    ${remainingBalance.toFixed(2)}
+                    KSh {remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
@@ -1459,7 +1556,7 @@ return
                           }`} />
                           <div>
                             <div className='font-semibold text-gray-900 capitalize'>{payment.method}</div>
-                            <div className='text-sm text-gray-600'>${payment.amount.toFixed(2)}</div>
+                            <div className='text-sm text-gray-600'>KSh {payment.amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</div>
                           </div>
                         </div>
                         <button
@@ -1529,19 +1626,20 @@ return
               {/* Amount Input for Split Payment */}
               <div>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>
-                  Enter Amount {remainingBalance > 0 && `(Max: $${remainingBalance.toFixed(2)})`}
+                  Enter Amount {remainingBalance > 0 && `(Max: KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })})`}
                 </label>
                 <div className='relative'>
-                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium'>$</span>
+                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold'>KSh</span>
                   <input
                     type='number'
                     step='0.01'
                     value={currentPaymentAmount}
                     onChange={(e) => setCurrentPaymentAmount(e.target.value)}
+                    className='w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-lg'
                     placeholder='0.00'
-                    className='w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-lg font-medium'
                   />
                 </div>
+              </div>
 
                 {/* Quick Amount Buttons */}
                 <div className='mt-3 grid grid-cols-5 gap-2'>
@@ -1587,7 +1685,7 @@ return
                 disabled={remainingBalance > 0 && splitPayments.length === 0}
                 className='flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition'
               >
-                {remainingBalance > 0 ? `Pay $${remainingBalance.toFixed(2)}` : 'Complete Payment'}
+                {remainingBalance > 0 ? `Pay KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}` : 'Complete Payment'}
               </button>
             </div>
           </div>

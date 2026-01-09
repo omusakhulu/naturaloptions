@@ -68,7 +68,7 @@ const TentQuotesSummary = ({ quotes = [], lang = 'en' }) => {
           </Box>
           <Box className='flex flex-col gap-1 text-right'>
             <Typography variant='h5' color='success.main'>
-              ${pendingValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              KSh {pendingValue.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Typography>
             <Typography variant='body2' color='text.secondary'>
               Potential Value
@@ -134,7 +134,7 @@ const TentQuotesSummary = ({ quotes = [], lang = 'en' }) => {
                       {quote.contactName || 'Unknown Client'}
                     </Typography>
                     <Typography variant='caption' color='text.secondary'>
-                      {quote.eventVenue || 'No venue'} • ${parseFloat(quote.total || 0).toFixed(2)}
+                      {quote.eventVenue || 'No venue'} • KSh {parseFloat(quote.total || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </Typography>
                   </Box>
                   <Chip

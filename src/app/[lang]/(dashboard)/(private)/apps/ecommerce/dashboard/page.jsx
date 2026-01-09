@@ -196,7 +196,7 @@ return okEmp && okLoc
       id: inv.id,
       issuedDate: safeFormatDate(inv.date),
       dueDate: safeFormatDate(inv.dueDate),
-      total: Number.isFinite(total) ? total.toFixed(2) : '0.00',
+      total: Number.isFinite(total) ? total.toLocaleString('en-KE', { minimumFractionDigits: 2 }) : '0.00',
       balance: '',
       status: invoiceStatus,
       invoiceStatus,
@@ -694,7 +694,7 @@ return d ? (new Date(range.after) <= d && d <= new Date(range.before)) : false
 
     return {
       name: topUser === 'System' ? 'Admin' : topUser,
-      amount: `$${(topAmount / 1000).toFixed(1)}k`,
+      amount: `KSh ${(topAmount / 1000).toFixed(1)}k`,
       role: topAmount > 0 ? 'Top performer this month' : 'Getting started'
     }
   })()
@@ -759,13 +759,13 @@ return d ? (new Date(range.after) <= d && d <= new Date(range.before)) : false
           <Grid size={6}>
             <LineChartProfit
               profitData={profitMonthlyData}
-              totalProfit={`$${(totalMonthlyProfit / 1000).toFixed(1)}k`}
+              totalProfit={`KSh ${(totalMonthlyProfit / 1000).toFixed(1)}k`}
               growthPercent={profitGrowth}
             />
           </Grid>
           <Grid size={6}>
             <RadialBarChart
-              totalExpenses={`$${(totalExpenses / 1000).toFixed(1)}k`}
+              totalExpenses={`KSh ${(totalExpenses / 1000).toFixed(1)}k`}
               expensePercent={expensePercent}
               expenseDiff={expenseDiff}
             />
@@ -786,7 +786,7 @@ return d ? (new Date(range.after) <= d && d <= new Date(range.before)) : false
         <RevenueReport
           barSeries={barSeries}
           lineSeries={lineSeries}
-          totalLabel={`$${totalRevenue.toLocaleString()}`}
+          totalLabel={`KSh ${totalRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}
           budgetLabel={'—'}
         />
       </Grid>

@@ -189,8 +189,8 @@ const InvoiceListTable = ({ invoiceData }) => {
       columnHelper.accessor('amount', {
         header: 'Total',
         cell: ({ row }) => {
-          const amount = row.original.amount || row.original.total || '0'
-          return <Typography>{`$${amount}`}</Typography>
+          const amount = Number(row.original.amount || row.original.total || 0)
+          return <Typography>{`KSh ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</Typography>
         }
       }),
       columnHelper.accessor('issuedDate', {

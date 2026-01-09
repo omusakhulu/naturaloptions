@@ -13,7 +13,7 @@ import tableStyles from '@core/styles/table.module.css'
 import './print.css'
 
 // Helpers
-const toMoney = v => `$${Number.parseFloat(v || 0).toFixed(2)}`
+const toMoney = v => `KSh ${Number.parseFloat(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const computeTotals = (items = [], fallbackAmount) => {
   try {

@@ -180,7 +180,7 @@ const CustomerListTable = ({ customerData }) => {
 
           return (
             <Typography className='font-medium' color='text.primary'>
-              ${Number.isFinite(totalSpent) ? totalSpent.toFixed(2) : '0.00'}
+              {`KSh ${totalSpent.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </Typography>
           )
         }

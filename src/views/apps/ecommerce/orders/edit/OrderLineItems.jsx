@@ -182,7 +182,7 @@ const OrderLineItems = ({ lineItems = [], onUpdate }) => {
                           className='w-24'
                         />
                       </TableCell>
-                      <TableCell align='right'>${(item.quantity * item.price).toFixed(2)}</TableCell>
+                      <TableCell align='right'>KSh {(item.quantity * item.price).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell align='center'>
                         <IconButton size='small' onClick={() => handleRemoveItem(item.id)} color='error'>
                           <i className='tabler-trash' />
@@ -195,7 +195,7 @@ const OrderLineItems = ({ lineItems = [], onUpdate }) => {
                       <Typography className='font-semibold'>Order Total:</Typography>
                     </TableCell>
                     <TableCell align='right'>
-                      <Typography className='font-semibold'>${calculateTotal()}</Typography>
+                      <Typography className='font-semibold'>KSh {calculateTotal()}</Typography>
                     </TableCell>
                     <TableCell />
                   </TableRow>
@@ -215,13 +215,13 @@ const OrderLineItems = ({ lineItems = [], onUpdate }) => {
               <Autocomplete
                 fullWidth
                 options={products}
-                getOptionLabel={option => `${option.name} - $${option.regularPrice || option.price || 0}`}
+                getOptionLabel={option => `${option.name} - KSh ${parseFloat(option.regularPrice || option.price || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}
                 isOptionEqualToValue={(opt, val) => (opt.wooId || opt.id) === (val?.wooId || val?.id)}
                 value={selectedProduct}
                 onChange={(event, value) => handleProductSelect(value)}
                 renderOption={(props, option) => (
                   <li {...props} key={String(option.uid || ensureItemId(option))}>
-                    {`${option.name} - $${option.regularPrice || option.price || 0}`}
+                    {`${option.name} - KSh ${parseFloat(option.regularPrice || option.price || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}
                   </li>
                 )}
                 renderInput={params => (

@@ -16,15 +16,15 @@ import tableStyles from '@core/styles/table.module.css'
 
 // Vars
 const domesticTableData = [
-  { rate: 'Weight', condition: '5Kg-10Kg', price: '$9' },
-  { rate: 'VAT', condition: '12%', price: '$25' },
+  { rate: 'Weight', condition: '5Kg-10Kg', price: 'KSh 900' },
+  { rate: 'VAT', condition: '16%', price: 'KSh 2,500' },
   { rate: 'Duty', condition: '-', price: '-' }
 ]
 
 const internationalTableData = [
-  { rate: 'Weight', condition: '5Kg-10Kg', price: '$19' },
-  { rate: 'VAT', condition: '12%', price: '$25' },
-  { rate: 'Duty', condition: 'Japan', price: '$49' }
+  { rate: 'Weight', condition: '5Kg-10Kg', price: 'KSh 1,900' },
+  { rate: 'VAT', condition: '16%', price: 'KSh 2,500' },
+  { rate: 'Duty', condition: 'Global', price: 'KSh 4,900' }
 ]
 
 const ShippingRateCard = props => {

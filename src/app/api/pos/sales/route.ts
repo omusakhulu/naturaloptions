@@ -1,32 +1,30 @@
 import { NextResponse } from 'next/server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth/next'
-
-import { authOptions } from '@/lib/auth'
+import { authOptions } from '@/config/auth'
 import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
-
-const prisma = new PrismaClient()
+import { PaymentMethod, PaymentStatus, SaleStatus } from '@prisma/client'
 
 // Map payment method strings to valid PaymentMethod enum values
-function mapPaymentMethod(method: string): string {
-  const methodMap: { [key: string]: string } = {
-    'cash': 'CASH',
-    'card': 'CREDIT_CARD',
-    'credit_card': 'CREDIT_CARD',
-    'debit_card': 'DEBIT_CARD',
-    'check': 'CHECK',
-    'gift_card': 'GIFT_CARD',
-    'store_credit': 'STORE_CREDIT',
-    'digital_wallet': 'DIGITAL_WALLET',
-    'mpesa': 'DIGITAL_WALLET', // Map M-PESA to digital wallet
-    'bank': 'DIGITAL_WALLET', // Map bank transfer to digital wallet
-    'split': 'CASH', // Default to CASH for split payments
+function mapPaymentMethod(method: string): PaymentMethod {
+  const methodMap: { [key: string]: PaymentMethod } = {
+    'cash': PaymentMethod.CASH,
+    'card': PaymentMethod.CREDIT_CARD,
+    'credit_card': PaymentMethod.CREDIT_CARD,
+    'debit_card': PaymentMethod.DEBIT_CARD,
+    'check': PaymentMethod.CHECK,
+    'gift_card': PaymentMethod.GIFT_CARD,
+    'store_credit': PaymentMethod.STORE_CREDIT,
+    'digital_wallet': PaymentMethod.DIGITAL_WALLET,
+    'mpesa': PaymentMethod.DIGITAL_WALLET, // Map M-PESA to digital wallet
+    'bank': PaymentMethod.DIGITAL_WALLET, // Map bank transfer to digital wallet
+    'split': PaymentMethod.CASH, // Default to CASH for split payments
   }
 
   const normalized = method.toLowerCase()
 
-  return methodMap[normalized] || 'CASH'
+  return methodMap[normalized] || PaymentMethod.CASH
 }
 
 export async function POST(request: Request) {
@@ -131,8 +129,8 @@ export async function POST(request: Request) {
       taxAmount: parseFloat(tax?.toString() || '0'),
       totalAmount: parseFloat(total?.toString() || '0'),
       paymentMethod: mapPaymentMethod(payments && payments.length > 0 ? 'split' : paymentMethod),
-      paymentStatus: 'COMPLETED',
-      status: 'COMPLETED',
+      paymentStatus: PaymentStatus.COMPLETED,
+      status: SaleStatus.COMPLETED,
       customerId: customer?.id || null,
       saleItems: {
         create: items.map((item: any) => ({
@@ -378,7 +376,7 @@ export async function GET(request: Request) {
     const totalSales = await prisma.pOSSale.aggregate({
       where: whereClause,
       _sum: {
-        total: true
+        totalAmount: true
       },
       _count: true
     })
@@ -387,7 +385,7 @@ export async function GET(request: Request) {
       success: true,
       sales: sales,
       summary: {
-        totalAmount: totalSales._sum.total ? parseFloat(totalSales._sum.total.toString()) : 0,
+        totalAmount: totalSales._sum.totalAmount ? parseFloat(totalSales._sum.totalAmount.toString()) : 0,
         totalCount: totalSales._count
       }
     })

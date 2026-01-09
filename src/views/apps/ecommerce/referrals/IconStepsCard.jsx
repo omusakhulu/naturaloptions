@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography'
 const data = [
   {
     description: 'Create & validate your referral link and get',
-    value: '$50',
+    value: 'KSh 5,000',
     icon: (
       <svg xmlns='http://www.w3.org/2000/svg' width='42' height='42' viewBox='0 0 43 42' fill='none'>
         <path
@@ -51,7 +51,7 @@ const data = [
   },
   {
     description: 'Get other friends to generate link and get',
-    value: '$100',
+    value: 'KSh 10,000',
     icon: (
       <svg xmlns='http://www.w3.org/2000/svg' width='42' height='42' viewBox='0 0 43 42' fill='none'>
         <path

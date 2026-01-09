@@ -24,7 +24,7 @@ const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexChart
 // Vars
 const yearOptions = [new Date().getFullYear() - 1, new Date().getFullYear() - 2, new Date().getFullYear() - 3]
 
-const RevenueReport = ({ barSeries = [], lineSeries = [], totalLabel = '$0', budgetLabel = '—' }) => {
+const RevenueReport = ({ barSeries = [], lineSeries = [], totalLabel = 'KSh 0', budgetLabel = '—' }) => {
   // States
   const [anchorEl, setAnchorEl] = useState(null)
 

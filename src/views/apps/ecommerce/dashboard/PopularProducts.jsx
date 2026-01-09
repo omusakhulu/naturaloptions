@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 // Components Imports
 import OptionMenu from '@core/components/option-menu'
 
-const money = v => `$${Number.parseFloat(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+const money = v => `KSh ${Number.parseFloat(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const PopularProducts = ({ products = [] }) => {
   return (

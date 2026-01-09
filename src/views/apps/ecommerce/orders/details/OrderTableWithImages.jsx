@@ -121,7 +121,7 @@ const OrderTableWithImages = ({ tableData = [] }) => {
         header: 'Price',
         cell: ({ row }) => {
           const price = row.original.price || row.original.subtotal || 0
-          return <Typography>{`$${price}`}</Typography>
+          return <Typography>{`KSh ${Number(price).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}</Typography>
         }
       }),
       columnHelper.accessor('quantity', {
@@ -132,7 +132,7 @@ const OrderTableWithImages = ({ tableData = [] }) => {
         header: 'Total',
         cell: ({ row }) => {
           const total = row.original.total || (row.original.quantity * row.original.price) || 0
-          return <Typography>{`$${total}`}</Typography>
+          return <Typography>{`KSh ${Number(total).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}</Typography>
         }
       })
     ],

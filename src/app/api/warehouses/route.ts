@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/config/auth'
+import prisma from '@/lib/prisma'
 
 // GET all warehouses
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
 
@@ -51,6 +55,11 @@ export async function GET(request: NextRequest) {
 // POST create warehouse
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
     const data = await request.json()
 
     const warehouse = await prisma.warehouse.create({

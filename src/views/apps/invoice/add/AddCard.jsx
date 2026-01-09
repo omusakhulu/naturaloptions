@@ -236,7 +236,7 @@ const AddAction = ({ invoiceData }) => {
                   <div>
                     <div className='flex items-center gap-4'>
                       <Typography className='min-is-[100px]'>Total Due:</Typography>
-                      <Typography>$12,110.55</Typography>
+                      <Typography>KSh 12,110.55</Typography>
                     </div>
                     <div className='flex items-center gap-4'>
                       <Typography className='min-is-[100px]'>Bank name:</Typography>
@@ -283,13 +283,13 @@ const AddAction = ({ invoiceData }) => {
                   <div className='flex items-center justify-between'>
                     <Typography>Subtotal:</Typography>
                     <Typography className='font-medium' color='text.primary'>
-                      $1800
+                      KSh 1,800.00
                     </Typography>
                   </div>
                   <div className='flex items-center justify-between'>
                     <Typography>Discount:</Typography>
                     <Typography className='font-medium' color='text.primary'>
-                      $28
+                      KSh 28.00
                     </Typography>
                   </div>
                   <div className='flex items-center justify-between'>
@@ -302,7 +302,7 @@ const AddAction = ({ invoiceData }) => {
                   <div className='flex items-center justify-between'>
                     <Typography>Total:</Typography>
                     <Typography className='font-medium' color='text.primary'>
-                      $1690
+                      KSh 1,690.00
                     </Typography>
                   </div>
                 </div>

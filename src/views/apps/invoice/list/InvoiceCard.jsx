@@ -25,12 +25,12 @@ const data = [
     icon: 'tabler-file-invoice'
   },
   {
-    title: '$2.46k',
+    title: 'KSh 2.46k',
     subtitle: 'Paid',
     icon: 'tabler-checks'
   },
   {
-    title: '$876',
+    title: 'KSh 876',
     subtitle: 'Unpaid',
     icon: 'tabler-circle-off'
   }

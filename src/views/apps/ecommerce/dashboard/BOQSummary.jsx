@@ -72,7 +72,7 @@ const BOQSummary = ({ boqs = [], lang = 'en' }) => {
           </Box>
           <Box className='flex flex-col gap-1 text-right'>
             <Typography variant='h5' color='success.main'>
-              KES {totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              KSh {totalValue.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Typography>
             <Typography variant='body2' color='text.secondary'>
               Total Value

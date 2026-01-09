@@ -117,7 +117,7 @@ const InvoiceListTable = ({ invoiceData }) => {
       }),
       columnHelper.accessor('total', {
         header: 'Total',
-        cell: ({ row }) => <Typography>{`$${row.original.total}`}</Typography>
+        cell: ({ row }) => <Typography>{`KSh ${Number(row.original.total || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</Typography>
       }),
       columnHelper.accessor('issuedDate', {
         header: 'Issued Date',

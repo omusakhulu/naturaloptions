@@ -130,6 +130,15 @@ export async function POST(
         await handleOrderDelete(data.id)
         break
 
+      case 'customer.created':
+      case 'customer.updated':
+        await handleCustomerUpdate(data)
+        break
+
+      case 'customer.deleted':
+        await handleCustomerDelete(data.id)
+        break
+
       // Add more webhook handlers as needed
 
       default:
@@ -314,6 +323,52 @@ async function handleOrderDelete(orderId: number) {
     })
   } catch (error) {
     console.error('Error deleting order from webhook:', error)
+    throw error
+  }
+}
+
+async function handleCustomerUpdate(customerData: any) {
+  try {
+    await prisma.customer.upsert({
+      where: { wooId: customerData.id },
+      update: {
+        email: customerData.email,
+        firstName: customerData.first_name || null,
+        lastName: customerData.last_name || null,
+        username: customerData.username || null,
+        role: customerData.role || 'customer',
+        avatarUrl: customerData.avatar_url || null,
+        billingAddress: JSON.stringify(customerData.billing || {}),
+        shippingAddress: JSON.stringify(customerData.shipping || {}),
+        updatedAt: new Date(),
+        syncedAt: new Date()
+      },
+      create: {
+        wooId: customerData.id,
+        email: customerData.email,
+        firstName: customerData.first_name || null,
+        lastName: customerData.last_name || null,
+        username: customerData.username || null,
+        role: customerData.role || 'customer',
+        avatarUrl: customerData.avatar_url || null,
+        billingAddress: JSON.stringify(customerData.billing || {}),
+        shippingAddress: JSON.stringify(customerData.shipping || {}),
+        createdAt: new Date(customerData.date_created || Date.now())
+      }
+    })
+  } catch (error) {
+    console.error('Error updating customer from webhook:', error)
+    throw error
+  }
+}
+
+async function handleCustomerDelete(customerId: number) {
+  try {
+    await prisma.customer.deleteMany({
+      where: { wooId: customerId }
+    })
+  } catch (error) {
+    console.error('Error deleting customer from webhook:', error)
     throw error
   }
 }

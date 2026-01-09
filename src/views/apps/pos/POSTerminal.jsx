@@ -246,7 +246,7 @@ const POSTerminal = () => {
                         {product.name}
                       </Typography>
                       <Typography variant="h6" color="primary">
-                        ${product.price.toFixed(2)}
+                        KSh {product.price.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {product.sku}
@@ -301,7 +301,7 @@ const POSTerminal = () => {
                           </IconButton>
                         </Box>
                         <Typography variant="body2">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          KSh {(item.price * item.quantity).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                         </Typography>
                       </Box>
                     </Box>
@@ -315,16 +315,16 @@ const POSTerminal = () => {
               <Box sx={{ mt: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography>Subtotal:</Typography>
-                  <Typography>${subtotal.toFixed(2)}</Typography>
+                  <Typography>KSh {subtotal.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography>Tax (8%):</Typography>
-                  <Typography>${tax.toFixed(2)}</Typography>
+                  <Typography>KSh {tax.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</Typography>
                 </Box>
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Total:</Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>${total.toFixed(2)}</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>KSh {total.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</Typography>
                 </Box>
 
                 {/* Payment Buttons */}
@@ -352,7 +352,7 @@ const POSTerminal = () => {
         <DialogContent>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h5" sx={{ textAlign: 'center', mb: 1 }}>
-              Total: ${total.toFixed(2)}
+              Total: KSh {total.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
             </Typography>
           </Box>
 
@@ -385,12 +385,12 @@ const POSTerminal = () => {
                 value={cashTendered}
                 onChange={(e) => setCashTendered(e.target.value)}
                 InputProps={{
-                  startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>
+                  startAdornment: <Typography sx={{ mr: 1 }}>KSh</Typography>
                 }}
               />
               {change > 0 && (
                 <Alert severity="info" sx={{ mt: 2 }}>
-                  Change: ${change.toFixed(2)}
+                  Change: KSh {change.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                 </Alert>
               )}
             </Box>

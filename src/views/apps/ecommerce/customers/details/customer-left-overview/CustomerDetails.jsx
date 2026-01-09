@@ -61,7 +61,7 @@ const CustomerDetails = ({ customerData, customerOrders = [] }) => {
                 <i className='tabler-currency-dollar' />
               </CustomAvatar>
               <div>
-                <Typography variant='h5'>${totalSpent.toFixed(2)}</Typography>
+                <Typography variant='h5'>KSh {totalSpent.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</Typography>
                 <Typography>Spent</Typography>
               </div>
             </div>

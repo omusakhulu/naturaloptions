@@ -59,7 +59,7 @@ async function getProductsFromDatabase() {
         category: categoryName, // This is a string from getValidCategory()
         stock: product.stockStatus === 'instock',
         sku: product.sku || '',
-        price: product.price ? `$${product.price}` : '$0.00',
+        price: product.price ? `KSh ${parseFloat(product.price).toLocaleString('en-KE', { minimumFractionDigits: 2 })}` : 'KSh 0.00',
         qty: product.stockQuantity || 0,
         status: product.status === 'publish' ? 'Published' : 'Inactive',
         rating: product.rating || 4.0,
@@ -194,7 +194,7 @@ async function getWooCommerceProducts() {
 
       // Keep status from Woo mapping; normalize to Published/Inactive
       status: product.status === 'Published' ? 'Published' : 'Inactive',
-      price: product.price ? `$${product.price}` : '$0.00',
+      price: product.price ? `KSh ${parseFloat(product.price).toLocaleString('en-KE', { minimumFractionDigits: 2 })}` : 'KSh 0.00',
       rating: product.rating || 4.0,
       _cachedAt: Date.now()
     }))

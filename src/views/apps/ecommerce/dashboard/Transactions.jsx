@@ -11,7 +11,7 @@ import classnames from 'classnames'
 import OptionMenu from '@core/components/option-menu'
 import CustomAvatar from '@core/components/mui/Avatar'
 
-const toMoney = v => `${Number.parseFloat(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+const toMoney = v => `KSh ${Number.parseFloat(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const Transactions = ({ transactions = [] }) => {
   return (
@@ -23,21 +23,21 @@ const Transactions = ({ transactions = [] }) => {
       />
       <CardContent className='flex grow gap-y-[18px] lg:gap-y-5 flex-col justify-between max-sm:gap-5'>
         {transactions.map((item, index) => (
-          <div key={index} className='flex items-center gap-4'>
-            <CustomAvatar skin='light' variant='rounded' color={item.avatarColor} size={34}>
-              <i className={classnames(item.avatarIcon, 'text-[22px]')} />
+          <div key={index} className='flex items-center gap-3 lg:gap-4'>
+            <CustomAvatar variant='rounded' skin='light' color={item.avatarColor} size={42}>
+              <i className={classnames(item.avatarIcon, 'text-[26px]')} />
             </CustomAvatar>
-            <div className='flex flex-wrap justify-between items-center gap-x-4 gap-y-1 is-full'>
-              <div className='flex flex-col'>
-                <Typography className='font-medium' color='text.primary'>
-                  {item.title}
+            <div className='flex justify-between items-center is-full flex-wrap gap-x-4 gap-y-1'>
+              <div className='flex flex-col gap-0.5'>
+                <Typography variant='h6'>{item.title}</Typography>
+                <Typography variant='body2' color='text.disabled'>
+                  {item.subtitle}
                 </Typography>
-                <Typography variant='body2'>{item.subtitle}</Typography>
               </div>
               <Typography
                 variant='h6'
                 color={`${item.amount < 0 ? 'error' : 'success'}.main`}
-              >{`${item.amount < 0 ? '-' : '+'}$${toMoney(Math.abs(item.amount))}`}</Typography>
+              >{`${item.amount < 0 ? '-' : '+'}KSh ${Number.parseFloat(Math.abs(item.amount) || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</Typography>
             </div>
           </div>
         ))}

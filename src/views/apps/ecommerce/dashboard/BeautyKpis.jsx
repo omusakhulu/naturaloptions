@@ -33,19 +33,19 @@ export default function BeautyKpis({
   return (
     <Grid container spacing={4}>
       <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-        <KpiCard icon='currency-dollar' label='Net Sales' value={`$${fmt(Math.round(netSales))}`} color='success' />
+        <KpiCard icon='currency-dollar' label='Net Sales' value={`KSh ${fmt(Math.round(netSales))}`} color='success' />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-        <KpiCard icon='chart-line' label='Net Profit' value={`$${fmt(Math.round(netProfit))}`} color='info' />
+        <KpiCard icon='chart-line' label='Net Profit' value={`KSh ${fmt(Math.round(netProfit))}`} color='info' />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-        <KpiCard icon='arrow-back-up' label='Sales Returns' value={`$${fmt(Math.round(salesReturns))}`} color='warning' />
+        <KpiCard icon='arrow-back-up' label='Sales Returns' value={`KSh ${fmt(Math.round(salesReturns))}`} color='warning' />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-        <KpiCard icon='rotate-2' label='Purchase Returns' value={`$${fmt(Math.round(purchaseReturns))}`} color='secondary' />
+        <KpiCard icon='rotate-2' label='Purchase Returns' value={`KSh ${fmt(Math.round(purchaseReturns))}`} color='secondary' />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
-        <KpiCard icon='receipt-2' label='Expenses' value={`$${fmt(Math.round(expenses))}`} color='error' />
+        <KpiCard icon='receipt-2' label='Expenses' value={`KSh ${fmt(Math.round(expenses))}`} color='error' />
       </Grid>
     </Grid>
   )
