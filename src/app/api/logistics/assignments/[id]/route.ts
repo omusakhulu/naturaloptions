@@ -4,11 +4,12 @@ import prisma from '@/lib/prisma'
 // GET /api/logistics/assignments/[id] - Get single assignment
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const assignment = await prisma.deliveryAssignment.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         driver: true,
         vehicle: true,
@@ -39,9 +40,10 @@ export async function GET(
 // PUT /api/logistics/assignments/[id] - Update assignment
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const {
       driverId,
@@ -58,7 +60,7 @@ export async function PUT(
 
     // Get the current assignment to check old driver/vehicle
     const currentAssignment = await prisma.deliveryAssignment.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!currentAssignment) {
@@ -109,7 +111,7 @@ export async function PUT(
     }
 
     const assignment = await prisma.deliveryAssignment.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         driverId,
         vehicleId,
@@ -146,12 +148,13 @@ export async function PUT(
 // DELETE /api/logistics/assignments/[id] - Delete assignment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Get the assignment to free up driver and vehicle
     const assignment = await prisma.deliveryAssignment.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (assignment) {
@@ -168,7 +171,7 @@ export async function DELETE(
     }
 
     await prisma.deliveryAssignment.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({

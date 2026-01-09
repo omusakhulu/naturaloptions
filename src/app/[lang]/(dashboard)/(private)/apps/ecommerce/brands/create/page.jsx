@@ -6,7 +6,8 @@ import Grid from '@mui/material/Grid'
 
 import { getDictionary } from '@/utils/getDictionary'
 
-export default async function Page({ params: { lang } }) {
+export default async function Page({ params }) {
+  const { lang } = await params
   const dictionary = await getDictionary(lang)
 
   return (

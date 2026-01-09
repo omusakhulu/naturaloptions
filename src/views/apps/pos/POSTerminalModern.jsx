@@ -1639,7 +1639,6 @@ return
                     placeholder='0.00'
                   />
                 </div>
-              </div>
 
                 {/* Quick Amount Buttons */}
                 <div className='mt-3 grid grid-cols-5 gap-2'>
