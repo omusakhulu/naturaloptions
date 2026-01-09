@@ -17,6 +17,11 @@ const mockSession = {
 }
 
 export default async function AuthGuard({ children, locale }) {
-  // Auto-login with mock session
+  const session = await getServerSession()
+
+  if (!session) {
+    return <AuthRedirect lang={locale} />
+  }
+
   return <>{children}</>
 }

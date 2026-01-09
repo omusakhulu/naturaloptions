@@ -212,48 +212,7 @@ async function getWooCommerceProducts() {
       stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
     })
 
-    // Return mock data for development if no cache is available
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('Using mock data due to API error and no cache available')
-
-      return [
-        {
-          id: 1,
-          productName: 'Sample Product',
-          productBrand: 'Sample Brand',
-          image: 'https://via.placeholder.com/38',
-          category: 'Electronics',
-          stock: true,
-          sku: 'SAMPLE-001',
-          price: '$29.99',
-          qty: 10,
-          status: 'Published',
-          rating: 4.5,
-          images: [{ src: 'https://via.placeholder.com/38' }],
-          stock_status: 'instock',
-          stock_quantity: 10,
-          categories: [{ name: 'Electronics' }]
-        },
-        {
-          id: 2,
-          productName: 'Another Product',
-          productBrand: 'Test Brand',
-          image: 'https://via.placeholder.com/38',
-          category: 'Shoes',
-          stock: false,
-          sku: 'SAMPLE-002',
-          price: '$49.99',
-          qty: 0,
-          status: 'Inactive',
-          rating: 4.0,
-          images: [{ src: 'https://via.placeholder.com/38' }],
-          stock_status: 'outofstock',
-          stock_quantity: 0,
-          categories: [{ name: 'Shoes' }]
-        }
-      ]
-    }
-
+    // Return empty array instead of mock data
     return []
   }
 }

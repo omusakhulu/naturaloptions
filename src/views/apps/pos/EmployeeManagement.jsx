@@ -35,7 +35,8 @@ import {
   ListItemText,
   ListItemAvatar,
   Divider,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material'
 import {
   Add,
@@ -56,6 +57,9 @@ const EmployeeManagement = () => {
   const [activeTab, setActiveTab] = useState(0)
   const [employees, setEmployees] = useState([])
   const [timeClockEntries, setTimeClockEntries] = useState([])
+  const [locations, setLocations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [formData, setFormData] = useState({
@@ -69,114 +73,36 @@ const EmployeeManagement = () => {
     pin: ''
   })
 
-  // Sample employee data
-  const sampleEmployees = [
-    {
-      id: '1',
-      firstName: 'John',
-      lastName: 'Smith',
-      email: 'john.smith@naturaloptions.com',
-      phone: '(555) 123-4567',
-      role: 'MANAGER',
-      hourlyRate: 18.50,
-      locationId: '1',
-      locationName: 'Main Store',
-      pin: '1234',
-      active: true,
-      startDate: '2025-01-15',
-      avatar: null,
-      totalHoursThisWeek: 38.5,
-      status: 'clocked_out'
-    },
-    {
-      id: '2',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.j@naturaloptions.com',
-      phone: '(555) 234-5678',
-      role: 'CASHIER',
-      hourlyRate: 15.00,
-      locationId: '1',
-      locationName: 'Main Store',
-      pin: '2345',
-      active: true,
-      startDate: '2025-02-01',
-      avatar: null,
-      totalHoursThisWeek: 32.0,
-      status: 'clocked_in'
-    },
-    {
-      id: '3',
-      firstName: 'Mike',
-      lastName: 'Davis',
-      email: 'mike.davis@naturaloptions.com',
-      phone: '(555) 345-6789',
-      role: 'SALES',
-      hourlyRate: 16.25,
-      locationId: '2',
-      locationName: 'North Branch',
-      pin: '3456',
-      active: true,
-      startDate: '2025-03-10',
-      avatar: null,
-      totalHoursThisWeek: 40.0,
-      status: 'on_break'
-    }
-  ]
-
-  // Sample time clock entries
-  const sampleTimeEntries = [
-    {
-      id: '1',
-      employeeId: '1',
-      employeeName: 'John Smith',
-      clockIn: '2025-11-06T09:00:00',
-      clockOut: '2025-11-06T17:30:00',
-      breakMinutes: 60,
-      hoursWorked: 7.5,
-      status: 'CLOCKED_OUT',
-      locationId: '1'
-    },
-    {
-      id: '2',
-      employeeId: '2',
-      employeeName: 'Sarah Johnson',
-      clockIn: '2025-11-06T10:00:00',
-      clockOut: null,
-      breakMinutes: 30,
-      hoursWorked: null,
-      status: 'CLOCKED_IN',
-      locationId: '1'
-    },
-    {
-      id: '3',
-      employeeId: '3',
-      employeeName: 'Mike Davis',
-      clockIn: '2025-11-06T08:30:00',
-      clockOut: null,
-      breakMinutes: 45,
-      hoursWorked: null,
-      status: 'ON_BREAK',
-      locationId: '2'
-    }
-  ]
-
-  const locations = [
-    { id: '1', name: 'Main Store' },
-    { id: '2', name: 'North Branch' },
-    { id: '3', name: 'Downtown Location' }
-  ]
-
-  const userRoles = [
-    { value: 'CASHIER', label: 'Cashier', color: 'primary' },
-    { value: 'SALES', label: 'Sales Associate', color: 'info' },
-    { value: 'MANAGER', label: 'Manager', color: 'success' },
-    { value: 'ADMIN', label: 'Administrator', color: 'error' }
-  ]
-
   useEffect(() => {
-    setEmployees(sampleEmployees)
-    setTimeClockEntries(sampleTimeEntries)
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [usersRes, locationsRes] = await Promise.all([
+          fetch('/api/users'),
+          fetch('/api/locations')
+        ])
+        
+        const usersData = await usersRes.json()
+        const locationsData = await locationsRes.json()
+        
+        if (Array.isArray(usersData)) {
+          setEmployees(usersData)
+        }
+        
+        if (locationsData.success && Array.isArray(locationsData.locations)) {
+          setLocations(locationsData.locations)
+        } else if (Array.isArray(locationsData)) {
+          setLocations(locationsData)
+        }
+      } catch (err) {
+        console.error('Error fetching employee data:', err)
+        setError('Failed to load employee records')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [])
 
   const formatCurrency = (amount) => {

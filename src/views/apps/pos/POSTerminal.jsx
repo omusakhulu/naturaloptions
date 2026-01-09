@@ -25,7 +25,8 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material'
 import {
   Add,
@@ -50,21 +51,33 @@ const POSTerminal = () => {
   // UI state
   const [searchQuery, setSearchQuery] = useState('')
   const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [paymentDialog, setPaymentDialog] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [cashTendered, setCashTendered] = useState('')
   const [change, setChange] = useState(0)
 
-  // Sample products - Replace with real data
-  const sampleProducts = [
-    { id: '1', name: 'Coffee', price: 4.99, sku: 'COF001', image: '/images/coffee.jpg' },
-    { id: '2', name: 'Croissant', price: 3.50, sku: 'CRO001', image: '/images/croissant.jpg' },
-    { id: '3', name: 'Orange Juice', price: 5.99, sku: 'OJ001', image: '/images/oj.jpg' },
-    { id: '4', name: 'Sandwich', price: 8.99, sku: 'SAN001', image: '/images/sandwich.jpg' }
-  ]
-
   useEffect(() => {
-    setProducts(sampleProducts)
+    const fetchProducts = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch('/api/pos/products')
+        const data = await response.json()
+        if (data.success) {
+          setProducts(data.products)
+        } else {
+          setError(data.error || 'Failed to fetch products')
+        }
+      } catch (err) {
+        setError('Failed to connect to the database')
+        console.error('Error fetching products:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
   }, [])
 
   useEffect(() => {
@@ -182,48 +195,68 @@ const POSTerminal = () => {
           </Box>
 
           {/* Product Grid */}
-          <Grid container spacing={2}>
-            {filteredProducts.map((product) => (
-              <Grid item xs={6} sm={4} md={3} key={product.id}>
-                <Card
-                  sx={{
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                    '&:hover': { transform: 'scale(1.05)' }
-                  }}
-                  onClick={() => addToCart(product)}
-                >
-                  <CardContent sx={{ p: 2, textAlign: 'center' }}>
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: 80,
-                        bgcolor: 'grey.200',
-                        borderRadius: 1,
-                        mb: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        Image
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          ) : (
+            <Grid container spacing={2}>
+              {filteredProducts.map((product) => (
+                <Grid item xs={6} sm={4} md={3} key={product.id}>
+                  <Card
+                    sx={{
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s',
+                      '&:hover': { transform: 'scale(1.05)' }
+                    }}
+                    onClick={() => addToCart(product)}
+                  >
+                    <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          width: '100%',
+                          height: 80,
+                          bgcolor: 'grey.200',
+                          borderRadius: 1,
+                          mb: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {product.image ? (
+                          <Box
+                            component="img"
+                            src={product.image}
+                            alt={product.name}
+                            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            No Image
+                          </Typography>
+                        )}
+                      </Box>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                        {product.name}
                       </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                      {product.name}
-                    </Typography>
-                    <Typography variant="h6" color="primary">
-                      ${product.price.toFixed(2)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {product.sku}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+                      <Typography variant="h6" color="primary">
+                        ${product.price.toFixed(2)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {product.sku}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
         </Grid>
 
         {/* Cart Section */}

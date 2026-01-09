@@ -10,6 +10,12 @@ import { ProductsService } from './services/ProductsService'
 import { OrdersService } from './services/OrdersService'
 import { CategoriesService } from './services/CategoriesService'
 import { AnalyticsService } from './services/AnalyticsService'
+import { CouponsService } from './services/CouponsService'
+import { TaxesService } from './services/TaxesService'
+import { RefundsService } from './services/RefundsService'
+import { MetadataService } from './services/MetadataService'
+import { OrderNotesService } from './services/OrderNotesService'
+import { SettingsService } from './services/SettingsService'
 
 // Force IPv4 DNS resolution globally at module load time
 const dns = require('dns')
@@ -30,6 +36,12 @@ export class WooRentalBridge {
   public readonly orders: OrdersService
   public readonly categories: CategoriesService
   public readonly analytics: AnalyticsService
+  public readonly coupons: CouponsService
+  public readonly taxes: TaxesService
+  public readonly refunds: RefundsService
+  public readonly metadata: MetadataService
+  public readonly orderNotes: OrderNotesService
+  public readonly settings: SettingsService
 
   constructor(config: BridgeConfig) {
     if (!config.storeUrl || !config.consumerKey || !config.consumerSecret) {
@@ -111,6 +123,12 @@ this.api = new WooCommerceRestApi({
     this.orders = new OrdersService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
     this.categories = new CategoriesService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
     this.analytics = new AnalyticsService(this.api)
+    this.coupons = new CouponsService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
+    this.taxes = new TaxesService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
+    this.refunds = new RefundsService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
+    this.metadata = new MetadataService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
+    this.orderNotes = new OrderNotesService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
+    this.settings = new SettingsService(config.storeUrl, config.consumerKey, config.consumerSecret, config.timeout || 60000)
 
     console.log(`WooRentalBridge connected to: ${config.storeUrl}`)
   }

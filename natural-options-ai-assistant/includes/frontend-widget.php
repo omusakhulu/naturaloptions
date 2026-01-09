@@ -17,6 +17,8 @@ function no_ai_enqueue_scripts() {
     $options = get_option('no_ai_settings');
     wp_localize_script('no-ai-script', 'noAiSettings', array(
         'apiUrl' => esc_url_raw(rest_url('no-ai/v1/chat')),
+        'cartUrl' => esc_url_raw(rest_url('no-ai/v1/add-to-cart')),
+        'quoteUrl' => esc_url_raw(rest_url('no-ai/v1/request-quote')),
         'assistantName' => isset($options['assistant_name']) ? esc_attr($options['assistant_name']) : 'Natural Options Assistant',
     ));
 }
@@ -40,6 +42,9 @@ function no_ai_render_widget() {
         </div>
         <form id="no-ai-input-area">
             <input type="text" id="no-ai-input" placeholder="Ask something..." autocomplete="off">
+            <button type="button" id="no-ai-mic" title="Voice Search">
+                <span class="dashicons dashicons-microphone"></span>
+            </button>
             <button type="submit" id="no-ai-send">Send</button>
         </form>
     </div>

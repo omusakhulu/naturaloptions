@@ -83,6 +83,35 @@
     border-radius: 5px;
     padding: 8px;
     margin-right: 5px;
+    min-width: 0;
+}
+
+#no-ai-mic {
+    background: none;
+    border: none;
+    color: #2271b1;
+    cursor: pointer;
+    padding: 5px;
+    margin-right: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+#no-ai-mic:hover {
+    color: #135e96;
+}
+
+#no-ai-mic.no-ai-listening {
+    color: #d63638;
+    animation: no-ai-pulse 1.5s infinite;
+}
+
+@keyframes no-ai-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 #no-ai-send {

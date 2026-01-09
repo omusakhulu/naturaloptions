@@ -43,112 +43,94 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 
 const FinancialReports = () => {
   const [activeTab, setActiveTab] = useState(0)
+  const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState({
-    startDate: new Date(2025, 0, 1), // Jan 1, 2025
-    endDate: new Date(2025, 10, 6)   // Nov 6, 2025
+    startDate: new Date(new Date().getFullYear(), 0, 1), // Jan 1 of current year
+    endDate: new Date()
   })
   const [reportPeriod, setReportPeriod] = useState('monthly')
 
-  // Sample financial data
-  const [profitLossData, setProfitLossData] = useState([
-    {
-      category: 'Revenue',
-      accounts: [
-        { name: 'Product Sales', amount: 100000.00, percentage: 79.8 },
-        { name: 'Service Revenue', amount: 25430.50, percentage: 20.2 }
-      ],
-      total: 125430.50,
-      type: 'revenue'
-    },
-    {
-      category: 'Cost of Goods Sold',
-      accounts: [
-        { name: 'Cost of Goods Sold', amount: 65000.00, percentage: 100 }
-      ],
-      total: 65000.00,
-      type: 'expense'
-    },
-    {
-      category: 'Operating Expenses',
-      accounts: [
-        { name: 'Rent Expense', amount: 7200.00, percentage: 51.8 },
-        { name: 'Marketing', amount: 4700.00, percentage: 33.8 },
-        { name: 'Utilities', amount: 1200.25, percentage: 8.6 },
-        { name: 'Office Supplies', amount: 820.00, percentage: 5.9 }
-      ],
-      total: 13920.25,
-      type: 'expense'
-    }
-  ])
-
+  const [profitLossData, setProfitLossData] = useState([])
   const [balanceSheetData, setBalanceSheetData] = useState({
-    assets: [
-      {
-        category: 'Current Assets',
-        accounts: [
-          { name: 'Cash and Cash Equivalents', amount: 32150.80 },
-          { name: 'Accounts Receivable', amount: 15420.75 },
-          { name: 'Inventory', amount: 45200.50 }
-        ],
-        total: 92772.05
-      },
-      {
-        category: 'Fixed Assets',
-        accounts: [
-          { name: 'Equipment', amount: 25000.00 },
-          { name: 'Furniture & Fixtures', amount: 8500.00 }
-        ],
-        total: 33500.00
-      }
-    ],
-    liabilities: [
-      {
-        category: 'Current Liabilities',
-        accounts: [
-          { name: 'Accounts Payable', amount: 8930.50 },
-          { name: 'Accrued Expenses', amount: 2150.00 }
-        ],
-        total: 11080.50
-      }
-    ],
-    equity: [
-      {
-        category: 'Owner\'s Equity',
-        accounts: [
-          { name: 'Retained Earnings', amount: 68681.30 },
-          { name: 'Current Year Earnings', amount: 46510.25 }
-        ],
-        total: 115191.55
-      }
-    ]
+    assets: [],
+    liabilities: [],
+    equity: 0
+  })
+  const [cashFlowData, setCashFlowData] = useState({
+    series: [],
+    totals: { inflow: 0, outflow: 0, net: 0 }
   })
 
-  const [cashFlowData, setCashFlowData] = useState([
-    {
-      category: 'Operating Activities',
-      items: [
-        { name: 'Net Income', amount: 46510.25 },
-        { name: 'Accounts Receivable Changes', amount: -2500.00 },
-        { name: 'Inventory Changes', amount: -5000.00 },
-        { name: 'Accounts Payable Changes', amount: 1200.00 }
-      ],
-      total: 40210.25
-    },
-    {
-      category: 'Investing Activities',
-      items: [
-        { name: 'Equipment Purchase', amount: -5000.00 }
-      ],
-      total: -5000.00
-    },
-    {
-      category: 'Financing Activities',
-      items: [
-        { name: 'Owner Contributions', amount: 10000.00 }
-      ],
-      total: 10000.00
+  useEffect(() => {
+    const fetchReports = async () => {
+      setLoading(true)
+      try {
+        const after = dateRange.startDate.toISOString().split('T')[0]
+        const before = dateRange.endDate.toISOString().split('T')[0]
+
+        const [bsRes, cfRes] = await Promise.all([
+          fetch('/api/accounting/balance-sheet'),
+          fetch(`/api/accounting/cash-flow?after=${after}&before=${before}`)
+        ])
+
+        const bsData = await bsRes.json()
+        const cfData = await cfRes.json()
+
+        setBalanceSheetData({
+          assets: [
+            {
+              category: 'Current Assets',
+              accounts: [
+                { name: 'Cash and Cash Equivalents', amount: bsData.assets?.cashBank || 0 },
+                { name: 'Accounts Receivable', amount: bsData.assets?.accountsReceivable || 0 },
+                { name: 'Inventory', amount: bsData.assets?.inventory || 0 }
+              ],
+              total: bsData.assets?.total || 0
+            }
+          ],
+          liabilities: [
+            {
+              category: 'Current Liabilities',
+              accounts: [
+                { name: 'Accounts Payable', amount: bsData.liabilities?.accountsPayable || 0 }
+              ],
+              total: bsData.liabilities?.total || 0
+            }
+          ],
+          equity: bsData.equity || 0
+        })
+
+        setCashFlowData(cfData)
+
+        // For Profit & Loss, we'll derive it from Cash Flow inflows/outflows for now
+        // In a real scenario, this should come from a dedicated P&L API
+        setProfitLossData([
+          {
+            category: 'Revenue',
+            accounts: [
+              { name: 'Total Revenue', amount: cfData.totals?.inflow || 0, percentage: 100 }
+            ],
+            total: cfData.totals?.inflow || 0,
+            type: 'revenue'
+          },
+          {
+            category: 'Expenses',
+            accounts: [
+              { name: 'Total Expenses', amount: cfData.totals?.outflow || 0, percentage: 100 }
+            ],
+            total: cfData.totals?.outflow || 0,
+            type: 'expense'
+          }
+        ])
+      } catch (err) {
+        console.error('Error fetching financial reports:', err)
+      } finally {
+        setLoading(false)
+      }
     }
-  ])
+
+    fetchReports()
+  }, [dateRange])
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -158,13 +140,14 @@ const FinancialReports = () => {
   }
 
   const calculateGrossProfit = () => {
-    const revenue = profitLossData.find(item => item.category === 'Revenue')?.total || 0
-    const cogs = profitLossData.find(item => item.category === 'Cost of Goods Sold')?.total || 0
-    return revenue - cogs
+    const revenue = profitLossData.find(item => item.type === 'revenue')?.total || 0
+    return revenue
   }
 
   const calculateNetIncome = () => {
-    return calculateGrossProfit() - (profitLossData.find(item => item.category === 'Operating Expenses')?.total || 0)
+    const revenue = profitLossData.find(item => item.type === 'revenue')?.total || 0
+    const expenses = profitLossData.find(item => item.type === 'expense')?.total || 0
+    return revenue - expenses
   }
 
   const ProfitLossReport = () => (
@@ -229,7 +212,7 @@ const FinancialReports = () => {
   const BalanceSheetReport = () => {
     const totalAssets = balanceSheetData.assets.reduce((sum, cat) => sum + cat.total, 0)
     const totalLiabilities = balanceSheetData.liabilities.reduce((sum, cat) => sum + cat.total, 0)
-    const totalEquity = balanceSheetData.equity.reduce((sum, cat) => sum + cat.total, 0)
+    const totalEquity = balanceSheetData.equity
 
     return (
       <Grid container spacing={3}>
@@ -292,23 +275,10 @@ const FinancialReports = () => {
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>Equity</Typography>
-            {balanceSheetData.equity.map((category) => (
-              <Box key={category.category} sx={{ mb: 2 }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  {category.category}
-                </Typography>
-                {category.accounts.map((account, idx) => (
-                  <Box key={`equity-${category.category}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 2, mb: 0.5 }}>
-                    <Typography variant="body2">{account.name}</Typography>
-                    <Typography variant="body2">{formatCurrency(account.amount)}</Typography>
-                  </Box>
-                ))}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: 1, borderColor: 'divider', pt: 0.5 }}>
-                  <Typography variant="body2">Total {category.category}</Typography>
-                  <Typography variant="body2">{formatCurrency(category.total)}</Typography>
-                </Box>
-              </Box>
-            ))}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+              <Typography variant="body1">Owner's Equity</Typography>
+              <Typography variant="body1">{formatCurrency(totalEquity)}</Typography>
+            </Box>
             <Divider sx={{ my: 2 }} />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
               <Typography variant="h6">Total Equity</Typography>
@@ -328,7 +298,7 @@ const FinancialReports = () => {
   }
 
   const CashFlowReport = () => {
-    const netCashFlow = cashFlowData.reduce((sum, category) => sum + category.total, 0)
+    const netCashFlow = cashFlowData.totals?.net || 0
 
     return (
       <TableContainer component={Paper}>
@@ -340,26 +310,22 @@ const FinancialReports = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {cashFlowData.map((category) => (
-              <>
-                <TableRow key={category.category}>
-                  <TableCell sx={{ fontWeight: 'bold', bgcolor: 'grey.100' }}>
-                    {category.category}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: 'grey.100' }}>
-                    {formatCurrency(category.total)}
-                  </TableCell>
-                </TableRow>
-                {category.items.map((item, idx) => (
-                  <TableRow key={`${category.category}-${idx}`}>
-                    <TableCell sx={{ pl: 4 }}>{item.name}</TableCell>
-                    <TableCell align="right" sx={{ color: item.amount >= 0 ? 'success.main' : 'error.main' }}>
-                      {item.amount >= 0 ? '' : '('}{formatCurrency(item.amount)}{item.amount >= 0 ? '' : ')'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </>
-            ))}
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'grey.100' }}>
+                Total Cash Inflow
+              </TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: 'grey.100', color: 'success.main' }}>
+                {formatCurrency(cashFlowData.totals?.inflow || 0)}
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'grey.100' }}>
+                Total Cash Outflow
+              </TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: 'grey.100', color: 'error.main' }}>
+                ({formatCurrency(cashFlowData.totals?.outflow || 0)})
+              </TableCell>
+            </TableRow>
             <TableRow>
               <TableCell sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Net Cash Flow</TableCell>
               <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: netCashFlow >= 0 ? 'success.main' : 'error.main' }}>

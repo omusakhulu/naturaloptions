@@ -1,65 +1,12 @@
-import dns from 'dns'
-import http from 'http'
-import https from 'https'
-
-import axios from 'axios'
-import type { AxiosInstance } from 'axios'
-
+import { AxiosInstance } from 'axios'
 import { ApiError, ResourceNotFoundError, WooRentalBridgeError } from '../errors'
+import { createAxiosClient } from '../utils/axios-helper'
 
 export class ProductsService {
   private axiosClient: AxiosInstance
 
   constructor(storeUrl: string, consumerKey: string, consumerSecret: string, timeout: number = 60000) {
-    // Create custom HTTP(S) agents with IPv4 enforcement
-    const ipv4Lookup = (hostname: string, options: any, callback: any) => {
-      dns.lookup(hostname, { family: 4, hints: dns.ADDRCONFIG }, (err: any, address: string, family: number) => {
-        if (err) {
-          console.warn(`IPv4 lookup failed for ${hostname}, falling back to default:`, err.message)
-
-          return dns.lookup(hostname, options, callback)
-        }
-
-        callback(err, address, family)
-      })
-    }
-
-    const httpAgent = new http.Agent({
-      keepAlive: true,
-      keepAliveMsecs: 30000,
-      maxSockets: 5,
-      maxFreeSockets: 2,
-      timeout: 25000,
-      lookup: ipv4Lookup,
-      family: 4
-    } as any)
-
-    const httpsAgent = new https.Agent({
-      keepAlive: true,
-      keepAliveMsecs: 30000,
-      maxSockets: 5,
-      maxFreeSockets: 2,
-      timeout: 25000,
-      rejectUnauthorized: process.env.NODE_ENV === 'production',
-      lookup: ipv4Lookup,
-      family: 4
-    } as any)
-
-    // Create axios instance with proper base URL and agents
-    this.axiosClient = axios.create({
-      baseURL: `${storeUrl.replace(/\/$/, '')}/wp-json/wc/v3`,
-      timeout: timeout,
-      httpAgent,
-      httpsAgent,
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'WooRentalBridge/1.0'
-      },
-      auth: {
-        username: consumerKey,
-        password: consumerSecret
-      }
-    })
+    this.axiosClient = createAxiosClient(storeUrl, consumerKey, consumerSecret, timeout)
   }
 
   /**
@@ -137,6 +84,19 @@ export class ProductsService {
         throw new ResourceNotFoundError('Product', id)
       }
 
+      throw this.handleError(error)
+    }
+  }
+
+  /**
+   * Batch update products
+   * @param data { create: [], update: [], delete: [] }
+   */
+  async batchUpdateProducts(data: { create?: any[]; update?: any[]; delete?: number[] }) {
+    try {
+      const response = await this.axiosClient.post('products/batch', data)
+      return response.data
+    } catch (error: any) {
       throw this.handleError(error)
     }
   }

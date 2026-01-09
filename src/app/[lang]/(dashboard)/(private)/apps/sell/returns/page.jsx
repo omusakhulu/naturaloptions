@@ -4,34 +4,46 @@ import { useMemo, useState } from 'react'
 export default function SellReturnsListPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [entries, setEntries] = useState('All')
-  const [showColMenu, setShowColMenu] = useState(false)
+  const [entries, setEntries] = useState('10')
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const [columns, setColumns] = useState([
-    { key: 'date', label: 'Date', visible: true },
-    { key: 'invoiceNo', label: 'Invoice No.', visible: true },
-    { key: 'parentSale', label: 'Parent Sale #', visible: true },
-    { key: 'customer', label: 'Customer name', visible: true },
-    { key: 'location', label: 'Location', visible: true },
-    { key: 'paymentStatus', label: 'Payment Status', visible: true },
-    { key: 'totalAmount', label: 'Total amount', visible: true },
-    { key: 'paymentDue', label: 'Payment due', visible: true },
-    { key: 'action', label: 'Action', visible: true }
-  ])
-
-  // Local sample rows to visualize layout
-  const [rows] = useState([
-    { date:'10/25/2025 7:18', invoiceNo:'CN2025/0024', parentSale:'2986', customer:'NATURAL OPTIONS', location:'NATURAL OPTIONS', paymentStatus:'Due', totalAmount:500, paymentDue:500 },
-    { date:'09/05/2025 18:59', invoiceNo:'CN2025/0023', parentSale:'2599', customer:'NATURAL OPTIONS', location:'NATURAL OPTIONS', paymentStatus:'Due', totalAmount:5600, paymentDue:5600 },
-    { date:'09/02/2025 15:47', invoiceNo:'CN2025/0022', parentSale:'2140', customer:'NATURAL OPTIONS', location:'NATURAL OPTIONS', paymentStatus:'Due', totalAmount:1660, paymentDue:1660 }
-  ])
+  useEffect(() => {
+    const fetchReturns = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch('/api/returns/sales')
+        const data = await response.json()
+        if (data.items) {
+          setRows(data.items.map(item => ({
+            id: item.id,
+            date: new Date(item.date).toLocaleString(),
+            invoiceNo: `RET-${item.id.slice(0, 8)}`,
+            parentSale: item.orderId,
+            customer: 'N/A', // Would need join with Order/Customer
+            location: 'Main Store',
+            paymentStatus: 'Refunded',
+            totalAmount: parseFloat(item.amount),
+            paymentDue: 0
+          })))
+        }
+      } catch (err) {
+        console.error('Error fetching returns:', err)
+        setError('Failed to load returns')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchReturns()
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     let list = rows
     if (q) {
       list = rows.filter(r =>
-        ['date','invoiceNo','parentSale','customer','location','paymentStatus']
+        ['date', 'invoiceNo', 'parentSale', 'customer', 'location', 'paymentStatus']
           .some(k => String(r[k] || '').toLowerCase().includes(q))
       )
     }
@@ -42,17 +54,16 @@ export default function SellReturnsListPage() {
     return list
   }, [rows, search, entries])
 
-  const visibleCols = columns.filter(c => c.visible)
-
-  const totals = useMemo(() => {
-    const sum = key => filtered.reduce((s, r) => s + (parseFloat(r[key] ?? 0) || 0), 0)
-    const dueCount = filtered.filter(r => r.paymentStatus === 'Due').length
-    return {
-      totalAmount: sum('totalAmount'),
-      paymentDue: sum('paymentDue'),
-      dueCount
-    }
-  }, [filtered])
+  const visibleCols = [
+    { key: 'date', label: 'Date' },
+    { key: 'invoiceNo', label: 'Invoice No.' },
+    { key: 'parentSale', label: 'Parent Sale #' },
+    { key: 'customer', label: 'Customer name' },
+    { key: 'location', label: 'Location' },
+    { key: 'paymentStatus', label: 'Payment Status' },
+    { key: 'totalAmount', label: 'Total amount' },
+    { key: 'action', label: 'Action' }
+  ]
 
   const toggleColumn = key => {
     setColumns(prev => prev.map(c => (c.key === key ? { ...c, visible: !c.visible } : c)))

@@ -5,16 +5,9 @@ import { useMemo, useState } from 'react'
 export default function DiscountsPage() {
   // Sample products (replace with real data later)
   const [productSearch, setProductSearch] = useState('')
-  const [products] = useState([
-    { id: 1, sku: 'SKU-001', name: 'Non Woven Bag', price: 30 },
-    { id: 2, sku: 'SKU-002', name: 'KAGI Lotion', price: 220 },
-    { id: 3, sku: 'SKU-003', name: 'Kids Analgesic', price: 350 },
-    { id: 4, sku: 'SKU-004', name: 'Youth Clock T-Shirt', price: 1200 },
-    { id: 5, sku: 'SKU-005', name: 'Beauty Hand Cream 50ml', price: 450 },
-    { id: 6, sku: 'SKU-006', name: 'Aloe Vera Gel 100ml', price: 680 },
-    { id: 7, sku: 'SKU-007', name: 'Face Mask Pack', price: 260 },
-    { id: 8, sku: 'SKU-008', name: 'Hair Serum 30ml', price: 1500 }
-  ])
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [selectedIds, setSelectedIds] = useState([])
   const allVisibleSelected = useMemo(() => {
@@ -77,25 +70,88 @@ export default function DiscountsPage() {
     return 'Active'
   }
 
-  const applyDiscount = () => {
-    if (!canApply) return
-    const id = Date.now()
-    const label = campaignName?.trim() || `Bulk Discount #${activeDiscounts.length + 1}`
-    const d = {
-      id,
-      name: label,
-      type: discountType,
-      value: parseFloat(discountValue),
-      startAt,
-      endAt,
-      products: selectedIds.slice(0),
-      count: selectedIds.length,
-      status: statusOf(startAt, endAt)
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [productsRes, couponsRes] = await Promise.all([
+          fetch('/api/pos/products'),
+          fetch('/api/coupons')
+        ])
+        const productsData = await productsRes.json()
+        const couponsData = await couponsRes.json()
+
+        if (productsData.success) {
+          setProducts(productsData.products)
+        }
+        if (couponsData.success) {
+          setActiveDiscounts(couponsData.coupons.map(c => ({
+            id: c.id,
+            wooId: c.wooId,
+            name: c.code,
+            type: c.discountType === 'percent' ? 'percentage' : 'fixed',
+            value: parseFloat(c.amount),
+            startAt: c.dateCreated,
+            endAt: c.expiryDate,
+            count: JSON.parse(c.productIds || '[]').length,
+            status: statusOf(c.dateCreated, c.expiryDate || new Date(2099, 1, 1))
+          })))
+        }
+      } catch (err) {
+        console.error('Error fetching discounts data:', err)
+        setError('Failed to load data')
+      } finally {
+        setLoading(false)
+      }
     }
-    setActiveDiscounts(prev => [d, ...prev])
-    // Reset only values; keep selection in case user wants to apply another
-    setCampaignName('')
-    setDiscountValue('')
+    fetchData()
+  }, [])
+
+  const applyDiscount = async () => {
+    if (!canApply) return
+    
+    setLoading(true)
+    try {
+      const couponData = {
+        code: campaignName || `bulk_${Date.now()}`,
+        discount_type: discountType === 'percentage' ? 'percent' : 'fixed_cart',
+        amount: discountValue,
+        date_expires: endAt,
+        product_ids: selectedIds,
+        individual_use: true
+      }
+
+      const res = await fetch('/api/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(couponData)
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        const newCoupon = data.coupon
+        setActiveDiscounts(prev => [{
+          id: newCoupon.id,
+          wooId: newCoupon.wooId,
+          name: newCoupon.code,
+          type: newCoupon.discountType === 'percent' ? 'percentage' : 'fixed',
+          value: parseFloat(newCoupon.amount),
+          startAt: newCoupon.dateCreated,
+          endAt: newCoupon.expiryDate,
+          count: JSON.parse(newCoupon.productIds || '[]').length,
+          status: statusOf(newCoupon.dateCreated, newCoupon.expiryDate || new Date(2099, 1, 1))
+        }, ...prev])
+        
+        setCampaignName('')
+        setDiscountValue('')
+        setSelectedIds([])
+      }
+    } catch (err) {
+      console.error('Error creating coupon:', err)
+      alert('Failed to create coupon')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const removeDiscount = id => setActiveDiscounts(prev => prev.filter(d => d.id !== id))

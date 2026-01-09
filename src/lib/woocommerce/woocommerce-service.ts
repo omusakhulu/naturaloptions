@@ -257,26 +257,142 @@ export class WooCommerceService {
   }
 
   /**
-   * List customers with pagination
+   * Create a coupon
    */
-  public async listCustomers(
-    params: {
-      per_page?: number
-      page?: number
-      orderby?: string
-      order?: string
-    } = {}
-  ): Promise<WooCommerceCustomer[]> {
-    const queryParams = new URLSearchParams({
-      per_page: String(params.per_page || 100),
-      page: String(params.page || 1),
-      orderby: params.orderby || 'id',
-      order: params.order || 'desc'
-    })
+  public async createCoupon(data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/coupons`
 
-    const path = `/wp-json/wc/v3/customers?${queryParams.toString()}`
+    return this.executeApiRequest(path, 'POST', data)
+  }
+
+  /**
+   * List coupons
+   */
+  public async listCoupons(params: Record<string, any> = {}): Promise<any[]> {
+    const queryParams = new URLSearchParams(params)
+    const path = `/wp-json/wc/v3/coupons?${queryParams.toString()}`
 
     return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * Get a single coupon by ID
+   */
+  public async getCoupon(id: number | string): Promise<any> {
+    const path = `/wp-json/wc/v3/coupons/${id}`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * Update a coupon
+   */
+  public async updateCoupon(id: number | string, data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/coupons/${id}`
+
+    return this.executeApiRequest(path, 'PUT', data)
+  }
+
+  /**
+   * Delete a coupon
+   */
+  public async deleteCoupon(id: number | string, force: boolean = true): Promise<any> {
+    const path = `/wp-json/wc/v3/coupons/${id}?force=${force}`
+
+    return this.executeApiRequest(path, 'DELETE')
+  }
+
+  /**
+   * Create an order refund
+   */
+  public async createRefund(orderId: number | string, data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/orders/${orderId}/refunds`
+
+    return this.executeApiRequest(path, 'POST', data)
+  }
+
+  /**
+   * List tax rates
+   */
+  public async listTaxRates(params: Record<string, any> = {}): Promise<any[]> {
+    const queryParams = new URLSearchParams(params)
+    const path = `/wp-json/wc/v3/taxes?${queryParams.toString()}`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * Create a tax rate
+   */
+  public async createTaxRate(data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/taxes`
+
+    return this.executeApiRequest(path, 'POST', data)
+  }
+
+  /**
+   * List tax classes
+   */
+  public async listTaxClasses(): Promise<any[]> {
+    const path = `/wp-json/wc/v3/taxes/classes`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * List shipping classes
+   */
+  public async listShippingClasses(params: Record<string, any> = {}): Promise<any[]> {
+    const queryParams = new URLSearchParams(params)
+    const path = `/wp-json/wc/v3/products/shipping_classes?${queryParams.toString()}`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * List product attributes
+   */
+  public async listAttributes(): Promise<any[]> {
+    const path = `/wp-json/wc/v3/products/attributes`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * List order notes
+   */
+  public async listOrderNotes(orderId: number | string, params: Record<string, any> = {}): Promise<any[]> {
+    const queryParams = new URLSearchParams(params)
+    const path = `/wp-json/wc/v3/orders/${orderId}/notes?${queryParams.toString()}`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * Create an order note
+   */
+  public async createOrderNote(orderId: number | string, data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/orders/${orderId}/notes`
+
+    return this.executeApiRequest(path, 'POST', data)
+  }
+
+  /**
+   * Get store settings
+   */
+  public async getSettingsGroup(groupId: string): Promise<any[]> {
+    const path = `/wp-json/wc/v3/settings/${groupId}`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
+   * Update store setting
+   */
+  public async updateSetting(groupId: string, id: string, data: Record<string, any>): Promise<any> {
+    const path = `/wp-json/wc/v3/settings/${groupId}/${id}`
+
+    return this.executeApiRequest(path, 'PUT', data)
   }
 
   /**
@@ -387,7 +503,7 @@ export class WooCommerceService {
       }
       try {
         const parsedUrl = new URL(fullServiceUrlWithScheme);
-      } catch (urlError) {
+      } catch (urlError: any) {
         throw new Error(`Invalid URL: ${urlError.message}`);
       }
 

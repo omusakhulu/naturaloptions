@@ -138,6 +138,9 @@ model Product {
   image            String?
   images           String?  @default("[]")
   categories       String?  @default("[]")
+  tags             String?  @default("[]")
+  attributes       String?  @default("[]")
+  shippingClass    String?
   rating           Float    @default(0)
   ratingCount      Int      @default(0)
   status           String   @default("publish")
@@ -155,6 +158,105 @@ model Product {
   @@index([syncedAt])
   @@index([actualStock])
   @@index([websiteStock])
+}
+
+model Coupon {
+  id            String   @id @default(cuid())
+  wooId         Int      @unique
+  code          String   @unique
+  amount        String
+  dateCreated   DateTime
+  dateModified  DateTime
+  discountType  String
+  description   String?
+  expiryDate    DateTime?
+  usageLimit    Int?
+  usageCount    Int      @default(0)
+  individualUse Boolean  @default(false)
+  productIds    String?  @default("[]") // JSON array of allowed product IDs
+  excludeProductIds String? @default("[]")
+  syncedAt      DateTime @default(now())
+
+  @@index([wooId])
+  @@index([code])
+}
+
+model TaxRate {
+  id        String   @id @default(cuid())
+  wooId     Int      @unique
+  country   String?
+  state     String?
+  postcode  String?
+  city      String?
+  rate      String
+  name      String
+  priority  Int      @default(0)
+  compound  Boolean  @default(false)
+  shipping  Boolean  @default(true)
+  class     String   @default("standard")
+  syncedAt  DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model ProductAttribute {
+  id           String   @id @default(cuid())
+  wooId        Int      @unique
+  name         String
+  slug         String   @unique
+  type         String   @default("select")
+  orderBy      String   @default("menu_order")
+  hasArchives  Boolean  @default(false)
+  syncedAt     DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model ProductTag {
+  id          String   @id @default(cuid())
+  wooId       Int      @unique
+  name        String
+  slug        String   @unique
+  description String?
+  count       Int      @default(0)
+  syncedAt    DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model ShippingClass {
+  id          String   @id @default(cuid())
+  wooId       Int      @unique
+  name        String
+  slug        String   @unique
+  description String?
+  count       Int      @default(0)
+  syncedAt    DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model OrderNote {
+  id           String   @id @default(cuid())
+  wooId        Int      @unique
+  orderId      Int
+  author       String   @default("system")
+  dateCreated  DateTime
+  note         String
+  customerNote Boolean  @default(false)
+  syncedAt     DateTime @default(now())
+
+  @@index([wooId])
+  @@index([orderId])
+}
+
+model StoreSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String // JSON stringified value
+  group String @default("general")
+  
+  updatedAt DateTime @updatedAt
 }
 
 model Order {

@@ -13,7 +13,8 @@ class NO_AI_Woo_Context {
             return "WooCommerce is not active.";
         }
 
-        $context = "Here is the current product catalog for Natural Options:\n\n";
+        $currency = get_woocommerce_currency_symbol();
+        $context = "Here is the current product catalog for Natural Options (Prices in {$currency}):\n\n";
 
         // Fetch published products
         $args = array(
@@ -24,14 +25,21 @@ class NO_AI_Woo_Context {
         $products = wc_get_products($args);
 
         foreach ($products as $product) {
-            $name = $product->get_name();
             $price = $product->get_price();
+            
+            // Skip products without a price
+            if (empty($price)) {
+                continue;
+            }
+
+            $id = $product->get_id();
+            $name = $product->get_name();
             $desc = wp_strip_all_tags($product->get_description());
             $desc = mb_strimwidth($desc, 0, 200, "...");
             $link = get_permalink($product->get_id());
             $categories = wc_get_product_category_list($product->get_id(), ', ', '', '');
 
-            $context .= "- {$name}: Price: {$price}, Category: " . wp_strip_all_tags($categories) . ". Description: {$desc}. Link: {$link}\n";
+            $context .= "- ID: {$id}, Name: {$name}, Price: {$price}, Category: " . wp_strip_all_tags($categories) . ". Description: {$desc}. Link: {$link}\n";
         }
 
         // Add performance data

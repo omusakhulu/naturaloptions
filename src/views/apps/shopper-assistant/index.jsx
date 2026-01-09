@@ -89,7 +89,7 @@ const ShopperAssistant = () => {
         </CustomAvatar>
         <div>
           <Typography variant='h6' color='text.primary'>AI Shopper Assistant</Typography>
-          <Typography variant='body2' color='success.main'>Online | Powered by Gemini</Typography>
+          <Typography variant='body2' color='success.main'>Online</Typography>
         </div>
       </div>
 

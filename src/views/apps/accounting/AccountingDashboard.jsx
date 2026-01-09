@@ -39,24 +39,17 @@ import {
 
 const AccountingDashboard = () => {
   const [loading, setLoading] = useState(true)
-
-  // Sample financial data - Replace with real data
   const [financialSummary, setFinancialSummary] = useState({
     totalRevenue: 0,
     totalExpenses: 0,
     netIncome: 0,
-    accountsReceivable: 15420.75, // Mock
-    accountsPayable: 8930.50,     // Mock
-    cashBalance: 32150.80         // Mock
+    accountsReceivable: 0,
+    accountsPayable: 0,
+    cashBalance: 0
   })
 
   const [recentTransactions, setRecentTransactions] = useState([])
-
-  const [outstandingInvoices, setOutstandingInvoices] = useState([
-    { id: 'INV-001', customer: 'ABC Corp', amount: 1250.00, dueDate: '2025-11-10', overdue: false },
-    { id: 'INV-002', customer: 'XYZ Ltd', amount: 750.50, dueDate: '2025-11-08', overdue: true },
-    { id: 'INV-003', customer: 'Tech Solutions', amount: 2100.00, dueDate: '2025-11-15', overdue: false }
-  ])
+  const [outstandingInvoices, setOutstandingInvoices] = useState([])
 
   const [accountingMetrics, setAccountingMetrics] = useState({
     monthlyRevenue: { current: 0, previous: 0, growth: 0 },
@@ -69,57 +62,67 @@ const AccountingDashboard = () => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // Date range: First day of current month to now
         const now = new Date()
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
         const endOfToday = now.toISOString()
 
-        // 1. Fetch Sales (Revenue)
-        const salesRes = await fetch(`/api/pos/sales?startDate=${startOfMonth}&endDate=${endOfToday}&limit=10`)
+        const [salesRes, expensesRes, balanceSheetRes, invoicesRes] = await Promise.all([
+          fetch(`/api/pos/sales?startDate=${startOfMonth}&endDate=${endOfToday}&limit=10`),
+          fetch(`/api/expenses?after=${startOfMonth}&before=${endOfToday}`),
+          fetch('/api/accounting/balance-sheet'),
+          fetch('/api/invoices?status=unpaid')
+        ])
+
         const salesData = await salesRes.json()
-
-        // 2. Fetch Expenses
-        const expensesRes = await fetch(`/api/expenses?after=${startOfMonth}&before=${endOfToday}`)
         const expensesData = await expensesRes.json()
+        const balanceSheetData = await balanceSheetRes.json()
+        const invoicesData = await invoicesRes.json()
 
-        if (salesData.success && expensesData) {
-          const totalRevenue = salesData.summary.totalAmount || 0
-          const totalExpenses = expensesData.total || 0
-          const netIncome = totalRevenue - totalExpenses
+        const totalRevenue = salesData.summary?.totalAmount || 0
+        const totalExpenses = expensesData.total || 0
+        
+        setFinancialSummary({
+          totalRevenue,
+          totalExpenses,
+          netIncome: totalRevenue - totalExpenses,
+          accountsReceivable: balanceSheetData.assets?.accountsReceivable || 0,
+          accountsPayable: balanceSheetData.liabilities?.accountsPayable || 0,
+          cashBalance: balanceSheetData.assets?.cashBank || 0
+        })
 
-          setFinancialSummary(prev => ({
-            ...prev,
-            totalRevenue,
-            totalExpenses,
-            netIncome
-          }))
+        // Format transactions
+        const salesTransactions = (salesData.sales || []).map(sale => ({
+          id: sale.id,
+          date: new Date(sale.saleDate).toLocaleDateString(),
+          rawDate: new Date(sale.saleDate),
+          description: `Sale #${sale.saleNumber}`,
+          amount: sale.totalAmount,
+          type: 'income',
+          status: 'completed'
+        }))
 
-          // Merge and format transactions
-          const salesTransactions = (salesData.sales || []).map(sale => ({
-            id: sale.id,
-            date: new Date(sale.saleDate).toLocaleDateString(),
-            rawDate: new Date(sale.saleDate),
-            description: `Sale #${sale.saleNumber}`,
-            amount: sale.total,
-            type: 'income',
-            status: 'completed'
-          }))
+        const expenseTransactions = (expensesData.items || []).map(exp => ({
+          id: exp.id,
+          date: new Date(exp.date).toLocaleDateString(),
+          rawDate: new Date(exp.date),
+          description: exp.category || 'Expense',
+          amount: -exp.amount,
+          type: 'expense',
+          status: 'completed'
+        }))
 
-          const expenseTransactions = (expensesData.items || []).map(exp => ({
-            id: exp.id,
-            date: new Date(exp.date).toLocaleDateString(),
-            rawDate: new Date(exp.date),
-            description: exp.category || 'Expense',
-            amount: -exp.amount, // Negative for display logic if needed, or handle in UI
-            type: 'expense',
-            status: 'completed'
-          }))
+        setRecentTransactions([...salesTransactions, ...expenseTransactions]
+          .sort((a, b) => b.rawDate - a.rawDate)
+          .slice(0, 10))
 
-          const allTransactions = [...salesTransactions, ...expenseTransactions]
-            .sort((a, b) => b.rawDate - a.rawDate)
-            .slice(0, 10)
-
-          setRecentTransactions(allTransactions)
+        if (invoicesData.success) {
+          setOutstandingInvoices(invoicesData.invoices.map(inv => ({
+            id: inv.invoiceNumber,
+            customer: inv.customerName,
+            amount: parseFloat(inv.amount),
+            dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'N/A',
+            overdue: inv.dueDate ? new Date(inv.dueDate) < now : false
+          })))
         }
       } catch (error) {
         console.error('Failed to fetch accounting data:', error)

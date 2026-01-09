@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Natural Options AI Shopper Assistant
  * Description: An AI-powered shopper assistant for Natural Options using Google Gemini.
- * Version: 1.0.0
- * Author: Natural Options
+ * Version: 1.0.1
+ * Author: Omu
  * Text Domain: natural-options-ai
  */
 

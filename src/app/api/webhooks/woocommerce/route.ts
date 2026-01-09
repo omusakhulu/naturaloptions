@@ -112,6 +112,24 @@ export async function POST(
         await handleProductDelete(data.id)
         break
 
+      case 'coupon.created':
+      case 'coupon.updated':
+        await handleCouponUpdate(data)
+        break
+
+      case 'coupon.deleted':
+        await handleCouponDelete(data.id)
+        break
+
+      case 'order.created':
+      case 'order.updated':
+        await handleOrderUpdate(data)
+        break
+
+      case 'order.deleted':
+        await handleOrderDelete(data.id)
+        break
+
       // Add more webhook handlers as needed
 
       default:
@@ -154,7 +172,9 @@ async function handleProductUpdate(productData: any) {
         image: productData.images?.[0]?.src || null,
         images: JSON.stringify(productData.images || []),
         categories: JSON.stringify(productData.categories || []),
-        status: productData.status || 'publish',
+        tags: JSON.stringify(productData.tags || []),
+        attributes: JSON.stringify(productData.attributes || []),
+        shippingClass: productData.shipping_class || null,
         updatedAt: new Date()
       },
       create: {
@@ -172,11 +192,128 @@ async function handleProductUpdate(productData: any) {
         image: productData.images?.[0]?.src || null,
         images: JSON.stringify(productData.images || []),
         categories: JSON.stringify(productData.categories || []),
-        status: productData.status || 'publish'
+        tags: JSON.stringify(productData.tags || []),
+        attributes: JSON.stringify(productData.attributes || []),
+        shippingClass: productData.shipping_class || null
       }
     })
   } catch (error) {
     console.error('Error updating product from webhook:', error)
+    throw error
+  }
+}
+
+async function handleCouponUpdate(couponData: any) {
+  try {
+    await prisma.coupon.upsert({
+      where: { wooId: couponData.id },
+      update: {
+        code: couponData.code,
+        amount: couponData.amount,
+        dateCreated: new Date(couponData.date_created),
+        dateModified: new Date(couponData.date_modified),
+        discountType: couponData.discount_type,
+        description: couponData.description || null,
+        expiryDate: couponData.date_expires ? new Date(couponData.date_expires) : null,
+        usageLimit: couponData.usage_limit || null,
+        usageCount: couponData.usage_count || 0,
+        individualUse: couponData.individual_use || false,
+        productIds: JSON.stringify(couponData.product_ids || []),
+        excludeProductIds: JSON.stringify(couponData.excluded_product_ids || []),
+        syncedAt: new Date()
+      },
+      create: {
+        wooId: couponData.id,
+        code: couponData.code,
+        amount: couponData.amount,
+        dateCreated: new Date(couponData.date_created),
+        dateModified: new Date(couponData.date_modified),
+        discountType: couponData.discount_type,
+        description: couponData.description || null,
+        expiryDate: couponData.date_expires ? new Date(couponData.date_expires) : null,
+        usageLimit: couponData.usage_limit || null,
+        usageCount: couponData.usage_count || 0,
+        individualUse: couponData.individual_use || false,
+        productIds: JSON.stringify(couponData.product_ids || []),
+        excludeProductIds: JSON.stringify(couponData.excluded_product_ids || [])
+      }
+    })
+  } catch (error) {
+    console.error('Error updating coupon from webhook:', error)
+    throw error
+  }
+}
+
+async function handleCouponDelete(couponId: number) {
+  try {
+    await prisma.coupon.deleteMany({
+      where: { wooId: couponId }
+    })
+  } catch (error) {
+    console.error('Error deleting coupon from webhook:', error)
+    throw error
+  }
+}
+
+async function handleOrderUpdate(orderData: any) {
+  try {
+    await prisma.order.upsert({
+      where: { wooId: orderData.id },
+      update: {
+        orderNumber: orderData.number,
+        customerId: orderData.customer_id || null,
+        status: orderData.status,
+        total: orderData.total,
+        subtotal: orderData.subtotal || null,
+        shippingTotal: orderData.shipping_total || null,
+        taxTotal: orderData.total_tax || null,
+        discountTotal: orderData.discount_total || null,
+        paymentMethod: orderData.payment_method || null,
+        paymentMethodTitle: orderData.payment_method_title || null,
+        customerNote: orderData.customer_note || null,
+        dateCreated: orderData.date_created ? new Date(orderData.date_created) : null,
+        datePaid: orderData.date_paid ? new Date(orderData.date_paid) : null,
+        dateCompleted: orderData.date_completed ? new Date(orderData.date_completed) : null,
+        shippingAddress: JSON.stringify(orderData.shipping || {}),
+        billingAddress: JSON.stringify(orderData.billing || {}),
+        lineItems: JSON.stringify(orderData.line_items || []),
+        updatedAt: new Date(),
+        syncedAt: new Date()
+      },
+      create: {
+        wooId: orderData.id,
+        orderNumber: orderData.number,
+        customerId: orderData.customer_id || null,
+        status: orderData.status,
+        total: orderData.total,
+        subtotal: orderData.subtotal || null,
+        shippingTotal: orderData.shipping_total || null,
+        taxTotal: orderData.total_tax || null,
+        discountTotal: orderData.discount_total || null,
+        paymentMethod: orderData.payment_method || null,
+        paymentMethodTitle: orderData.payment_method_title || null,
+        customerNote: orderData.customer_note || null,
+        dateCreated: orderData.date_created ? new Date(orderData.date_created) : null,
+        datePaid: orderData.date_paid ? new Date(orderData.date_paid) : null,
+        dateCompleted: orderData.date_completed ? new Date(orderData.date_completed) : null,
+        shippingAddress: JSON.stringify(orderData.shipping || {}),
+        billingAddress: JSON.stringify(orderData.billing || {}),
+        lineItems: JSON.stringify(orderData.line_items || [])
+      }
+    })
+  } catch (error) {
+    console.error('Error updating order from webhook:', error)
+    throw error
+  }
+}
+
+async function handleOrderDelete(orderId: number) {
+  try {
+    await prisma.order.deleteMany({
+      where: { wooId: orderId }
+    })
+  } catch (error) {
+    console.error('Error deleting order from webhook:', error)
     throw error
   }
 }
