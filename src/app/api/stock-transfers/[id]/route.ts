@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 
 import prisma from '@/lib/prisma'
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const id = params.id
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const body = await request.json()
   const { reference, from, to, status, date, notes } = body || {}
 
@@ -23,8 +23,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 return NextResponse.json(item)
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const id = params.id
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
 
   await prisma.stockTransferRecord.delete({ where: { id } })
 

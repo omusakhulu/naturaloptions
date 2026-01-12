@@ -68,31 +68,18 @@ export default function PurchaseSaleReportTSX({ lang = 'en' }: { lang?: string }
       if (!res.ok) throw new Error('Failed to load report')
       const json = await res.json()
       setData(json as ReportData)
-    } catch (e) {
-      // Mock fallback
-      const days = 10
-      const baseDate = new Date(params.from || toDateInputValue(monthStart))
-      const mkDate = (i: number) => {
-        const d = new Date(baseDate)
-        d.setDate(d.getDate() + i)
-        const yyyy = d.getFullYear()
-        const mm = String(d.getMonth() + 1).padStart(2, '0')
-        const dd = String(d.getDate()).padStart(2, '0')
-        return `${yyyy}-${mm}-${dd}`
-      }
-      const salesSeries = Array.from({ length: days }, (_, i) => ({ date: mkDate(i), total: Math.round(3000 + Math.random() * 4000) }))
-      const purchasesSeries = Array.from({ length: days }, (_, i) => ({ date: mkDate(i), total: Math.round(1500 + Math.random() * 2500) }))
-      const salesTot = salesSeries.reduce((s, r) => s + r.total, 0)
-      const purchasesTot = purchasesSeries.reduce((s, r) => s + r.total, 0)
-      const mock: ReportData = {
+    } catch (e: any) {
+      console.error('Failed to load purchase/sale report:', e)
+      setError(e.message || 'Failed to load report. Please try again.')
+      // Reset to empty data on error
+      setData({
         range: { from: params.from || toDateInputValue(monthStart), to: params.to || toDateInputValue(today) },
         locationId: params.locationId || '',
-        sales: { total: salesTot, byPeriod: salesSeries },
-        purchases: { total: purchasesTot, byPeriod: purchasesSeries },
-        adjustments: { salesReturns: Math.round(salesTot * 0.03), purchaseReturns: Math.round(purchasesTot * 0.02) },
-        net: { sales: salesTot - Math.round(salesTot * 0.03), purchases: purchasesTot - Math.round(purchasesTot * 0.02) }
-      }
-      setData(mock)
+        sales: { total: 0, byPeriod: [] },
+        purchases: { total: 0, byPeriod: [] },
+        adjustments: { salesReturns: 0, purchaseReturns: 0 },
+        net: { sales: 0, purchases: 0 }
+      })
     } finally {
       setLoading(false)
     }

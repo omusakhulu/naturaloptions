@@ -73,30 +73,17 @@ export default function CustomerReportTSX({ lang = 'en' }: { lang?: string }) {
       if (!res.ok) throw new Error('Failed to load report')
       const json = await res.json()
       setData(json as CustomerData)
-    } catch (e) {
-      // Mock fallback
-      const items: CustomerRow[] = [
-        { id: 'c1', name: 'John Doe', email: 'john@example.com', loyaltyPoints: 120, salesCount: 5, totalSpent: 3200 },
-        { id: 'c2', name: 'Jane Smith', email: 'jane@example.com', loyaltyPoints: 80, salesCount: 3, totalSpent: 1800 },
-        { id: 'c3', name: 'Bob Johnson', email: 'bob@example.com', loyaltyPoints: 45, salesCount: 2, totalSpent: 850 }
-      ]
-      const days = 10
-      const base = new Date(params.from || toDateInputValue(monthStart))
-      const mkDate = (i: number) => {
-        const d = new Date(base)
-        d.setDate(d.getDate() + i)
-        const yyyy = d.getFullYear()
-        const mm = String(d.getMonth() + 1).padStart(2, '0')
-        const dd = String(d.getDate()).padStart(2, '0')
-        return `${yyyy}-${mm}-${dd}`
-      }
-      const series = Array.from({ length: days }, (_, i) => ({ date: mkDate(i), amount: Math.round(300 + Math.random() * 700) }))
-      const totals = {
-        customers: items.length,
-        sales: items.reduce((s, r) => s + r.salesCount, 0),
-        amount: items.reduce((s, r) => s + r.totalSpent, 0)
-      }
-      setData({ range: { from: params.from || toDateInputValue(monthStart), to: params.to || toDateInputValue(today) }, locationId: params.locationId || '', items, series, totals })
+    } catch (e: any) {
+      console.error('Failed to load customer report:', e)
+      setError(e.message || 'Failed to load report. Please try again.')
+      // Reset to empty data on error
+      setData({
+        range: { from: params.from || toDateInputValue(monthStart), to: params.to || toDateInputValue(today) },
+        locationId: params.locationId || '',
+        items: [],
+        series: [],
+        totals: { customers: 0, sales: 0, amount: 0 }
+      })
     } finally {
       setLoading(false)
     }

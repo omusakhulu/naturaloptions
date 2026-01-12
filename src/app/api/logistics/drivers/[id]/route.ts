@@ -4,11 +4,12 @@ import prisma from '@/lib/prisma'
 // GET /api/logistics/drivers/[id] - Get single driver
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const driver = await prisma.driver.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         vehicle: true,
         deliveries: {
@@ -46,14 +47,15 @@ export async function GET(
 // PUT /api/logistics/drivers/[id] - Update driver
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const { name, email, phone, licenseNumber, licenseExpiry, status, vehicleId } = body
 
     const driver = await prisma.driver.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         email,
@@ -85,11 +87,12 @@ export async function PUT(
 // DELETE /api/logistics/drivers/[id] - Delete driver
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     await prisma.driver.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({

@@ -163,7 +163,7 @@ const ProductCreateForm: React.FC = () => {
         prev || {
           key,
           attributes: attrs,
-          stock_status: 'instock',
+          stock_status: 'instock' as const,
           manage_stock: false
         }
       )

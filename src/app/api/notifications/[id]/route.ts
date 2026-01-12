@@ -4,7 +4,7 @@ import { authOptions } from '@/config/auth'
 import { prisma } from '@/lib/prisma'
 
 // PATCH - Mark notification as read/unread
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { read } = body
 
@@ -53,7 +53,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 // DELETE - Delete a notification
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -61,7 +61,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Find user
     const user = await prisma.user.findUnique({

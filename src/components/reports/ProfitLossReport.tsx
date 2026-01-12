@@ -85,27 +85,16 @@ export default function ProfitLossReport({ lang = 'en' }: { lang?: string }) {
       const json = await res.json()
       // Expecting PLData-compatible response
       setData(json as PLData)
-    } catch (e) {
-      // Mock fallback data
-      const mock: PLData = {
+    } catch (e: any) {
+      console.error('Failed to load profit/loss report:', e)
+      setError(e.message || 'Failed to load report. Please try again.')
+      // Reset to empty data on error
+      setData({
         range: { from: params.from || toDateInputValue(monthStart), to: params.to || toDateInputValue(today) },
         locationId: params.locationId || '',
-        totals: {
-          revenue: 125000,
-          cogs: 54000,
-          grossProfit: 125000 - 54000,
-          expenses: 36000,
-          netProfit: (125000 - 54000) - 36000
-        },
-        expenseBreakdown: [
-          { account: 'Salaries & Wages', amount: 14000 },
-          { account: 'Rent', amount: 9000 },
-          { account: 'Utilities', amount: 2500 },
-          { account: 'Marketing', amount: 6000 },
-          { account: 'Miscellaneous', amount: 4500 }
-        ]
-      }
-      setData(mock)
+        totals: { revenue: 0, cogs: 0, grossProfit: 0, expenses: 0, netProfit: 0 },
+        expenseBreakdown: []
+      })
     } finally {
       setLoading(false)
     }

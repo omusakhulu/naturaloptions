@@ -94,6 +94,8 @@ model User {
   refundsProcessed  Refund[]           @relation("ProcessedRefunds")
   employeeLocations EmployeeLocation[] @relation("EmployeeLocations")
   timeClockEntries  TimeClockEntry[]   @relation("TimeClockEntries")
+  posShifts         POSShift[]         @relation("POSShifts")
+  notifications     Notification[]
 }
 
 enum UserRole {
@@ -115,44 +117,44 @@ model VerificationToken {
 }
 
 model Product {
-  id               String   @id @default(cuid())
-  wooId            Int      @unique
+  id               String  @id @default(cuid())
+  wooId            Int     @unique
   name             String
-  slug             String   @unique
+  slug             String  @unique
   description      String?
   shortDescription String?
   price            String?
   regularPrice     String?
   salePrice        String?
-  stockStatus      String   @default("instock")
-  stockQuantity    Int      @default(0) // Legacy field - synced from WooCommerce
-  
+  stockStatus      String  @default("instock")
+  stockQuantity    Int     @default(0) // Legacy field - synced from WooCommerce
+
   // Dual Stock System
-  actualStock      Int      @default(0) // Physical inventory (POS/warehouse)
-  websiteStock     Int      @default(0) // What's displayed on WooCommerce
-  reservedStock    Int      @default(0) // Stock reserved for pending orders
-  lowStockAlert    Int      @default(10) // Alert threshold
-  autoSyncStock    Boolean  @default(false) // Auto-sync actual to website
-  lastStockSync    DateTime? // Last time stock was synced to WooCommerce
-  
-  sku              String?
-  image            String?
-  images           String?  @default("[]")
-  categories       String?  @default("[]")
-  tags             String?  @default("[]")
-  attributes       String?  @default("[]")
-  shippingClass    String?
-  rating           Float    @default(0)
-  ratingCount      Int      @default(0)
-  status           String   @default("publish")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  syncedAt         DateTime @default(now())
+  actualStock   Int       @default(0) // Physical inventory (POS/warehouse)
+  websiteStock  Int       @default(0) // What's displayed on WooCommerce
+  reservedStock Int       @default(0) // Stock reserved for pending orders
+  lowStockAlert Int       @default(10) // Alert threshold
+  autoSyncStock Boolean   @default(false) // Auto-sync actual to website
+  lastStockSync DateTime? // Last time stock was synced to WooCommerce
+
+  sku           String?
+  image         String?
+  images        String?  @default("[]")
+  categories    String?  @default("[]")
+  tags          String?  @default("[]")
+  attributes    String?  @default("[]")
+  shippingClass String?
+  rating        Float    @default(0)
+  ratingCount   Int      @default(0)
+  status        String   @default("publish")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  syncedAt      DateTime @default(now())
 
   // POS Relations
-  posSaleItems       POSSaleItem[]            @relation("POSSaleItems")
-  inventoryLocations InventoryLocation[]      @relation("InventoryLocations")
-  stockMovements     ProductStockMovement[]   @relation("ProductStockMovements")
+  posSaleItems       POSSaleItem[]          @relation("POSSaleItems")
+  inventoryLocations InventoryLocation[]    @relation("InventoryLocations")
+  stockMovements     ProductStockMovement[] @relation("ProductStockMovements")
 
   @@index([wooId])
   @@index([status])
@@ -162,53 +164,53 @@ model Product {
 }
 
 model Coupon {
-  id            String   @id @default(cuid())
-  wooId         Int      @unique
-  code          String   @unique
-  amount        String
-  dateCreated   DateTime
-  dateModified  DateTime
-  discountType  String
-  description   String?
-  expiryDate    DateTime?
-  usageLimit    Int?
-  usageCount    Int      @default(0)
-  individualUse Boolean  @default(false)
-  productIds    String?  @default("[]") // JSON array of allowed product IDs
-  excludeProductIds String? @default("[]")
-  syncedAt      DateTime @default(now())
+  id                String    @id @default(cuid())
+  wooId             Int       @unique
+  code              String    @unique
+  amount            String
+  dateCreated       DateTime
+  dateModified      DateTime
+  discountType      String
+  description       String?
+  expiryDate        DateTime?
+  usageLimit        Int?
+  usageCount        Int       @default(0)
+  individualUse     Boolean   @default(false)
+  productIds        String?   @default("[]") // JSON array of allowed product IDs
+  excludeProductIds String?   @default("[]")
+  syncedAt          DateTime  @default(now())
 
   @@index([wooId])
   @@index([code])
 }
 
 model TaxRate {
-  id        String   @id @default(cuid())
-  wooId     Int      @unique
-  country   String?
-  state     String?
-  postcode  String?
-  city      String?
-  rate      String
-  name      String
-  priority  Int      @default(0)
-  compound  Boolean  @default(false)
-  shipping  Boolean  @default(true)
-  class     String   @default("standard")
-  syncedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  wooId    Int      @unique
+  country  String?
+  state    String?
+  postcode String?
+  city     String?
+  rate     String
+  name     String
+  priority Int      @default(0)
+  compound Boolean  @default(false)
+  shipping Boolean  @default(true)
+  class    String   @default("standard")
+  syncedAt DateTime @default(now())
 
   @@index([wooId])
 }
 
 model ProductAttribute {
-  id           String   @id @default(cuid())
-  wooId        Int      @unique
-  name         String
-  slug         String   @unique
-  type         String   @default("select")
-  orderBy      String   @default("menu_order")
-  hasArchives  Boolean  @default(false)
-  syncedAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  wooId       Int      @unique
+  name        String
+  slug        String   @unique
+  type        String   @default("select")
+  orderBy     String   @default("menu_order")
+  hasArchives Boolean  @default(false)
+  syncedAt    DateTime @default(now())
 
   @@index([wooId])
 }
@@ -256,7 +258,7 @@ model StoreSetting {
   key   String @unique
   value String // JSON stringified value
   group String @default("general")
-  
+
   updatedAt DateTime @updatedAt
 }
 
@@ -633,6 +635,11 @@ model InventoryItem {
   costPrice    Float?
   sellingPrice Float?
 
+  // Batch/Lot Tracking
+  batchNumber String? // Batch identifier for grouping inventory
+  lotNumber   String? // Lot number for traceability
+  expiryDate  DateTime? // Expiration date for perishable items
+
   // Relations
   movements StockMovement[]
 
@@ -640,6 +647,9 @@ model InventoryItem {
   updatedAt DateTime @updatedAt
 
   @@unique([warehouseId, sku, locationId])
+  @@index([batchNumber])
+  @@index([lotNumber])
+  @@index([expiryDate])
   @@index([warehouseId])
   @@index([locationId])
   @@index([sku])
@@ -939,31 +949,32 @@ model POSTerminal {
   posSales    POSSale[]
   parkedSales ParkedSale[]
   cashDrawers CashDrawer[]
+  posShifts   POSShift[]
 
   @@index([locationId])
 }
 
 model ParkedSale {
-  id             String   @id @default(cuid())
-  saleNumber     String   @unique
-  terminalId     String
-  terminal       POSTerminal @relation(fields: [terminalId], references: [id])
-  employeeId     String
-  employee       User     @relation("ParkedSales", fields: [employeeId], references: [id])
-  customerId     String?
-  customer       POSCustomer? @relation(fields: [customerId], references: [id])
+  id         String       @id @default(cuid())
+  saleNumber String       @unique
+  terminalId String
+  terminal   POSTerminal  @relation(fields: [terminalId], references: [id])
+  employeeId String
+  employee   User         @relation("ParkedSales", fields: [employeeId], references: [id])
+  customerId String?
+  customer   POSCustomer? @relation(fields: [customerId], references: [id])
 
   // Sale Details
   subtotal       Decimal @db.Decimal(10, 2)
   taxAmount      Decimal @db.Decimal(10, 2)
   discountAmount Decimal @default(0) @db.Decimal(10, 2)
   totalAmount    Decimal @db.Decimal(10, 2)
-  
-  cartItems      String  @default("[]") // JSON stringified cart items
-  notes          String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  cartItems String  @default("[]") // JSON stringified cart items
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([terminalId])
   @@index([employeeId])
@@ -1054,14 +1065,14 @@ model CashDrawer {
 // ==========================================
 
 model ChartOfAccounts {
-  id          String            @id @default(cuid())
-  accountCode String            @unique
-  accountName String
-  accountType AccountType
-  accountCategory String?       // Flexible category label, e.g. 'COGS'
-  parentId    String?
-  parent      ChartOfAccounts?  @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children    ChartOfAccounts[] @relation("AccountHierarchy")
+  id              String            @id @default(cuid())
+  accountCode     String            @unique
+  accountName     String
+  accountType     AccountType
+  accountCategory String? // Flexible category label, e.g. 'COGS'
+  parentId        String?
+  parent          ChartOfAccounts?  @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children        ChartOfAccounts[] @relation("AccountHierarchy")
 
   isActive    Boolean @default(true)
   description String?
@@ -1154,8 +1165,9 @@ model Vendor {
   updatedAt DateTime @updatedAt
 
   // Relations
-  bills          Bill[]
-  PurchaseReturn PurchaseReturn[]
+  bills           Bill[]
+  purchaseReturns PurchaseReturn[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([email])
 }
@@ -1249,7 +1261,7 @@ model Location {
   posTerminals   POSTerminal[]
   inventoryItems InventoryLocation[]
   employees      EmployeeLocation[]
-  warehouses     Warehouse[]        // NEW: opposite side of Warehouse.location
+  warehouses     Warehouse[] // NEW: opposite side of Warehouse.location
 
   @@index([isActive])
 }
@@ -1274,31 +1286,31 @@ model InventoryLocation {
 
 // Product Stock Movement Tracking (for dual stock system)
 model ProductStockMovement {
-  id          String   @id @default(cuid())
-  productId   String
-  product     Product  @relation("ProductStockMovements", fields: [productId], references: [id])
-  
-  type        ProductStockMovementType // SALE, PURCHASE, ADJUSTMENT, TRANSFER, SYNC, RETURN
-  quantity    Int // Positive for increase, negative for decrease
-  
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation("ProductStockMovements", fields: [productId], references: [id])
+
+  type     ProductStockMovementType // SALE, PURCHASE, ADJUSTMENT, TRANSFER, SYNC, RETURN
+  quantity Int // Positive for increase, negative for decrease
+
   // Stock levels before and after
-  beforeActual   Int
-  afterActual    Int
-  beforeWebsite  Int?
-  afterWebsite   Int?
-  
+  beforeActual  Int
+  afterActual   Int
+  beforeWebsite Int?
+  afterWebsite  Int?
+
   // Context
-  reference   String? // Order ID, Transfer ID, etc.
-  locationId  String?
-  reason      String?
-  notes       String?
-  
+  reference  String? // Order ID, Transfer ID, etc.
+  locationId String?
+  reason     String?
+  notes      String?
+
   // User tracking
-  userId      String?
-  userName    String?
-  
-  createdAt   DateTime @default(now())
-  
+  userId   String?
+  userName String?
+
+  createdAt DateTime @default(now())
+
   @@index([productId])
   @@index([type])
   @@index([createdAt])
@@ -1420,34 +1432,34 @@ enum PaymentMethod {
 }
 
 model ProductReview {
-  id            String   @id @default(cuid())
-  wooId         Int      @unique
-  productId     Int
-  productName   String
-  productImage  String?
-  reviewer      String
-  email         String
-  avatar        String?
-  rating        Int
-  status        String   @default("approved") // approved, hold, spam, trash
-  content       String
-  dateCreated   DateTime
-  syncedAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  wooId        Int      @unique
+  productId    Int
+  productName  String
+  productImage String?
+  reviewer     String
+  email        String
+  avatar       String?
+  rating       Int
+  status       String   @default("approved") // approved, hold, spam, trash
+  content      String
+  dateCreated  DateTime
+  syncedAt     DateTime @default(now())
 
   @@index([productId])
   @@index([status])
 }
 
 model Referral {
-  id            String   @id @default(cuid())
-  user          String
-  email         String
-  avatar        String?
-  referredUser  String
-  status        String   @default("Pending") // Pending, Completed, Cancelled
-  value         Decimal  @db.Decimal(10, 2)
-  date          DateTime @default(now())
-  syncedAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  user         String
+  email        String
+  avatar       String?
+  referredUser String
+  status       String   @default("Pending") // Pending, Completed, Cancelled
+  value        Decimal  @db.Decimal(10, 2)
+  date         DateTime @default(now())
+  syncedAt     DateTime @default(now())
 
   @@index([email])
 }
@@ -1508,12 +1520,373 @@ enum RefundStatus {
 }
 
 enum ProductStockMovementType {
-  SALE           // Stock sold via POS or online
-  PURCHASE       // Stock received from supplier
-  ADJUSTMENT     // Manual stock adjustment
-  TRANSFER       // Transfer between locations
-  SYNC           // Synced to/from WooCommerce
-  RETURN         // Customer return
-  DAMAGE         // Damaged/lost stock
-  RECOUNT        // Physical stock count correction
+  SALE // Stock sold via POS or online
+  PURCHASE // Stock received from supplier
+  ADJUSTMENT // Manual stock adjustment
+  TRANSFER // Transfer between locations
+  SYNC // Synced to/from WooCommerce
+  RETURN // Customer return
+  DAMAGE // Damaged/lost stock
+  RECOUNT // Physical stock count correction
+}
+
+// ==========================================
+// CUSTOM FIELDS SYSTEM
+// ==========================================
+
+model CustomFieldDefinition {
+  id           String            @id @default(cuid())
+  entityType   CustomFieldEntity // VENDOR, CUSTOMER, PRODUCT, etc.
+  fieldName    String // Internal field name (snake_case)
+  fieldLabel   String // Display label
+  fieldType    CustomFieldType   @default(TEXT)
+  isRequired   Boolean           @default(false)
+  isActive     Boolean           @default(true)
+  sortOrder    Int               @default(0)
+  options      String? // JSON array for SELECT/MULTISELECT options
+  placeholder  String?
+  helpText     String?
+  defaultValue String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  values CustomFieldValue[]
+
+  @@unique([entityType, fieldName])
+  @@index([entityType])
+  @@index([isActive])
+}
+
+model CustomFieldValue {
+  id       String                @id @default(cuid())
+  fieldId  String
+  field    CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  entityId String // ID of the Vendor/Customer/etc.
+  value    String? // Stored value (JSON for complex types)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fieldId, entityId])
+  @@index([fieldId])
+  @@index([entityId])
+}
+
+enum CustomFieldEntity {
+  VENDOR
+  CUSTOMER
+  POS_CUSTOMER
+  PRODUCT
+  ORDER
+}
+
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DECIMAL
+  DATE
+  DATETIME
+  BOOLEAN
+  SELECT
+  MULTISELECT
+  EMAIL
+  PHONE
+  URL
+  FILE
+}
+
+// ==========================================
+// POS SHIFT MANAGEMENT
+// ==========================================
+
+model POSShift {
+  id          String      @id @default(cuid())
+  shiftNumber String      @unique
+  terminalId  String
+  terminal    POSTerminal @relation(fields: [terminalId], references: [id])
+  employeeId  String
+  employee    User        @relation("POSShifts", fields: [employeeId], references: [id])
+
+  // Shift Timing
+  startTime DateTime    @default(now())
+  endTime   DateTime?
+  status    ShiftStatus @default(OPEN)
+
+  // Cash Drawer State
+  openingCash     Decimal  @db.Decimal(10, 2)
+  closingCash     Decimal? @db.Decimal(10, 2)
+  expectedCash    Decimal? @db.Decimal(10, 2)
+  cashDiscrepancy Decimal? @db.Decimal(10, 2)
+
+  // Transaction Summary
+  totalSales       Decimal @default(0) @db.Decimal(15, 2)
+  totalRefunds     Decimal @default(0) @db.Decimal(15, 2)
+  totalVoids       Decimal @default(0) @db.Decimal(15, 2)
+  transactionCount Int     @default(0)
+
+  // Payment Method Breakdown (JSON)
+  paymentBreakdown String @default("{}") // { "CASH": 1000, "CARD": 500 }
+
+  // Cash Movements
+  cashIn  Decimal @default(0) @db.Decimal(10, 2) // Pay-ins
+  cashOut Decimal @default(0) @db.Decimal(10, 2) // Pay-outs
+
+  notes    String?
+  closedBy String? // User ID who closed the shift
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  cashMovements CashMovement[]
+
+  @@index([terminalId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([startTime])
+}
+
+model CashMovement {
+  id      String   @id @default(cuid())
+  shiftId String
+  shift   POSShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  type      CashMovementType
+  amount    Decimal          @db.Decimal(10, 2)
+  reason    String
+  reference String? // Related sale/refund ID
+
+  performedBy String // User ID
+  performedAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([type])
+  @@index([performedAt])
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSING // Being closed, awaiting reconciliation
+  CLOSED // Fully closed and reconciled
+  SUSPENDED // Temporarily suspended
+}
+
+enum CashMovementType {
+  SALE // Cash from sale
+  REFUND // Cash refund given
+  PAY_IN // Cash added to drawer
+  PAY_OUT // Cash removed from drawer
+  FLOAT // Opening float
+  DROP // Cash drop to safe
+}
+
+// ==========================================
+// PURCHASE MANAGEMENT
+// ==========================================
+
+model PurchaseOrder {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+  vendorId    String
+  vendor      Vendor @relation(fields: [vendorId], references: [id])
+
+  // Order Details
+  orderDate    DateTime  @default(now())
+  expectedDate DateTime?
+  receivedDate DateTime?
+
+  status PurchaseOrderStatus @default(DRAFT)
+
+  // Financials
+  subtotal     Decimal @db.Decimal(15, 2)
+  taxAmount    Decimal @default(0) @db.Decimal(15, 2)
+  shippingCost Decimal @default(0) @db.Decimal(15, 2)
+  discount     Decimal @default(0) @db.Decimal(15, 2)
+  totalAmount  Decimal @db.Decimal(15, 2)
+
+  // Warehouse destination
+  warehouseId String?
+
+  // Payment
+  paymentStatus PaymentStatus @default(PENDING)
+  paidAmount    Decimal       @default(0) @db.Decimal(15, 2)
+
+  notes String?
+  terms String? // Payment terms
+
+  createdBy  String?
+  approvedBy String?
+  approvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  items         PurchaseOrderItem[]
+  requisitionId String?
+  requisition   PurchaseRequisition? @relation(fields: [requisitionId], references: [id])
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([requisitionId])
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  sku         String
+  productName String
+  description String?
+  quantity    Int
+  receivedQty Int     @default(0)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  taxRate     Decimal @default(0) @db.Decimal(5, 2)
+  discount    Decimal @default(0) @db.Decimal(10, 2)
+  totalPrice  Decimal @db.Decimal(15, 2)
+
+  // Batch tracking for received items
+  batchNumber String?
+  lotNumber   String?
+  expiryDate  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([sku])
+}
+
+model PurchaseRequisition {
+  id                String @id @default(cuid())
+  requisitionNumber String @unique
+
+  requestedBy  String // User ID
+  requestedFor String? // Department or location
+
+  requestDate  DateTime  @default(now())
+  requiredDate DateTime?
+
+  status   RequisitionStatus   @default(PENDING)
+  priority RequisitionPriority @default(NORMAL)
+
+  reason String? // Justification for purchase
+  notes  String?
+
+  // Approval workflow
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  items          PurchaseRequisitionItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([status])
+  @@index([requestedBy])
+  @@index([requestDate])
+}
+
+model PurchaseRequisitionItem {
+  id            String              @id @default(cuid())
+  requisitionId String
+  requisition   PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  sku             String?
+  productName     String
+  description     String?
+  quantity        Int
+  estimatedPrice  Decimal? @db.Decimal(10, 2)
+  preferredVendor String? // Suggested vendor
+
+  createdAt DateTime @default(now())
+
+  @@index([requisitionId])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+  CLOSED
+}
+
+enum RequisitionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CANCELLED
+}
+
+enum RequisitionPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ==========================================
+// NOTIFICATION SYSTEM
+// ==========================================
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String
+  subtitle    String?
+  message     String?
+  type        NotificationType @default(INFO)
+  
+  // Display customization
+  avatarImage String?
+  avatarIcon  String?  @default("tabler-bell")
+  avatarText  String?
+  avatarColor String?  @default("primary")
+  
+  link        String?  // URL to navigate when clicked
+  metadata    String?  @default("{}") // JSON for additional data
+
+  read        Boolean  @default(false)
+  readAt      DateTime?
+  
+  // Email notification status
+  emailSent   Boolean  @default(false)
+  emailSentAt DateTime?
+
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime? // Optional expiration
+
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  ORDER        // New order received
+  LOW_STOCK    // Low stock alert
+  PAYMENT      // Payment received
+  SHIPMENT     // Shipment update
+  SYSTEM       // System notification
 }

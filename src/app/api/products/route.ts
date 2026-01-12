@@ -3,6 +3,7 @@ import crypto from 'crypto'
 
 import { NextResponse } from 'next/server'
 
+import { prisma } from '@/lib/prisma'
 import { wooClient } from '@/lib/woocommerce'
 
 // In-memory rate limiting
@@ -99,21 +100,63 @@ async function handleProductUpdate(product: WebhookPayload): Promise<void> {
   try {
     console.log('Syncing product:', product.id)
 
-    // Example: Save to your database
+    // Prepare product data for upsert
     const productData = {
       wooId: product.id,
-      name: product.name,
-      price: product.price,
-      status: product.status
+      name: product.name || 'Unnamed Product',
+      slug: product.slug || `product-${product.id}`,
+      description: product.description || null,
+      shortDescription: product.short_description || null,
+      price: product.price || '0',
+      regularPrice: product.regular_price || null,
+      salePrice: product.sale_price || null,
+      stockStatus: product.stock_status || 'instock',
+      stockQuantity: product.stock_quantity || 0,
+      websiteStock: product.stock_quantity || 0,
+      sku: product.sku || null,
+      image: product.images?.[0]?.src || null,
+      images: JSON.stringify(product.images || []),
+      categories: JSON.stringify(product.categories || []),
+      tags: JSON.stringify(product.tags || []),
+      attributes: JSON.stringify(product.attributes || []),
+      shippingClass: product.shipping_class || null,
+      rating: parseFloat(product.average_rating) || 0,
+      ratingCount: product.rating_count || 0,
+      status: product.status || 'publish',
+      syncedAt: new Date()
     }
 
-    // TODO: Implement your database update logic here
-    // Example:
-    // await prisma.product.upsert({
-    //   where: { wooId: product.id },
-    //   update: productData,
-    //   create: productData,
-    // });
+    // Upsert product in database
+    await prisma.product.upsert({
+      where: { wooId: product.id },
+      update: {
+        ...productData,
+        updatedAt: new Date()
+      },
+      create: productData
+    })
+
+    // Record stock movement if stock changed
+    const existingProduct = await prisma.product.findUnique({
+      where: { wooId: product.id }
+    })
+
+    if (existingProduct && existingProduct.websiteStock !== product.stock_quantity) {
+      await prisma.productStockMovement.create({
+        data: {
+          productId: existingProduct.id,
+          type: 'SYNC',
+          quantity: (product.stock_quantity || 0) - existingProduct.websiteStock,
+          beforeActual: existingProduct.actualStock,
+          afterActual: existingProduct.actualStock,
+          beforeWebsite: existingProduct.websiteStock,
+          afterWebsite: product.stock_quantity || 0,
+          reference: `WOO-SYNC-${product.id}`,
+          reason: 'WooCommerce webhook sync',
+          userName: 'system'
+        }
+      })
+    }
 
     console.log(`Product ${product.id} synced successfully`)
   } catch (error) {
@@ -126,9 +169,94 @@ async function handleProductDelete(product: WebhookPayload): Promise<void> {
   try {
     console.log('Deleting product:', product.id)
 
-    // TODO: Implement your product deletion logic here
+    // Find the product by WooCommerce ID
+    const existingProduct = await prisma.product.findUnique({
+      where: { wooId: product.id }
+    })
+
+    if (!existingProduct) {
+      console.log(`Product ${product.id} not found in database, skipping delete`)
+      return
+    }
+
+    // Option 1: Soft delete by setting status to 'trash'
+    await prisma.product.update({
+      where: { wooId: product.id },
+      data: {
+        status: 'trash',
+        stockStatus: 'outofstock',
+        updatedAt: new Date(),
+        syncedAt: new Date()
+      }
+    })
+
+    // Record the deletion as a stock movement
+    await prisma.productStockMovement.create({
+      data: {
+        productId: existingProduct.id,
+        type: 'ADJUSTMENT',
+        quantity: -existingProduct.actualStock,
+        beforeActual: existingProduct.actualStock,
+        afterActual: 0,
+        beforeWebsite: existingProduct.websiteStock,
+        afterWebsite: 0,
+        reference: `WOO-DELETE-${product.id}`,
+        reason: 'Product deleted from WooCommerce',
+        userName: 'system'
+      }
+    })
+
+    // Zero out stock levels
+    await prisma.product.update({
+      where: { wooId: product.id },
+      data: {
+        actualStock: 0,
+        websiteStock: 0,
+        reservedStock: 0
+      }
+    })
+
+    console.log(`Product ${product.id} marked as deleted successfully`)
   } catch (error) {
     console.error('Error deleting product:', error)
+    throw error
+  }
+}
+
+async function handleProductStatusUpdate(product: WebhookPayload): Promise<void> {
+  try {
+    console.log('Updating product status:', product.id, '->', product.status)
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { wooId: product.id }
+    })
+
+    if (!existingProduct) {
+      console.log(`Product ${product.id} not found, creating new product`)
+      await handleProductUpdate(product)
+      return
+    }
+
+    // Update status and related fields
+    await prisma.product.update({
+      where: { wooId: product.id },
+      data: {
+        status: product.status,
+        stockStatus: product.stock_status || existingProduct.stockStatus,
+        updatedAt: new Date(),
+        syncedAt: new Date()
+      }
+    })
+
+    // If product is being unpublished, optionally update inventory visibility
+    if (product.status === 'draft' || product.status === 'private') {
+      // Could trigger notifications or other business logic here
+      console.log(`Product ${product.id} status changed to ${product.status}`)
+    }
+
+    console.log(`Product ${product.id} status updated to ${product.status}`)
+  } catch (error) {
+    console.error('Error updating product status:', error)
     throw error
   }
 }
