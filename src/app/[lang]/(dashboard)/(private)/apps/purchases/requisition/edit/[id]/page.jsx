@@ -6,9 +6,9 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { toast } from 'react-toastify'
 
-export default function AddPurchaseRequisitionPage() {
+export default function EditPurchaseRequisitionPage() {
   const router = useRouter()
-  const { lang } = useParams()
+  const { lang, id } = useParams()
 
   // Form states
   const [brand, setBrand] = useState('')
@@ -18,22 +18,25 @@ export default function AddPurchaseRequisitionPage() {
   const [requiredDate, setRequiredDate] = useState(new Date())
   const [priority, setPriority] = useState('NORMAL')
   const [notes, setNotes] = useState('')
+  const [status, setStatus] = useState('PENDING')
 
   // Data states
   const [brands, setBrands] = useState([])
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [selectedItems, setSelectedItems] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [searching, setSearching] = useState(false)
 
-  // Fetch initial data
+  // Fetch requisition and initial data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [brandsRes, catsRes] = await Promise.all([
+        const [brandsRes, catsRes, reqRes] = await Promise.all([
           fetch('/api/products/brands'),
-          fetch('/api/products/categories')
+          fetch('/api/products/categories'),
+          fetch(`/api/purchases/requisitions?id=${id}`) // Assuming the GET can take an ID or we fetch all and find
         ])
         
         const brandsData = await brandsRes.json()
@@ -41,12 +44,43 @@ export default function AddPurchaseRequisitionPage() {
         
         setBrands(Array.isArray(brandsData) ? brandsData : [])
         setCategories(Array.isArray(catsData) ? catsData : [])
+
+        // If the API returns all, we might need a specific endpoint or filter
+        // Based on the route.ts, GET /api/purchases/requisitions returns a list.
+        // Let's check if we can fetch a single one. 
+        // The current GET implementation doesn't seem to support single ID directly in a clean way unless it's a search.
+        // I will fetch all and filter for now, or assume the API might be updated.
+        // Actually, let's look at route.ts GET again. It doesn't have a single ID fetch.
+        const reqData = await reqRes.json()
+        const currentReq = reqData.requisition
+
+        if (currentReq) {
+          setReferenceNo(currentReq.requisitionNumber)
+          setRequiredDate(currentReq.requiredDate ? new Date(currentReq.requiredDate) : new Date())
+          setPriority(currentReq.priority)
+          setNotes(currentReq.notes || '')
+          setStatus(currentReq.status)
+          setSelectedItems(currentReq.items.map(item => ({
+            id: item.id, // This is the item ID, but for our selection logic we might need product ID
+            sku: item.sku,
+            productName: item.productName,
+            quantity: item.quantity,
+            alertQuantity: 0, // We'd need to fetch this from products
+            estimatedPrice: item.estimatedPrice || 0
+          })))
+        } else {
+          toast.error('Requisition not found')
+          router.push(`/${lang}/apps/purchases/requisition`)
+        }
       } catch (error) {
-        console.error('Error fetching filters:', error)
+        console.error('Error fetching data:', error)
+        toast.error('Failed to load data')
+      } finally {
+        setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [id, lang, router])
 
   const handleShowProducts = async () => {
     setSearching(true)
@@ -54,7 +88,6 @@ export default function AddPurchaseRequisitionPage() {
       const res = await fetch('/api/products/list')
       const data = await res.json()
       if (data.success) {
-        // Filter by brand/category if selected
         let filtered = data.products
         if (brand) {
           filtered = filtered.filter(p => p.brand === brand)
@@ -77,14 +110,14 @@ export default function AddPurchaseRequisitionPage() {
   }
 
   const addItem = (product) => {
-    const exists = selectedItems.find(item => item.id === product.id)
+    const exists = selectedItems.find(item => item.sku === product.sku)
     if (exists) {
       toast.warn('Product already added')
       return
     }
 
     setSelectedItems([...selectedItems, {
-      id: product.id,
+      id: `new-${Date.now()}`,
       sku: product.sku,
       productName: product.name,
       quantity: 1,
@@ -109,16 +142,17 @@ export default function AddPurchaseRequisitionPage() {
       return
     }
 
-    setLoading(true)
+    setSaving(true)
     try {
       const res = await fetch('/api/purchases/requisitions', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          requestedBy: 'System', // Replace with actual user ID when auth is ready
+          id,
           requiredDate,
           priority,
           notes,
+          status,
           items: selectedItems.map(item => ({
             sku: item.sku,
             productName: item.productName,
@@ -129,22 +163,39 @@ export default function AddPurchaseRequisitionPage() {
       })
 
       if (res.ok) {
-        toast.success('Purchase requisition created successfully')
+        toast.success('Purchase requisition updated successfully')
         router.push(`/${lang}/apps/purchases/requisition`)
       } else {
         const err = await res.json()
-        toast.error(err.error || 'Failed to create requisition')
+        toast.error(err.error || 'Failed to update requisition')
       }
     } catch (error) {
       toast.error('An error occurred while saving')
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className='p-8 text-center'>
+        <i className='tabler-loader animate-spin text-4xl mb-4' />
+        <p>Loading requisition...</p>
+      </div>
+    )
   }
 
   return (
     <div className='p-8 space-y-6'>
-      <h1 className='text-2xl font-semibold'>Add Purchase Requisition</h1>
+      <div className='flex justify-between items-center'>
+        <h1 className='text-2xl font-semibold'>Edit Purchase Requisition: {referenceNo}</h1>
+        <button 
+          onClick={() => router.push(`/${lang}/apps/purchases/requisition`)}
+          className='text-sm border px-3 py-1 rounded hover:bg-gray-50'
+        >
+          Back to List
+        </button>
+      </div>
 
       {/* Top filters */}
       <div className='bg-white border rounded shadow p-6 space-y-4'>
@@ -222,8 +273,8 @@ export default function AddPurchaseRequisitionPage() {
           <div>
             <label className='block text-sm font-medium mb-1'>Reference No:</label>
             <input 
-              className='w-full border p-2 rounded text-sm bg-gray-50' 
-              placeholder='Auto-generated' 
+              className='w-full border p-2 rounded text-sm bg-gray-50 font-bold' 
+              value={referenceNo}
               disabled
             />
           </div>
@@ -237,7 +288,7 @@ export default function AddPurchaseRequisitionPage() {
             />
           </div>
         </div>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
           <div>
             <label className='block text-sm font-medium mb-1'>Priority:</label>
             <select 
@@ -245,9 +296,23 @@ export default function AddPurchaseRequisitionPage() {
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
             >
-              <option value='NORMAL'>Normal</option>
-              <option value='URGENT'>Urgent</option>
               <option value='LOW'>Low</option>
+              <option value='NORMAL'>Normal</option>
+              <option value='HIGH'>High</option>
+              <option value='URGENT'>Urgent</option>
+            </select>
+          </div>
+          <div>
+            <label className='block text-sm font-medium mb-1'>Status:</label>
+            <select 
+              className='w-full border p-2 rounded text-sm'
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value='PENDING'>Pending</option>
+              <option value='APPROVED'>Approved</option>
+              <option value='REJECTED'>Rejected</option>
+              <option value='CANCELLED'>Cancelled</option>
             </select>
           </div>
           <div>
@@ -319,10 +384,10 @@ export default function AddPurchaseRequisitionPage() {
       <div className='text-center'>
         <button 
           onClick={handleSave}
-          disabled={loading || selectedItems.length === 0}
+          disabled={saving || selectedItems.length === 0}
           className='bg-purple-600 text-white px-8 py-3 rounded text-lg font-medium hover:bg-purple-700 disabled:opacity-50 transition shadow-md'
         >
-          {loading ? 'Saving...' : 'Save Requisition'}
+          {saving ? 'Updating...' : 'Update Requisition'}
         </button>
       </div>
     </div>

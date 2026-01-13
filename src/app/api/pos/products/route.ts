@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import prisma from '@/lib/prisma'
 
 export async function GET() {
   try {
@@ -9,10 +7,10 @@ export async function GET() {
     const products = await prisma.product.findMany({
       where: {
         status: 'publish'
-        // Temporarily show all products to debug
       },
       select: {
         id: true,
+        wooId: true,
         name: true,
         sku: true,
         price: true,
@@ -48,6 +46,7 @@ export async function GET() {
 
       return {
         id: product.id,
+        wooId: product.wooId,
         name: product.name,
         sku: product.sku || 'N/A',
         price: parseFloat(product.salePrice || product.price || product.regularPrice || '0'),
@@ -75,7 +74,5 @@ export async function GET() {
       },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }

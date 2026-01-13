@@ -1,50 +1,232 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { useRouter, useParams } from 'next/navigation'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+import { 
+  Autocomplete, 
+  TextField, 
+  Button, 
+  IconButton, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions,
+  CircularProgress,
+  InputAdornment
+} from '@mui/material'
+import { toast } from 'react-toastify'
 
 export default function AddPurchasePage() {
-  const [purchaseDate, setPurchaseDate] = useState(new Date())
-  const [paidOn, setPaidOn] = useState(new Date())
-  const [suppliers, setSuppliers] = useState([])
-  const [paymentTerms, setPaymentTerms] = useState([])
-  const [businessLocations, setBusinessLocations] = useState([])
-  const [showSupplierDialog, setShowSupplierDialog] = useState(false)
-  const [newSupplier, setNewSupplier] = useState({ name: '', email: '', phone: '', address: '' })
+  const router = useRouter()
+  const { lang } = useParams()
 
+  // Data states
+  const [suppliers, setSuppliers] = useState([])
+  const [purchaseOrders, setPurchaseOrders] = useState([])
+  const [paymentTerms, setPaymentTerms] = useState([])
+  const [warehouses, setWarehouses] = useState([])
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Form states
+  const [selectedSupplier, setSelectedSupplier] = useState(null)
+  const [selectedPO, setSelectedPO] = useState(null)
+  const [referenceNo, setReferenceNo] = useState('')
+  const [purchaseDate, setPurchaseDate] = useState(new Date())
+  const [purchaseStatus, setPurchaseStatus] = useState('received')
+  const [address, setAddress] = useState('')
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null)
+  const [payTerm, setPayTerm] = useState(null)
+  const [notes, setNotes] = useState('')
+  const [lineItems, setLineItems] = useState([])
+  const [additionalExpenses, setAdditionalExpenses] = useState([])
+  const [shippingCharges, setShippingCharges] = useState(0)
+  const [shippingDetails, setShippingDetails] = useState('')
+  const [discountType, setDiscountType] = useState('None')
+  const [discountAmount, setDiscountAmount] = useState(0)
+  const [taxRate, setTaxRate] = useState(0)
+  
+  // Payment section
+  const [paymentAmount, setDiscountPaymentAmount] = useState(0)
+  const [paidOn, setPaidOn] = useState(new Date())
+  const [paymentMethod, setPaymentMethod] = useState('Cash')
+  const [paymentAccount, setPaymentAccount] = useState('CASH')
+  const [paymentNote, setPaymentNote] = useState('')
+
+  const [saving, setSaving] = useState(false)
+
+  // Fetch initial data
   useEffect(() => {
-    loadData()
+    const fetchData = async () => {
+      try {
+        const [suppliersRes, posRes, termsRes, warehousesRes, productsRes] = await Promise.all([
+          fetch('/api/vendors'),
+          fetch('/api/purchases/orders'),
+          fetch('/api/payment-terms'),
+          fetch('/api/warehouses'),
+          fetch('/api/products/list')
+        ])
+
+        const suppliersData = await suppliersRes.json()
+        const posData = await posRes.json()
+        const termsData = await termsRes.json()
+        const warehousesData = await warehousesRes.json()
+        const productsData = await productsRes.json()
+
+        setSuppliers(suppliersData.items || [])
+        setPurchaseOrders(posData.orders || [])
+        setPaymentTerms(termsData.items || [])
+        setWarehouses(warehousesData.warehouses || [])
+        setProducts(productsData.products || [])
+
+        if (warehousesData.warehouses?.length > 0) {
+          setSelectedWarehouse(warehousesData.warehouses[0])
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        toast.error('Failed to load initial data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
   }, [])
 
-  const loadData = async () => {
-    try {
-      const [suppliersRes, termsRes, locationsRes] = await Promise.all([
-        axios.get('/api/suppliers'),
-        axios.get('/api/payment-terms'),
-        axios.get('/api/business-locations')
-      ])
-      setSuppliers(suppliersRes.data)
-      setPaymentTerms(termsRes.data)
-      setBusinessLocations(locationsRes.data)
-    } catch (err) {
-      console.error('Error loading data:', err)
+  // Handle supplier change
+  const handleSupplierChange = (event, newValue) => {
+    setSelectedSupplier(newValue)
+    if (newValue) {
+      setAddress(newValue.address || '')
+      if (newValue.paymentTerm) {
+        const term = paymentTerms.find(t => t.name === newValue.paymentTerm)
+        if (term) setPayTerm(term)
+      }
+    } else {
+      setAddress('')
+      setPayTerm(null)
     }
   }
 
-  const handleAddSupplier = async () => {
-    try {
-      const res = await axios.post('/api/suppliers', newSupplier)
-      setSuppliers([...suppliers, res.data])
-      setShowSupplierDialog(false)
-      setNewSupplier({ name: '', email: '', phone: '', address: '' })
-      alert('Supplier added successfully')
-    } catch (err) {
-      console.error('Error adding supplier:', err)
-      alert('Failed to add supplier')
+  // Handle PO selection
+  const handlePOChange = (event, newValue) => {
+    setSelectedPO(newValue)
+    if (newValue) {
+      // If a PO is selected, we might want to load its items
+      if (newValue.vendor) {
+        const supplier = suppliers.find(s => s.id === newValue.vendorId)
+        if (supplier) setSelectedSupplier(supplier)
+      }
+      
+      if (newValue.items) {
+        const poItems = newValue.items.map(item => ({
+          id: item.id,
+          sku: item.sku,
+          name: item.productName,
+          quantity: item.quantity,
+          unitCost: parseFloat(item.unitPrice),
+          discountPercent: 0,
+          taxPercent: 0,
+          profitMargin: 0,
+          sellingPrice: 0,
+          lotNumber: '',
+          expDate: null,
+          total: parseFloat(item.totalPrice)
+        }))
+        setLineItems(poItems)
+      }
     }
   }
+
+  // Handle product selection
+  const handleProductSelect = (event, newValue) => {
+    if (newValue) {
+      const exists = lineItems.find(item => item.sku === newValue.sku)
+      if (exists) {
+        toast.warn('Product already added')
+        return
+      }
+
+      setLineItems([...lineItems, {
+        id: newValue.id,
+        sku: newValue.sku,
+        name: newValue.name,
+        quantity: 1,
+        unitCost: parseFloat(newValue.price || 0),
+        discountPercent: 0,
+        taxPercent: 0,
+        profitMargin: 25, // Default
+        sellingPrice: parseFloat(newValue.price || 0) * 1.25,
+        lotNumber: '',
+        expDate: null,
+        total: parseFloat(newValue.price || 0)
+      }])
+    }
+  }
+
+  const updateLineItem = (index, field, value) => {
+    const newList = [...lineItems]
+    newList[index][field] = value
+
+    const item = newList[index]
+    const cost = parseFloat(item.unitCost) || 0
+    const qty = parseFloat(item.quantity) || 0
+    const disc = parseFloat(item.discountPercent) || 0
+    
+    const totalBeforeDisc = cost * qty
+    item.total = totalBeforeDisc * (1 - disc / 100)
+    
+    // Update selling price if profit margin changes
+    if (field === 'profitMargin') {
+      item.sellingPrice = cost * (1 + parseFloat(value) / 100)
+    }
+    
+    setLineItems(newList)
+  }
+
+  const removeLineItem = (index) => {
+    setLineItems(lineItems.filter((_, i) => i !== index))
+  }
+
+  const calculateGrandTotal = () => {
+    const itemsTotal = lineItems.reduce((sum, item) => sum + (item.total || 0), 0)
+    let total = itemsTotal + (parseFloat(shippingCharges) || 0)
+    
+    if (discountType === 'Fixed') {
+      total -= parseFloat(discountAmount) || 0
+    } else if (discountType === 'Percentage') {
+      total -= itemsTotal * ((parseFloat(discountAmount) || 0) / 100)
+    }
+    
+    return total
+  }
+
+  const handleSave = async () => {
+    if (!selectedSupplier || lineItems.length === 0) {
+      toast.error('Please select a supplier and add products')
+      return
+    }
+
+    setSaving(true)
+    try {
+      // In a real app, this would call /api/purchases
+      toast.info('Save functionality implementation in progress')
+      setTimeout(() => {
+        router.push(`/${lang}/apps/purchases/list`)
+      }, 1000)
+    } catch (error) {
+      toast.error('Failed to save purchase')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return (
+    <div className='flex justify-center p-20'>
+      <CircularProgress />
+    </div>
+  )
 
   return (
     <div className='p-8 space-y-6'>
@@ -55,65 +237,79 @@ export default function AddPurchasePage() {
         <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
           <div className='col-span-1'>
             <label className='block text-sm font-medium mb-1'>Supplier*:</label>
-            <div className='flex'>
-              <select className='w-full border p-2 rounded text-sm'>
-                <option value=''>Please Select</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-              <button 
-                type='button'
-                onClick={() => setShowSupplierDialog(true)}
-                className='border rounded p-2 ml-1 hover:bg-gray-100'
-              >
-                <i className='tabler-plus' />
-              </button>
+            <div className='flex items-center'>
+              <Autocomplete
+                options={suppliers}
+                getOptionLabel={(option) => option.name || ''}
+                value={selectedSupplier}
+                onChange={handleSupplierChange}
+                renderInput={(params) => <TextField {...params} size='small' placeholder='Search Supplier' />}
+                className='flex-1'
+              />
+              <IconButton size='small' className='ml-1 border rounded' onClick={() => router.push(`/${lang}/apps/contacts/suppliers`)}>
+                <i className='tabler-plus text-lg' />
+              </IconButton>
             </div>
           </div>
           <div>
             <label className='block text-sm font-medium mb-1'>Reference No:</label>
-            <input className='w-full border p-2 rounded text-sm' />
+            <TextField 
+              fullWidth 
+              size='small' 
+              value={referenceNo}
+              onChange={(e) => setReferenceNo(e.target.value)}
+            />
           </div>
           <div>
             <label className='block text-sm font-medium mb-1'>Purchase Date*:</label>
-            <DatePicker selected={purchaseDate} onChange={setPurchaseDate} className='w-full border p-2 rounded text-sm' />
+            <DatePicker
+              selected={purchaseDate}
+              onChange={d => setPurchaseDate(d)}
+              className='w-full border p-2 rounded text-sm h-[40px]'
+            />
           </div>
           <div>
             <label className='block text-sm font-medium mb-1'>Purchase Status*:</label>
-            <select className='w-full border p-2 rounded text-sm'>
+            <select 
+              className='w-full border p-2.5 rounded text-sm h-[40px]'
+              value={purchaseStatus}
+              onChange={(e) => setPurchaseStatus(e.target.value)}
+            >
               <option value='received'>Received</option>
               <option value='pending'>Pending</option>
+              <option value='ordered'>Ordered</option>
             </select>
           </div>
           <div className='md:col-span-2'>
             <label className='block text-sm font-medium mb-1'>Address:</label>
-            <textarea className='w-full border p-2 rounded text-sm' rows={2} />
+            <TextField 
+              fullWidth 
+              multiline 
+              rows={2} 
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder='Supplier address'
+            />
           </div>
           <div>
             <label className='block text-sm font-medium mb-1'>Business Location*:</label>
-            <select className='w-full border p-2 rounded text-sm'>
-              {businessLocations.length > 0 ? (
-                businessLocations.map(loc => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.name} ({loc.code || 'N/A'})
-                  </option>
-                ))
-              ) : (
-                <option>NATURAL OPTIONS (BL0001)</option>
-              )}
-            </select>
+            <Autocomplete
+              options={warehouses}
+              getOptionLabel={(option) => option.name || ''}
+              value={selectedWarehouse}
+              onChange={(e, v) => setSelectedWarehouse(v)}
+              renderInput={(params) => <TextField {...params} size='small' placeholder='Select Location' />}
+            />
           </div>
           <div>
             <label className='block text-sm font-medium mb-1'>Pay term:</label>
-            <select className='w-full border p-2 rounded text-sm'>
-              <option value=''>Please Select</option>
-              {paymentTerms.map(term => (
-                <option key={term.id} value={term.id}>
-                  {term.name} ({term.days} days)
-                </option>
-              ))}
-            </select>
+            <Autocomplete
+              options={paymentTerms}
+              getOptionLabel={(option) => option.name || ''}
+              value={payTerm}
+              onChange={(e, v) => setPayTerm(v)}
+              renderInput={(params) => <TextField {...params} size='small' placeholder='Select term' />}
+            />
           </div>
           <div>
             <label className='block text-sm font-medium mb-1'>Attach Document:</label>
@@ -123,38 +319,143 @@ export default function AddPurchasePage() {
         </div>
         <div>
           <label className='block text-sm font-medium mb-1'>Purchase Order:</label>
-          <input className='w-full border p-2 rounded text-sm max-w-sm' />
+          <Autocomplete
+            options={purchaseOrders}
+            getOptionLabel={(option) => `${option.orderNumber} (${option.vendor?.name || 'Unknown'})`}
+            value={selectedPO}
+            onChange={handlePOChange}
+            renderInput={(params) => <TextField {...params} size='small' className='max-w-sm' placeholder='Search PO' />}
+          />
         </div>
       </div>
 
       {/* Product search & table */}
       <div className='bg-white border rounded shadow p-4 space-y-4'>
         <div className='flex items-center space-x-2'>
-          <button className='bg-purple-600 text-white px-3 py-1 rounded text-sm'>Import Products</button>
-          <input
-            type='text'
-            placeholder='Enter Product name / SKU / Scan bar code'
-            className='border p-2 rounded flex-1 text-sm'
+          <Button variant='contained' color='secondary' size='small'>Import Products</Button>
+          <Autocomplete
+            options={products}
+            getOptionLabel={(option) => `${option.name} (${option.sku})`}
+            onChange={handleProductSelect}
+            renderInput={(params) => (
+              <TextField 
+                {...params} 
+                size='small' 
+                placeholder='Enter Product name / SKU / Scan bar code' 
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <i className='tabler-search text-gray-500' />
+                    </InputAdornment>
+                  )
+                }}
+              />
+            )}
+            className='flex-1'
           />
-          <button className='text-blue-600 text-sm'>+Add new product</button>
+          <Button 
+            startIcon={<i className='tabler-plus' />} 
+            color='primary' 
+            size='small'
+            onClick={() => router.push(`/${lang}/apps/ecommerce/products/add`)}
+          >
+            Add new product
+          </Button>
         </div>
         <div className='overflow-x-auto'>
-          <table className='min-w-full text-sm border'>
-            <thead className='bg-green-100'>
+          <table className='min-w-full text-sm border border-collapse'>
+            <thead className='bg-green-50 uppercase text-xs font-semibold'>
               <tr>
-                {['#', 'Product Name', 'Purchase Quantity', 'Unit Cost (Before Discount)', 'Discount Percent', 'Unit Cost (Before Tax)', 'Line Total', 'Profit Margin %', 'Unit Selling Price (Incl. tax)', 'Lot Number', 'MFG Date / EXP Date'].map(h => (
-                  <th key={h} className='border px-2 py-1'>{h}</th>
-                ))}
+                <th className='border p-2 text-left w-10'>#</th>
+                <th className='border p-2 text-left'>Product Name</th>
+                <th className='border p-2 text-center w-24'>Qty</th>
+                <th className='border p-2 text-center w-32'>Unit Cost</th>
+                <th className='border p-2 text-center w-24'>Disc %</th>
+                <th className='border p-2 text-right w-32'>Total</th>
+                <th className='border p-2 text-center w-24'>Margin %</th>
+                <th className='border p-2 text-center w-32'>Selling Price</th>
+                <th className='border p-2 text-center'>Lot/EXP</th>
+                <th className='border p-2 text-center w-10'></th>
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={11} className='text-center p-4'>No products</td></tr>
+              {lineItems.length === 0 ? (
+                <tr><td colSpan={10} className='text-center p-8 text-gray-500 italic'>No products added</td></tr>
+              ) : (
+                lineItems.map((item, index) => (
+                  <tr key={item.id} className='hover:bg-gray-50'>
+                    <td className='border p-2 text-center'>{index + 1}</td>
+                    <td className='border p-2'>
+                      <div className='font-medium'>{item.name}</div>
+                      <div className='text-xs text-gray-400'>{item.sku}</div>
+                    </td>
+                    <td className='border p-2'>
+                      <input 
+                        type='number' 
+                        className='w-full border rounded p-1 text-center' 
+                        value={item.quantity}
+                        onChange={(e) => updateLineItem(index, 'quantity', e.target.value)}
+                      />
+                    </td>
+                    <td className='border p-2'>
+                      <input 
+                        type='number' 
+                        className='w-full border rounded p-1 text-center' 
+                        value={item.unitCost}
+                        onChange={(e) => updateLineItem(index, 'unitCost', e.target.value)}
+                      />
+                    </td>
+                    <td className='border p-2'>
+                      <input 
+                        type='number' 
+                        className='w-full border rounded p-1 text-center' 
+                        value={item.discountPercent}
+                        onChange={(e) => updateLineItem(index, 'discountPercent', e.target.value)}
+                      />
+                    </td>
+                    <td className='border p-2 text-right font-medium'>
+                      {item.total.toLocaleString()}
+                    </td>
+                    <td className='border p-2'>
+                      <input 
+                        type='number' 
+                        className='w-full border rounded p-1 text-center' 
+                        value={item.profitMargin}
+                        onChange={(e) => updateLineItem(index, 'profitMargin', e.target.value)}
+                      />
+                    </td>
+                    <td className='border p-2'>
+                      <input 
+                        type='number' 
+                        className='w-full border rounded p-1 text-center font-semibold text-green-600' 
+                        value={item.sellingPrice}
+                        onChange={(e) => updateLineItem(index, 'sellingPrice', e.target.value)}
+                      />
+                    </td>
+                    <td className='border p-2'>
+                      <TextField size='small' placeholder='Lot' className='mb-1' />
+                      <DatePicker
+                        selected={item.expDate}
+                        onChange={d => updateLineItem(index, 'expDate', d)}
+                        className='w-full border p-1 rounded text-xs'
+                        placeholderText='EXP Date'
+                      />
+                    </td>
+                    <td className='border p-2 text-center'>
+                      <IconButton size='small' color='error' onClick={() => removeLineItem(index)}>
+                        <i className='tabler-trash' />
+                      </IconButton>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        <div className='text-right text-sm space-y-1'>
-          <p>Total items: 0</p>
-          <p>Net Total Amount: 0</p>
+        <div className='flex justify-end gap-10 text-sm'>
+          <p>Total items: <span className='font-semibold'>{lineItems.length}</span></p>
+          <p>Net Total Amount: <span className='font-semibold text-purple-600 text-lg'>Ksh {lineItems.reduce((sum, i) => sum + i.total, 0).toLocaleString()}</span></p>
         </div>
       </div>
 
@@ -162,148 +463,152 @@ export default function AddPurchasePage() {
       <div className='bg-white border rounded shadow p-6 space-y-4'>
         <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
           <div>
-            <label className='text-sm'>Discount Type</label>
-            <select className='w-full border p-2 rounded text-sm'>
-              <option>None</option>
-              <option>Fixed</option>
-              <option>Percentage</option>
+            <label className='text-sm font-medium mb-1 block'>Discount Type</label>
+            <select 
+              className='w-full border p-2 rounded text-sm h-[40px]'
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value)}
+            >
+              <option value='None'>None</option>
+              <option value='Fixed'>Fixed</option>
+              <option value='Percentage'>Percentage</option>
             </select>
           </div>
           <div>
-            <label className='text-sm'>Discount Amount</label>
-            <input type='number' defaultValue={0} className='w-full border p-2 rounded text-sm' />
+            <label className='text-sm font-medium mb-1 block'>Discount Amount</label>
+            <TextField 
+              fullWidth 
+              size='small' 
+              type='number'
+              value={discountAmount}
+              onChange={(e) => setDiscountAmount(e.target.value)}
+              disabled={discountType === 'None'}
+            />
           </div>
           <div>
-            <label className='text-sm'>Discount(%)</label>
-            <input type='number' defaultValue={0} className='w-full border p-2 rounded text-sm' />
-          </div>
-          <div>
-            <label className='text-sm'>Purchase Tax</label>
-            <select className='w-full border p-2 rounded text-sm'>
+            <label className='text-sm font-medium mb-1 block'>Purchase Tax</label>
+            <select className='w-full border p-2 rounded text-sm h-[40px]'>
               <option>None</option>
+              <option>VAT (16%)</option>
             </select>
           </div>
         </div>
-        <label className='text-sm block'>Additional Notes</label>
-        <textarea className='w-full border p-2 rounded text-sm' rows={2} />
+        <div>
+          <label className='text-sm font-medium mb-1 block'>Additional Notes</label>
+          <TextField 
+            fullWidth 
+            multiline 
+            rows={2} 
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Shipping details */}
       <div className='bg-white border rounded shadow p-6 space-y-4'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <div>
-            <label className='text-sm'>Shipping Details</label>
-            <textarea className='w-full border p-2 rounded text-sm' rows={2} />
+            <label className='text-sm font-medium mb-1 block'>Shipping Details</label>
+            <TextField 
+              fullWidth 
+              multiline 
+              rows={2} 
+              value={shippingDetails}
+              onChange={(e) => setShippingDetails(e.target.value)}
+            />
           </div>
           <div>
-            <label className='text-sm'>(*) Additional Shipping charges:</label>
-            <input type='number' defaultValue={0} className='w-full border p-2 rounded text-sm' />
+            <label className='text-sm font-medium mb-1 block'>(*) Additional Shipping charges:</label>
+            <TextField 
+              fullWidth 
+              size='small' 
+              type='number'
+              value={shippingCharges}
+              onChange={(e) => setShippingCharges(e.target.value)}
+            />
           </div>
         </div>
-        <button className='border px-4 py-2 text-sm rounded'>+ Add additional expenses</button>
-        <div className='text-right font-medium'>Purchase Total: 0</div>
+        <div className='text-right font-bold text-xl'>
+          Purchase Total: <span className='text-purple-700'>Ksh {calculateGrandTotal().toLocaleString()}</span>
+        </div>
       </div>
 
       {/* Payment section */}
       <div className='bg-white border rounded shadow p-6 space-y-4'>
-        <h2 className='font-medium'>Add payment</h2>
+        <h2 className='font-semibold text-lg border-b pb-2'>Add payment</h2>
         <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
           <div>
-            <label className='text-sm'>Amount*</label>
-            <input type='number' defaultValue={0} className='w-full border p-2 rounded text-sm' />
+            <label className='text-sm font-medium mb-1 block'>Amount*</label>
+            <TextField 
+              fullWidth 
+              size='small' 
+              type='number'
+              value={paymentAmount}
+              onChange={(e) => setDiscountPaymentAmount(e.target.value)}
+            />
           </div>
           <div>
-            <label className='text-sm'>Paid on*</label>
-            <DatePicker selected={paidOn} onChange={setPaidOn} className='w-full border p-2 rounded text-sm' />
+            <label className='text-sm font-medium mb-1 block'>Paid on*</label>
+            <DatePicker 
+              selected={paidOn} 
+              onChange={setPaidOn} 
+              className='w-full border p-2 rounded text-sm h-[40px]' 
+            />
           </div>
           <div>
-            <label className='text-sm'>Payment Method*</label>
-            <select className='w-full border p-2 rounded text-sm'>
+            <label className='text-sm font-medium mb-1 block'>Payment Method*</label>
+            <select 
+              className='w-full border p-2 rounded text-sm h-[40px]'
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+            >
               <option>Cash</option>
-              <option>Bank</option>
+              <option>Bank Transfer</option>
+              <option>M-Pesa</option>
+              <option>Cheque</option>
             </select>
           </div>
           <div>
-            <label className='text-sm'>Payment Account</label>
-            <select className='w-full border p-2 rounded text-sm'>
+            <label className='text-sm font-medium mb-1 block'>Payment Account</label>
+            <select 
+              className='w-full border p-2 rounded text-sm h-[40px]'
+              value={paymentAccount}
+              onChange={(e) => setPaymentAccount(e.target.value)}
+            >
               <option>CASH</option>
+              <option>MPESA</option>
+              <option>EQUITY BANK</option>
             </select>
           </div>
         </div>
-        <label className='text-sm block'>Payment note</label>
-        <textarea className='w-full border p-2 rounded text-sm' rows={2} />
-        <div className='text-right font-medium'>Payment due: 0.00</div>
+        <div>
+          <label className='text-sm font-medium mb-1 block'>Payment note</label>
+          <TextField 
+            fullWidth 
+            multiline 
+            rows={2} 
+            value={paymentNote}
+            onChange={(e) => setPaymentNote(e.target.value)}
+          />
+        </div>
+        <div className='text-right font-medium text-red-600'>
+          Payment due: Ksh {(calculateGrandTotal() - (parseFloat(paymentAmount) || 0)).toLocaleString()}
+        </div>
       </div>
 
       <div className='text-center'>
-        <button className='bg-purple-600 text-white px-8 py-2 rounded text-lg'>Save</button>
+        <Button 
+          variant='contained' 
+          color='primary' 
+          size='large' 
+          className='px-12 py-3'
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'Saving...' : 'Save Purchase'}
+        </Button>
       </div>
-
-      {/* Add Supplier Dialog */}
-      {showSupplierDialog && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-md'>
-            <h2 className='text-xl font-semibold mb-4'>Add New Supplier</h2>
-            <div className='space-y-3'>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Name*</label>
-                <input
-                  type='text'
-                  className='w-full border p-2 rounded text-sm'
-                  value={newSupplier.name}
-                  onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Email</label>
-                <input
-                  type='email'
-                  className='w-full border p-2 rounded text-sm'
-                  value={newSupplier.email}
-                  onChange={(e) => setNewSupplier({...newSupplier, email: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Phone</label>
-                <input
-                  type='text'
-                  className='w-full border p-2 rounded text-sm'
-                  value={newSupplier.phone}
-                  onChange={(e) => setNewSupplier({...newSupplier, phone: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium mb-1'>Address</label>
-                <textarea
-                  className='w-full border p-2 rounded text-sm'
-                  rows={2}
-                  value={newSupplier.address}
-                  onChange={(e) => setNewSupplier({...newSupplier, address: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className='flex gap-2 mt-4'>
-              <button
-                onClick={handleAddSupplier}
-                disabled={!newSupplier.name}
-                className='bg-purple-600 text-white px-4 py-2 rounded disabled:bg-gray-400'
-              >
-                Add Supplier
-              </button>
-              <button
-                onClick={() => {
-                  setShowSupplierDialog(false)
-                  setNewSupplier({ name: '', email: '', phone: '', address: '' })
-                }}
-                className='border px-4 py-2 rounded'
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-

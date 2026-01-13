@@ -1,13 +1,61 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import { toast } from 'react-toastify'
 
 export default function PurchaseRequisitionPage() {
   const router = useRouter()
+  const { lang } = useParams()
   const [filterOpen, setFilterOpen] = useState(true)
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const data = [] // TODO fetch requisitions
+  const fetchRequisitions = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/purchases/requisitions', { cache: 'no-store' })
+      const result = await res.json()
+
+      console.log('Fetch requisitions result:', result)
+
+      if (res.ok && result.requisitions) {
+        setData(result.requisitions)
+      } else {
+        toast.error(result.error || 'Failed to load requisitions')
+      }
+    } catch (error) {
+      console.error('Error fetching requisitions:', error)
+      toast.error('Failed to load requisitions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this requisition?')) return
+
+    try {
+      const res = await fetch(`/api/purchases/requisitions?id=${id}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        toast.success('Requisition deleted successfully')
+        fetchRequisitions()
+      } else {
+        const error = await res.json()
+        toast.error(error.error || 'Failed to delete requisition')
+      }
+    } catch (error) {
+      console.error('Error deleting requisition:', error)
+      toast.error('An error occurred while deleting')
+    }
+  }
+
+  useEffect(() => {
+    fetchRequisitions()
+  }, [])
 
   return (
     <div className='p-8 space-y-6'>
@@ -57,7 +105,7 @@ export default function PurchaseRequisitionPage() {
           <div className='flex items-center space-x-2'>
             <input type='text' placeholder='Search…' className='border p-2 rounded text-sm' />
             <button
-              onClick={() => router.push('./requisition/add')}
+              onClick={() => router.push(`/${lang}/apps/purchases/requisition/add`)}
               className='bg-purple-600 text-white px-4 py-2 rounded flex items-center'
             >
               <i className='tabler-plus mr-1' /> Add
@@ -74,20 +122,48 @@ export default function PurchaseRequisitionPage() {
               </tr>
             </thead>
             <tbody>
-              {data.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className='text-center p-8'>
+                    <i className='tabler-loader animate-spin mr-2' />
+                    Loading requisitions...
+                  </td>
+                </tr>
+              ) : data.length === 0 ? (
                 <tr>
                   <td colSpan={7} className='text-center p-4'>No data available in table</td>
                 </tr>
               ) : (
                 data.map(r => (
-                  <tr key={r.id} className='odd:bg-gray-50'>
-                    <td className='border px-2 py-1'>edit</td>
-                    <td className='border px-2 py-1'>{r.date}</td>
-                    <td className='border px-2 py-1'>{r.ref}</td>
-                    <td className='border px-2 py-1'>{r.location}</td>
-                    <td className='border px-2 py-1'>{r.status}</td>
-                    <td className='border px-2 py-1'>{r.required}</td>
-                    <td className='border px-2 py-1'>{r.user}</td>
+                  <tr key={r.id} className='odd:bg-gray-50 hover:bg-gray-100 transition-colors'>
+                    <td className='border px-2 py-1 text-center'>
+                      <button
+                        onClick={() => router.push(`/${lang}/apps/purchases/requisition/edit/${r.id}`)}
+                        className='text-primary hover:underline mr-2'
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(r.id)}
+                        className='text-error hover:underline'
+                      >
+                        Delete
+                      </button>
+                    </td>
+                    <td className='border px-2 py-1'>{new Date(r.requestDate).toLocaleDateString()}</td>
+                    <td className='border px-2 py-1 font-medium'>{r.requisitionNumber}</td>
+                    <td className='border px-2 py-1'>{r.requestedFor || 'N/A'}</td>
+                    <td className='border px-2 py-1 text-center'>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        r.status === 'APPROVED' ? 'bg-success/10 text-success' :
+                        r.status === 'REJECTED' ? 'bg-error/10 text-error' :
+                        'bg-warning/10 text-warning'
+                      }`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className='border px-2 py-1'>{r.requiredDate ? new Date(r.requiredDate).toLocaleDateString() : 'N/A'}</td>
+                    <td className='border px-2 py-1'>{r.requestedBy}</td>
                   </tr>
                 ))
               )}

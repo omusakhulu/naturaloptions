@@ -28,8 +28,10 @@ function mapPaymentMethod(method: string): PaymentMethod {
 }
 
 export async function POST(request: Request) {
+  console.log('🚀 POST /api/pos/sales started')
   try {
     const body = await request.json()
+    console.log('📦 Request body received:', JSON.stringify(body).substring(0, 200) + '...')
 
     const {
       items,
@@ -119,6 +121,40 @@ export async function POST(request: Request) {
     console.log('✅ Employee found:', employee.id)
 
     // Prepare sale data
+    const saleItems = []
+
+    for (const item of items) {
+      let productId = item.id
+
+      // If id looks like an integer (WooCommerce ID), find the CUID
+      if (typeof productId === 'number' || (typeof productId === 'string' && /^\d+$/.test(productId))) {
+        const product = await prisma.product.findUnique({
+          where: { wooId: parseInt(productId.toString()) }
+        })
+
+        if (product) {
+          productId = product.id
+        } else {
+          console.error(`❌ Product not found for wooId: ${productId}`)
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Product not found: ${item.name || productId}`
+            },
+            { status: 404 }
+          )
+        }
+      }
+
+      saleItems.push({
+        productId: productId,
+        quantity: parseInt(item.quantity?.toString() || '0'),
+        unitPrice: parseFloat(item.price?.toString() || '0'),
+        total: parseFloat((item.price * item.quantity)?.toString() || '0')
+      })
+    }
+
     const saleData = {
       saleNumber: `POS-${Date.now()}`,
       saleDate: new Date(),
@@ -133,12 +169,7 @@ export async function POST(request: Request) {
       status: SaleStatus.COMPLETED,
       customerId: customer?.id || null,
       saleItems: {
-        create: items.map((item: any) => ({
-          productId: item.id,
-          quantity: parseInt(item.quantity?.toString() || '0'),
-          unitPrice: parseFloat(item.price?.toString() || '0'),
-          total: parseFloat((item.price * item.quantity)?.toString() || '0')
-        }))
+        create: saleItems
       }
     }
 
@@ -157,9 +188,9 @@ export async function POST(request: Request) {
     })
 
     // Update product stock
-    for (const item of items) {
+    for (const item of saleItems) {
       await prisma.product.update({
-        where: { id: item.id },
+        where: { id: item.productId },
         data: {
           actualStock: {
             decrement: item.quantity
@@ -189,18 +220,21 @@ export async function POST(request: Request) {
     let wooOrder = null
 
     try {
-      console.log('🛒 Creating WooCommerce order...')
-
+      console.log('🛒 Attempting to create WooCommerce order...')
       const wooService = WooCommerceService.getInstance()
 
       // Map POS items to WooCommerce line items
-      const lineItems = items.map((item: any) => ({
-        product_id: item.wooId || item.id, // Use WooCommerce product ID if available
-        quantity: item.quantity,
-        price: item.price,
-        name: item.name,
-        total: (item.price * item.quantity).toString()
-      }))
+      const lineItems = items.map((item: any) => {
+        const wooId = item.wooId || (typeof item.id === 'number' || (typeof item.id === 'string' && /^\d+$/.test(item.id)) ? parseInt(item.id.toString()) : null);
+        
+        return {
+          product_id: wooId,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name,
+          total: (item.price * item.quantity).toString()
+        }
+      }).filter((li: any) => li.product_id !== null)
 
       // Prepare WooCommerce order data
       const wooOrderData = {
@@ -309,16 +343,14 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('❌ Error creating POS sale:', error)
 
-return NextResponse.json(
+    return NextResponse.json(
       {
         success: false,
         error: 'Failed to create sale',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -392,14 +424,12 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('❌ Error fetching POS sales:', error)
 
-return NextResponse.json(
+    return NextResponse.json(
       {
         success: false,
         error: 'Failed to fetch sales'
       },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }

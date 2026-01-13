@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Decimal } from '@prisma/client/runtime/library'
 
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 
 // Generate unique shift number
 async function generateShiftNumber(): Promise<string> {

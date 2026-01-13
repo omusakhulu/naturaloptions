@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { Decimal } from '@prisma/client/runtime/library'
+import { getServerSession } from 'next-auth'
 
 import prisma from '@/lib/prisma'
+import { authOptions } from '@/config/auth'
 
 export async function GET(request: Request) {
   try {
@@ -57,6 +59,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions)
     const body = await request.json()
     const {
       vendorId,
@@ -68,8 +71,27 @@ export async function POST(request: Request) {
       purchaseOrderId,
       adjustInventory = true,
       createJournalEntry = true,
-      userId
+      userId: bodyUserId
     } = body || {}
+
+    // Determine user ID: session user > body user > first admin > first user
+    let finalUserId = session?.user?.id || bodyUserId
+
+    if (!finalUserId) {
+      const firstAdmin = await prisma.user.findFirst({
+        where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } }
+      })
+      finalUserId = firstAdmin?.id
+    }
+
+    if (!finalUserId) {
+      const firstUser = await prisma.user.findFirst()
+      finalUserId = firstUser?.id
+    }
+
+    if (!finalUserId) {
+      return NextResponse.json({ error: 'No valid user found for the operation' }, { status: 400 })
+    }
 
     if (!vendorId || amount == null || !date) {
       return NextResponse.json({ error: 'vendorId, amount, date are required' }, { status: 400 })
@@ -117,7 +139,7 @@ export async function POST(request: Request) {
                 quantity: -item.quantity,
                 referenceNumber: `PR-${purchaseReturn.id}`,
                 notes: `Purchase return to vendor: ${reason || 'No reason provided'}`,
-                performedBy: userId || 'system'
+                performedBy: finalUserId
               }
             })
           }
@@ -147,7 +169,7 @@ export async function POST(request: Request) {
               totalDebit: new Decimal(amount),
               totalCredit: new Decimal(amount),
               status: 'POSTED',
-              createdBy: userId || 'system',
+              createdBy: finalUserId,
               lineItems: {
                 create: [
                   {
@@ -195,8 +217,12 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: 201 })
   } catch (error: any) {
     console.error('Error creating purchase return:', error)
+    
     return NextResponse.json(
-      { error: 'Failed to create purchase return', details: error.message },
+      { 
+        error: 'Failed to create purchase return', 
+        details: error instanceof Error ? error.message : String(error) 
+      },
       { status: 500 }
     )
   }

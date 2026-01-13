@@ -22,6 +22,7 @@ async function generateRequisitionNumber(): Promise<string> {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const status = searchParams.get('status')
@@ -30,6 +31,24 @@ export async function GET(request: Request) {
     const search = searchParams.get('search')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
+
+    if (id) {
+      const requisition = await prisma.purchaseRequisition.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          purchaseOrders: {
+            select: { id: true, orderNumber: true, status: true }
+          }
+        }
+      })
+
+      if (!requisition) {
+        return NextResponse.json({ error: 'Requisition not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({ requisition })
+    }
 
     const where: any = {}
 

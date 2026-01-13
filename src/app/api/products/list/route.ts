@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
       }
 
       return {
-        id: product.wooId,
+        id: product.id,
+        wooId: product.wooId,
         name: product.name,
         price: product.price,
         regularPrice: product.regularPrice,
