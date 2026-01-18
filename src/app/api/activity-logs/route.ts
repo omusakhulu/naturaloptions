@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { EntityType } from '@prisma/client'
 import { authOptions } from '@/config/auth'
 import prisma from '@/lib/prisma'
 
@@ -76,6 +77,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const performedById = session.user.id
+
+    if (!performedById) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { relatedUserId, entityType, entityId, action, description, icon, color, metadata } = body
 
@@ -85,12 +92,12 @@ export async function POST(request: Request) {
 
     const activity = await prisma.activityLog.create({
       data: {
-        performedById: session.user.id,
-        relatedUserId: relatedUserId || null,
-        entityType,
-        entityId,
-        action,
-        description,
+        performedBy: { connect: { id: performedById } },
+        ...(relatedUserId ? { relatedUser: { connect: { id: String(relatedUserId) } } } : {}),
+        entityType: entityType as EntityType,
+        entityId: String(entityId),
+        action: String(action),
+        description: String(description),
         icon: icon || null,
         color: color || 'primary',
         metadata: metadata ? JSON.stringify(metadata) : '{}'
