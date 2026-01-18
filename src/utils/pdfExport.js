@@ -1,5 +1,3 @@
-import html2pdf from 'html2pdf.js'
-
 /**
  * Generate PDF from HTML element and optionally print it
  * @param {string|HTMLElement} element - CSS selector or HTML element to convert
@@ -9,6 +7,12 @@ import html2pdf from 'html2pdf.js'
  * @param {boolean} options.download - Whether to download the PDF
  */
 export const generatePDF = async (element, options = {}) => {
+  if (typeof window === 'undefined') {
+    throw new Error('PDF generation is only available in the browser')
+  }
+
+  const { default: html2pdf } = await import('html2pdf.js')
+
   const {
     filename = 'document.pdf',
     autoPrint = false,
