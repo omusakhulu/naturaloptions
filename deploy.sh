@@ -14,14 +14,27 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-APP_DIR="/var/www/naturaloptions-admin"
-BACKUP_DIR="/var/backups/naturaloptions"
+APP_DIR="/var/www/omnishop-admin"
+BACKUP_DIR="/var/backups/omnishop-admin"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Load environment variables (DATABASE_URL, etc.)
+if [ -f "$APP_DIR/.env" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$APP_DIR/.env"
+    set +a
+fi
 
 # Step 1: Backup Database
 echo -e "${YELLOW}📦 Creating database backup...${NC}"
 mkdir -p $BACKUP_DIR
-pg_dump -U naturaloptions_user -d naturaloptions > $BACKUP_DIR/pre_deploy_$TIMESTAMP.sql
+if [ -n "$DATABASE_URL" ]; then
+    pg_dump "$DATABASE_URL" > "$BACKUP_DIR/pre_deploy_$TIMESTAMP.sql"
+else
+    echo -e "${RED}❌ DATABASE_URL not set. Cannot run pg_dump.${NC}"
+    exit 1
+fi
 echo -e "${GREEN}✅ Database backed up${NC}"
 
 # Step 2: Pull Latest Code

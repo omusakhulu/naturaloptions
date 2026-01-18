@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
     name: "naturaloptions-admin",
-    cwd: "/var/www/naturaloptions",
+    cwd: "/var/www/omnishop-admin",
     script: "node_modules/.bin/next",
     args: "start",
       instances: 1, // Change to 'max' for cluster mode
@@ -13,7 +13,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000,
         BASEPATH: "/admin",
-        NEXTAUTH_URL: "http://102.212.246.251/admin"
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL || "https://102.220.12.78.sslip.io/admin"
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',

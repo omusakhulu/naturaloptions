@@ -114,7 +114,7 @@ cd /var/www/omnishop-admin
 read -p "Enter WooCommerce Store URL: " WOO_URL
 read -p "Enter WooCommerce Consumer Key: " WOO_KEY
 read -p "Enter WooCommerce Consumer Secret: " WOO_SECRET
-read -p "Enter your domain (e.g., admin.example.com): " DOMAIN
+read -p "Enter your domain (e.g., 102.220.12.78.sslip.io): " DOMAIN
 
 # Generate NextAuth Secret
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
@@ -129,7 +129,8 @@ WOO_CONSUMER_SECRET=$WOO_SECRET
 DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME?schema=public
 
 # NextAuth Configuration
-NEXTAUTH_URL=https://$DOMAIN
+BASEPATH=/admin
+NEXTAUTH_URL=https://$DOMAIN/admin
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 
 # Production
@@ -171,7 +172,11 @@ server {
     listen 80;
     server_name $DOMAIN;
 
-    location / {
+    location = / {
+        return 301 /admin/;
+    }
+
+    location /admin {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -187,12 +192,12 @@ server {
         proxy_read_timeout 60s;
     }
 
-    location /_next/static {
+    location /admin/_next/static {
         proxy_pass http://localhost:3000;
         proxy_cache_valid 60m;
     }
 
-    location /api {
+    location /admin/api {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
