@@ -40,6 +40,18 @@ import { getBuyingPriceBySku, setBuyingPriceBySku } from '@/utils/buyingPriceUti
 
 type StockStatus = 'instock' | 'outofstock' | 'onbackorder'
 
+type VariationData = {
+  id?: number
+  key: string
+  attributes: Array<{ id: number; name: string; option: string }>
+  sku?: string
+  regular_price?: string
+  sale_price?: string
+  manage_stock?: boolean
+  stock_quantity?: number
+  stock_status?: StockStatus
+}
+
 interface ProductFormData {
   name: string
   sku: string
@@ -175,19 +187,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
   >([{ attrId: null, termIds: [], visible: true, variation: false }])
 
   // Variations state
-  const [variations, setVariations] = useState<
-    Array<{
-      id?: number
-      key: string
-      attributes: Array<{ id: number; name: string; option: string }>
-      sku?: string
-      regular_price?: string
-      sale_price?: string
-      manage_stock?: boolean
-      stock_quantity?: number
-      stock_status?: 'instock' | 'outofstock' | 'onbackorder'
-    }>
-  >([])
+  const [variations, setVariations] = useState<VariationData[]>([])
 
   const {
     register,
@@ -413,14 +413,14 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
       acc = next
     }
 
-    const oldMap = new Map(variations.map(v => [v.key, v]))
+    const oldMap = new Map<string, VariationData>(variations.map(v => [v.key, v]))
 
-    const newVars = acc.map(attrs => {
+    const newVars: VariationData[] = acc.map(attrs => {
       const key = attrs.map(a => `${a.id}:${a.option}`).join('|')
       const prev = oldMap.get(key)
 
       return (
-        prev || {
+        prev ?? {
           key,
           attributes: attrs,
           stock_status: 'instock',
@@ -455,7 +455,12 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
 
           const key = attrs.map((a: any) => `${a.id}:${a.option}`).join('|')
 
-          return {
+          const normalizedStockStatus: StockStatus =
+            v.stock_status === 'instock' || v.stock_status === 'outofstock' || v.stock_status === 'onbackorder'
+              ? v.stock_status
+              : 'instock'
+
+          const row: VariationData = {
             id: Number(v.id) || undefined,
             key,
             attributes: attrs,
@@ -464,8 +469,10 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
             sale_price: v.sale_price || '',
             manage_stock: Boolean(v.manage_stock),
             stock_quantity: v.stock_quantity != null ? Number(v.stock_quantity) : 0,
-            stock_status: v.stock_status || 'instock'
+            stock_status: normalizedStockStatus
           }
+
+          return row
         })
 
         setVariations(mapped)
@@ -664,7 +671,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
         <ProductAddHeader isEdit={true} product={initialProduct} />
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 2, alignItems: 'center' }}>
           <Button
-            variant='tonal'
+            variant='outlined'
             color='secondary'
             onClick={() => router.push(`/${lang}/apps/ecommerce/products/list`)}
             disabled={isLoading}
@@ -672,7 +679,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
             Discard
           </Button>
           <Button
-            variant='tonal'
+            variant='outlined'
             onClick={() => {
               setSubmitIntent('draft')
             }}
@@ -909,10 +916,10 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                     {...register('buying_price', {
                       min: { value: 0, message: 'Buying price cannot be negative' },
                       validate: value => {
-                        if (value === '') return true
-                        const num = typeof value === 'string' ? parseFloat(value) : value
+                        if (value === '' || value === undefined || value === null) return true
+                        const num = typeof value === 'string' ? parseFloat(value) : Number(value)
 
-                        return !isNaN(num) || 'Must be a valid number'
+                        return Number.isFinite(num) || 'Must be a valid number'
                       }
                     })}
                     onChange={e => handleBuyingPriceChange(e.target.value)}

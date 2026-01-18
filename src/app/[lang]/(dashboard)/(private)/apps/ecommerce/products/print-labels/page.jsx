@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Button, Card, CardContent, TextField, Select, MenuItem, FormControl, InputLabel, Checkbox, FormControlLabel, Alert } from '@mui/material'
-import { Print, QrCode2, Barcode } from '@mui/icons-material'
+import { Print, QrCode2, QrCodeScanner } from '@mui/icons-material'
 
 export default function PrintLabelsPage() {
   const [products, setProducts] = useState([])
@@ -150,7 +150,7 @@ export default function PrintLabelsPage() {
                     onChange={(e) => setLabelSettings({ ...labelSettings, labelType: e.target.value })}
                     label='Label Type'
                   >
-                    <MenuItem value='barcode'><Barcode /> Barcode</MenuItem>
+                    <MenuItem value='barcode'><QrCodeScanner /> Barcode</MenuItem>
                     <MenuItem value='qrcode'><QrCode2 /> QR Code</MenuItem>
                     <MenuItem value='simple'>Simple Text</MenuItem>
                   </Select>

@@ -13,7 +13,7 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 
 // Third-party Imports
-import { formatDate } from 'date-fns/format'
+import { format as formatDate } from 'date-fns'
 
 // Component Imports
 import CustomTextField from '@core/components/mui/TextField'
