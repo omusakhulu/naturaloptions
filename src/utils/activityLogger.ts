@@ -1,3 +1,5 @@
+import { EntityType } from '@prisma/client'
+
 import prisma from '@/lib/prisma'
 
 interface ActivityLogParams {
@@ -19,12 +21,12 @@ export async function logActivity(params: ActivityLogParams) {
   try {
     const activity = await prisma.activityLog.create({
       data: {
-        performedById: params.performedById,
-        relatedUserId: params.relatedUserId || null,
-        entityType: params.entityType as any,
-        entityId: params.entityId,
-        action: params.action,
-        description: params.description,
+        performedBy: { connect: { id: params.performedById } },
+        ...(params.relatedUserId ? { relatedUser: { connect: { id: params.relatedUserId } } } : {}),
+        entityType: params.entityType as EntityType,
+        entityId: String(params.entityId),
+        action: String(params.action),
+        description: String(params.description),
         icon: params.icon || null,
         color: params.color || 'primary',
         metadata: params.metadata ? JSON.stringify(params.metadata) : '{}'

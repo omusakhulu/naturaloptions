@@ -127,7 +127,7 @@ export default function ActivityLogReportTSX({ lang = 'en' }: { lang?: string })
                     label={item.action} 
                     size="small" 
                     color={getStatusColor(item.color) as any}
-                    variant="tonal"
+                    variant="outlined"
                   />
                 </div>
                 <div className="col-span-2">

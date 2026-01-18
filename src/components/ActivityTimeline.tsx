@@ -160,7 +160,7 @@ const ActivityTimeline = ({
           <Timeline position="right">
             {activities.map((activity, index) => (
               <TimelineItem key={activity.id}>
-                <TimelineOppositeContent color="textSecondary" className="flex-[0.3]">
+                <TimelineOppositeContent sx={{ color: 'text.secondary', flex: 0.3 }}>
                   <Typography variant="caption">
                     {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
                   </Typography>
@@ -197,7 +197,7 @@ const ActivityTimeline = ({
                         label={formatRole(activity.performedBy.role)}
                         size="small"
                         color={getRoleColor(activity.performedBy.role)}
-                        variant="tonal"
+                        variant="outlined"
                       />
                     </div>
 
