@@ -73,18 +73,9 @@ const nextConfig = {
   // DISABLED: These redirects were bypassing middleware authentication
   // The middleware now handles all routing and authentication
   redirects: async () => {
-    const excluded = ['en', 'fr', 'ar', 'front-pages', 'favicon.ico', 'api', '_next']
-    if (basePathSegment) excluded.push(basePathSegment)
-
-    return [
-      // Only keep the lang redirect, middleware handles the rest
-      {
-        source: `/((?!(?:${excluded.join('|')})\\b)):path`,
-        destination: '/en/:path',
-        permanent: false,  // Changed to false to allow middleware to work
-        locale: false
-      }
-    ]
+    // Disable locale redirect entirely - middleware handles all routing
+    // This was causing /admin/en/... to redirect to /en/admin/en/...
+    return []
   }
 }
 
