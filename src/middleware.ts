@@ -39,8 +39,13 @@ export default async function middleware(request: NextRequest) {
   
   const isAuthApi = pathnameWithoutBase.startsWith('/api/auth')
   
-  const isPublicAsset = pathnameWithoutBase.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/) ||
+  // Check both pathname and pathnameWithoutBase for static assets
+  // This handles cases where basePath may or may not be set at build time
+  const isPublicAsset = pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/) ||
+                       pathname.startsWith('/_next/') ||
+                       pathname.includes('/_next/') ||
                        pathnameWithoutBase.startsWith('/_next/') ||
+                       pathname.startsWith('/favicon') ||
                        pathnameWithoutBase.startsWith('/favicon')
 
   const isRootPath = pathnameWithoutBase === '/'
@@ -89,7 +94,16 @@ export default async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// SIMPLEST POSSIBLE MATCHER - should match EVERYTHING
+// Exclude static files and Next.js internals from middleware
 export const config = {
-  matcher: '/:path*'
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder files
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff|woff2|ttf|eot)$).*)',
+  ]
 }
