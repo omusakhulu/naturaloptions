@@ -7,6 +7,22 @@ import { getProductByWooId } from '@/lib/db/products'
 import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
 import ProductForm from '@/components/products/ProductForm'
 
+ type ProductFormProduct = {
+   id: string
+   name: string
+   slug?: string
+   sku?: string | null
+   price?: string | null
+   regular_price?: string | null
+   sale_price?: string | null
+   stock_status?: string
+   stock_quantity?: number
+   description?: string | null
+   short_description?: string | null
+   status?: string
+   wooId?: number
+ }
+
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
   const session = await getServerSession(authOptions)
@@ -28,7 +44,24 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   try {
     // Try to get the product from the local database first
-    let product = await getProductByWooId(productId)
+    const dbProduct = await getProductByWooId(productId)
+    let product: ProductFormProduct | null = dbProduct
+      ? {
+          id: dbProduct.id,
+          name: dbProduct.name,
+          slug: dbProduct.slug,
+          sku: dbProduct.sku,
+          price: dbProduct.price,
+          regular_price: dbProduct.regularPrice,
+          sale_price: dbProduct.salePrice,
+          stock_status: dbProduct.stockStatus,
+          stock_quantity: dbProduct.stockQuantity,
+          description: dbProduct.description,
+          short_description: dbProduct.shortDescription,
+          status: dbProduct.status,
+          wooId: dbProduct.wooId
+        }
+      : null
 
     // If not found locally, try to fetch from WooCommerce
     if (!product) {
@@ -46,22 +79,14 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         slug: wooProduct.slug,
         sku: wooProduct.sku || null,
         price: wooProduct.price || null,
-        regularPrice: wooProduct.regular_price || null,
-        salePrice: wooProduct.sale_price || null,
-        stockStatus: wooProduct.stock_status || 'instock',
-        stockQuantity: wooProduct.stock_quantity || 0,
+        regular_price: wooProduct.regular_price || null,
+        sale_price: wooProduct.sale_price || null,
+        stock_status: wooProduct.stock_status || 'instock',
+        stock_quantity: wooProduct.stock_quantity || 0,
         description: wooProduct.description || null,
-        shortDescription: wooProduct.short_description || null,
-        rating: 0,
-        ratingCount: 0,
-        image: wooProduct.images?.[0]?.src || null,
-        images: JSON.stringify(wooProduct.images || []),
-        categories: JSON.stringify(wooProduct.categories || []),
+        short_description: wooProduct.short_description || null,
         status: wooProduct.status || 'publish',
-        wooId: wooProduct.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        syncedAt: new Date()
+        wooId: wooProduct.id
       }
     }
 
