@@ -3,6 +3,8 @@ import { parse } from 'csv-parse/sync'
 import { wooClient } from '@/lib/woocommerce'
 import { saveProduct } from '@/lib/db/products'
 
+import type { IncomingMessage } from 'http'
+
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
@@ -29,9 +31,9 @@ export async function POST(req: NextRequest) {
       const reqBody = Buffer.from(JSON.stringify(body));
       const agent = new https.Agent({ keepAlive: true, maxSockets: 10, timeout: 25000 });
       const address = await new Promise((resolve, reject) => {
-        dns.lookup(endpoint.hostname, { family: 4 }, (err, addr) =>
+        dns.lookup(endpoint.hostname, { family: 4 }, (err: NodeJS.ErrnoException | null, addr: string) =>
           err || !addr ? reject(err || new Error('DNS failed')) : resolve(addr)
-        );
+        )
       });
       const options = {
         host: address,
@@ -52,9 +54,9 @@ export async function POST(req: NextRequest) {
         }
       };
       return await new Promise((resolve, reject) => {
-        const req = https.request(options, res => {
+        const req = https.request(options, (res: IncomingMessage) => {
           const chunks: Buffer[] = [];
-          res.on('data', d => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
+          res.on('data', (d: Buffer | string) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
           res.on('end', () => {
             const text = Buffer.concat(chunks).toString('utf8');
             const status = res.statusCode || 0;
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
           });
         });
         req.setTimeout(25000, () => req.destroy(new Error('request timeout')));
-        req.on('error', err => reject(err));
+        req.on('error', (err: unknown) => reject(err));
         req.write(reqBody);
         req.end();
       });

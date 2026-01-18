@@ -50,10 +50,13 @@ export async function GET(req: NextRequest) {
     let hasMore = true
 
     while (hasMore && page <= maxPages) {
-      const orders = await woo.executeApiRequest(
-        `/wp-json/wc/v3/orders?status=any&orderby=date&order=desc&per_page=${perPage}&page=${page}`,
-        'GET'
-      )
+      const orders = await woo.listOrders({
+        status: 'any',
+        orderby: 'date',
+        order: 'desc',
+        per_page: perPage,
+        page
+      })
 
       if (!Array.isArray(orders) || orders.length === 0) {
         hasMore = false

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Create in WooCommerce
     // WooCommerce expects fields like first_name, last_name, email, etc.
-    const wooCustomer = await wooService.executeApiRequest('/wp-json/wc/v3/customers', 'POST', body) as any
+    const wooCustomer = (await wooService.createCustomer(body)) as any
 
     // 2. Save to local DB
     const customer = await prisma.customer.create({
@@ -57,7 +57,6 @@ export async function POST(request: NextRequest) {
         username: wooCustomer.username || '',
         billingAddress: JSON.stringify(wooCustomer.billing || {}),
         shippingAddress: JSON.stringify(wooCustomer.shipping || {}),
-        metaData: JSON.stringify(wooCustomer.meta_data || []),
         syncedAt: new Date()
       }
     })
@@ -91,7 +90,7 @@ export async function PUT(request: NextRequest) {
 
     // 1. Update in WooCommerce
     if (localCustomer.wooId) {
-      await wooService.executeApiRequest(`/wp-json/wc/v3/customers/${localCustomer.wooId}`, 'PUT', updateData)
+      await wooService.updateCustomer(localCustomer.wooId, updateData)
     }
 
     // 2. Update local DB

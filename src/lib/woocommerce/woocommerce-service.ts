@@ -461,6 +461,15 @@ export class WooCommerceService {
   }
 
   /**
+   * Create a WooCommerce customer
+   */
+  public async createCustomer(data: Partial<WooCommerceCustomer>): Promise<WooCommerceCustomer> {
+    const path = `/wp-json/wc/v3/customers`
+
+    return this.executeApiRequest(path, 'POST', data)
+  }
+
+  /**
    * Update a WooCommerce customer by ID
    */
   public async updateCustomer(
