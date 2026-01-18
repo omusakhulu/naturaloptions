@@ -7,6 +7,8 @@ const __dirname = path.dirname(__filename)
 // Define the module path
 const wooRentalBridgePath = path.resolve(__dirname, 'woo-rental-bridge/dist/WooRentalBridge.js')
 
+const basePathSegment = (process.env.BASEPATH || '').replace(/^\/+/, '').replace(/\/+$/, '')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Exclude disabled files from build
@@ -71,10 +73,13 @@ const nextConfig = {
   // DISABLED: These redirects were bypassing middleware authentication
   // The middleware now handles all routing and authentication
   redirects: async () => {
+    const excluded = ['en', 'fr', 'ar', 'front-pages', 'favicon.ico', 'api', '_next']
+    if (basePathSegment) excluded.push(basePathSegment)
+
     return [
       // Only keep the lang redirect, middleware handles the rest
       {
-        source: '/((?!(?:en|fr|ar|front-pages|favicon.ico|api|_next)\\b)):path',
+        source: `/((?!(?:${excluded.join('|')})\\b)):path`,
         destination: '/en/:path',
         permanent: false,  // Changed to false to allow middleware to work
         locale: false
