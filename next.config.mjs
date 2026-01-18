@@ -1,8 +1,23 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { readFileSync, existsSync } from 'fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+// Load .env.production manually since next.config runs before Next.js loads env files
+const envProductionPath = path.resolve(__dirname, '.env.production')
+if (existsSync(envProductionPath) && !process.env.BASEPATH) {
+  try {
+    const envContent = readFileSync(envProductionPath, 'utf-8')
+    const basePathMatch = envContent.match(/^BASEPATH=(.*)$/m)
+    if (basePathMatch) {
+      process.env.BASEPATH = basePathMatch[1].trim()
+    }
+  } catch (e) {
+    // Ignore errors reading env file
+  }
+}
 
 // Define the module path
 const wooRentalBridgePath = path.resolve(__dirname, 'woo-rental-bridge/dist/WooRentalBridge.js')
@@ -38,7 +53,7 @@ const nextConfig = {
       }
     }
   },
-  basePath: process.env.BASEPATH,
+  basePath: process.env.BASEPATH || '',
   webpack: (config, { isServer }) => {
     // Add path aliases - webpack doesn't support wildcard aliases, so we use direct paths
     config.resolve.alias = {
