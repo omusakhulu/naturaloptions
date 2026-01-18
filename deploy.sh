@@ -14,8 +14,8 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-APP_DIR="/var/www/omnishop-admin"
-BACKUP_DIR="/var/backups/omnishop-admin"
+APP_DIR="/var/www/naturaloptions"
+BACKUP_DIR="/var/backups/naturaloptions"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Load environment variables (DATABASE_URL, etc.)
@@ -45,7 +45,7 @@ echo -e "${GREEN}✅ Code updated${NC}"
 
 # Step 3: Install Dependencies
 echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-pnpm install --prod
+pnpm install
 
 # Build woo-rental-bridge
 cd woo-rental-bridge

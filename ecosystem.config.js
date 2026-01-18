@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
     name: "naturaloptions-admin",
-    cwd: "/var/www/omnishop-admin",
+    cwd: "/var/www/naturaloptions",
     script: "node_modules/.bin/next",
     args: "start",
       instances: 1, // Change to 'max' for cluster mode
@@ -11,8 +11,8 @@ module.exports = {
       max_memory_restart: '1G',
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3000,
-        BASEPATH: "/admin",
+        PORT: process.env.PORT ? Number(process.env.PORT) : 3000,
+        BASEPATH: process.env.BASEPATH || "/admin",
         NEXTAUTH_URL: process.env.NEXTAUTH_URL || "https://102.220.12.78.sslip.io/admin"
       },
       error_file: './logs/pm2-error.log',
@@ -24,7 +24,7 @@ module.exports = {
       min_uptime: '10s',
       listen_timeout: 10000,
       kill_timeout: 5000,
-      wait_ready: true
+      wait_ready: false
     }
   ]
 }

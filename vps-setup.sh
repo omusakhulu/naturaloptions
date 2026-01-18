@@ -84,9 +84,9 @@ echo -e "${GREEN}✅ Git installed${NC}"
 
 # Step 8: Create Application Directory
 echo -e "${YELLOW}📁 Creating application directory...${NC}"
-sudo mkdir -p /var/www/omnishop-admin
-sudo chown $USER:$USER /var/www/omnishop-admin
-echo -e "${GREEN}✅ Directory created: /var/www/omnishop-admin${NC}"
+sudo mkdir -p /var/www/naturaloptions
+sudo chown $USER:$USER /var/www/naturaloptions
+echo -e "${GREEN}✅ Directory created: /var/www/naturaloptions${NC}"
 
 # Step 9: Configure Firewall
 echo -e "${YELLOW}🔥 Configuring firewall...${NC}"
@@ -100,7 +100,7 @@ echo -e "${YELLOW}📥 Ready to clone repository...${NC}"
 read -p "Enter your GitHub/GitLab repository URL: " REPO_URL
 
 if [ ! -z "$REPO_URL" ]; then
-    cd /var/www/omnishop-admin
+    cd /var/www/naturaloptions
     git clone $REPO_URL .
     echo -e "${GREEN}✅ Repository cloned${NC}"
 else
@@ -109,7 +109,7 @@ fi
 
 # Step 11: Create .env file
 echo -e "${YELLOW}📝 Creating .env file...${NC}"
-cd /var/www/omnishop-admin
+cd /var/www/naturaloptions
 
 read -p "Enter WooCommerce Store URL: " WOO_URL
 read -p "Enter WooCommerce Consumer Key: " WOO_KEY
@@ -142,7 +142,7 @@ echo -e "${GREEN}✅ .env file created${NC}"
 # Step 12: Install Dependencies and Build
 if [ -f "package.json" ]; then
     echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-    pnpm install --prod
+    pnpm install
 
     # Build woo-rental-bridge
     if [ -d "woo-rental-bridge" ]; then
@@ -245,7 +245,7 @@ echo "  - PostgreSQL: $(psql --version | awk '{print $3}')"
 echo "  - PM2: $(pm2 --version)"
 echo ""
 echo -e "${BLUE}📁 Application:${NC}"
-echo "  - Location: /var/www/omnishop-admin"
+echo "  - Location: /var/www/naturaloptions"
 echo "  - Domain: $DOMAIN"
 echo "  - Database: $DB_NAME"
 echo ""
@@ -253,7 +253,7 @@ echo -e "${BLUE}🔧 Useful Commands:${NC}"
 echo "  - View logs: pm2 logs omnishop-admin"
 echo "  - Restart: pm2 restart omnishop-admin"
 echo "  - Status: pm2 status"
-echo "  - Deploy updates: cd /var/www/omnishop-admin && ./deploy.sh"
+echo "  - Deploy updates: cd /var/www/naturaloptions && ./deploy.sh"
 echo ""
 echo -e "${BLUE}🌐 Access your application:${NC}"
 echo "  - URL: http://$DOMAIN"
