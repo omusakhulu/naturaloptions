@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server'
 
+import { getServerSession } from 'next-auth/next'
+
 import { getUsers } from '@/lib/db/prisma'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcrypt'
 import { UserRole } from '@prisma/client'
 
+import { authOptions } from '@/config/auth'
+import { isAdmin } from '@/lib/auth-utils'
+
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const users = await getUsers()
     return NextResponse.json(users)
   } catch (error) {
@@ -18,6 +29,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!isAdmin(session as any)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { fullName, name, email, role, status, password } = body || {}
 

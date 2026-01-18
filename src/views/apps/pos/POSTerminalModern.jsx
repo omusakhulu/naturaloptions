@@ -27,6 +27,10 @@ export default function POSTerminalModern() {
   const [amountTendered, setAmountTendered] = useState('')
   const [splitPayments, setSplitPayments] = useState([])
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState('')
+  const [paymentReference, setPaymentReference] = useState('')
+  const [mpesaPhone, setMpesaPhone] = useState('')
+  const [mpesaPrompt, setMpesaPrompt] = useState({ status: 'idle', checkoutRequestId: '', message: '' })
+  const [mpesaBusy, setMpesaBusy] = useState(false)
 
   // Customer search state
   const [customerSearch, setCustomerSearch] = useState('')
@@ -52,6 +56,15 @@ export default function POSTerminalModern() {
   const [showPayoutModal, setShowPayoutModal] = useState(false)
   const [payoutAmount, setPayoutAmount] = useState('')
   const [payoutReason, setPayoutReason] = useState('')
+
+  const normalizeKenyanPhone = (input) => {
+    const digits = String(input || '').replace(/\D/g, '')
+    if (!digits) return ''
+    if (digits.startsWith('0') && digits.length === 10) return `254${digits.slice(1)}`
+    if (digits.startsWith('254') && digits.length === 12) return digits
+    if (digits.startsWith('7') && digits.length === 9) return `254${digits}`
+    return digits
+  }
 
   // Load shift from local storage on mount
   useEffect(() => {
@@ -405,7 +418,7 @@ export default function POSTerminalModern() {
     if (!sku) {
       toast.error('Please enter a SKU or scan a barcode')
 
-return
+      return
     }
 
     // Search for product by SKU (exact match or partial match)
@@ -540,13 +553,13 @@ return
     if (!amount || amount <= 0) {
       toast.error('Please enter a valid amount')
 
-return
+      return
     }
 
     if (amount > remainingBalance) {
       toast.error(`Amount cannot exceed remaining balance of KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
 
-return
+      return
     }
 
     const newPayment = {
@@ -573,6 +586,8 @@ return
   const clearSplitPayments = () => {
     setSplitPayments([])
     setCurrentPaymentAmount('')
+    setPaymentReference('')
+    setMpesaPrompt({ status: 'idle', checkoutRequestId: '', message: '' })
   }
 
   const processPayment = async () => {
@@ -581,7 +596,7 @@ return
       setShiftModalMode('open')
       setShowShiftModal(true)
 
-return
+      return
     }
 
     if (cart.length === 0) {
@@ -743,13 +758,13 @@ return
     if (isNaN(value) || value < 0) {
       toast.error('Invalid discount value')
 
-return
+      return
     }
 
     if (discountType === 'percentage' && value > 100) {
       toast.error('Percentage cannot exceed 100%')
 
-return
+      return
     }
 
     setDiscount({ type: discountType, value })
@@ -780,6 +795,162 @@ return
       c.email.toLowerCase().includes(query)
     )
   }, [customerSearch, customers])
+
+  const startMpesaPromptAndVerify = async () => {
+    const amount = parseFloat(currentPaymentAmount)
+    const phone = normalizeKenyanPhone(mpesaPhone)
+
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount')
+
+      return
+    }
+
+    if (amount > remainingBalance) {
+      toast.error(`Amount cannot exceed remaining balance of KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
+
+      return
+    }
+
+    if (!phone) {
+      toast.error('Please enter a valid M-PESA phone number')
+
+      return
+    }
+
+    setMpesaBusy(true)
+    setMpesaPrompt({ status: 'prompting', checkoutRequestId: '', message: 'Sending prompt...' })
+    try {
+      const stkRes = await fetch('/api/payments/mpesa/stkpush', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone,
+          amount,
+          accountReference: `POS-${Date.now()}`,
+          transactionDesc: 'POS Payment'
+        })
+      })
+      const stkData = await stkRes.json()
+
+      if (!stkData?.success) {
+        throw new Error(stkData?.error || stkData?.details || 'Failed to send prompt')
+      }
+
+      const checkoutRequestId = String(stkData?.CheckoutRequestID || '')
+      if (!checkoutRequestId) throw new Error('M-PESA did not return CheckoutRequestID')
+
+      setMpesaPrompt({ status: 'pending', checkoutRequestId, message: 'Prompt sent. Waiting for customer...' })
+
+      let lastStatus = null
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await new Promise(r => setTimeout(r, 3000))
+        const qRes = await fetch('/api/payments/mpesa/stkquery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkoutRequestId })
+        })
+        const qData = await qRes.json()
+
+        if (!qData?.success) {
+          lastStatus = qData
+          continue
+        }
+
+        lastStatus = qData
+        if (qData?.isSuccess) {
+          setMpesaPrompt({ status: 'success', checkoutRequestId, message: 'Payment confirmed.' })
+          setSplitPayments(prev => ([
+            ...prev,
+            {
+              id: Date.now(),
+              method: 'mpesa',
+              amount,
+              status: 'COMPLETED',
+              reference: checkoutRequestId,
+              phone
+            }
+          ]))
+          setCurrentPaymentAmount('')
+          toast.success('M-PESA payment verified and added')
+          return
+        }
+
+        const resultCode = String(qData?.ResultCode ?? '')
+        if (resultCode && resultCode !== '0') {
+          setMpesaPrompt({ status: 'failed', checkoutRequestId, message: qData?.ResultDesc || 'Payment failed/cancelled.' })
+          toast.error(qData?.ResultDesc || 'M-PESA payment failed/cancelled')
+          return
+        }
+      }
+
+      setMpesaPrompt({
+        status: 'timeout',
+        checkoutRequestId,
+        message: lastStatus?.ResultDesc || 'Timed out waiting for confirmation. You can try again.'
+      })
+      toast.error('Timed out waiting for M-PESA confirmation')
+    } catch (e) {
+      console.error(e)
+      toast.error(e instanceof Error ? e.message : 'Failed to send M-PESA prompt')
+      setMpesaPrompt({ status: 'failed', checkoutRequestId: '', message: 'Failed to send prompt.' })
+    } finally {
+      setMpesaBusy(false)
+    }
+  }
+
+  const handleAddPayment = async () => {
+    if (paymentMethod === 'mpesa') {
+      await startMpesaPromptAndVerify()
+      return
+    }
+
+    if (paymentMethod === 'card' || paymentMethod === 'bank') {
+      const ref = String(paymentReference || '').trim()
+      if (!ref) {
+        toast.error('Please enter a transaction reference')
+
+        return
+      }
+
+      const amount = parseFloat(currentPaymentAmount)
+      if (!amount || amount <= 0) {
+        toast.error('Please enter a valid amount')
+
+        return
+      }
+
+      if (amount > remainingBalance) {
+        toast.error(`Amount cannot exceed remaining balance of KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
+
+        return
+      }
+
+      setSplitPayments(prev => ([
+        ...prev,
+        { id: Date.now(), method: paymentMethod, amount, status: 'COMPLETED', reference: ref }
+      ]))
+      setCurrentPaymentAmount('')
+      setPaymentReference('')
+      toast.success(`Payment added and marked verified (${paymentMethod})`)
+      return
+    }
+
+    addSplitPayment()
+  }
+
+  useEffect(() => {
+    if (paymentMethod === 'mpesa') {
+      setPaymentReference('')
+      if (!mpesaPhone) {
+        const candidate = customer?.phone || ''
+        if (candidate) setMpesaPhone(candidate)
+      }
+    }
+    if (paymentMethod === 'card' || paymentMethod === 'bank') {
+      setMpesaPrompt({ status: 'idle', checkoutRequestId: '', message: '' })
+    }
+  }, [paymentMethod, customer, mpesaPhone])
 
   return (
     <div className='h-screen flex flex-col bg-gray-50 overflow-hidden'>
@@ -891,28 +1062,28 @@ return
             ) : (
               <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3'>
                 {filteredProducts.map(product => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className='bg-white border border-gray-200 rounded-xl p-3 hover:shadow-lg hover:border-indigo-400 transition-all duration-200 flex flex-col h-full group'
-                >
-                  <div className='aspect-square bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg mb-2 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-105 transition'>
-                    🍽️
-                  </div>
-                  <h3 className='font-semibold text-sm md:text-base text-gray-900 mb-1 line-clamp-2'>
-                    {product.name}
-                  </h3>
-                  <div className='flex items-center justify-between mt-auto'>
-                    <span className='text-lg md:text-xl font-bold text-indigo-600'>
-                      KSh {product.price.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
-                    </span>
-                    <span className='text-xs text-gray-500'>#{product.sku}</span>
-                  </div>
-                  <div className='text-xs text-gray-500 mt-1'>
-                    Stock: {product.stock}
-                  </div>
-                </button>
-              ))}
+                  <button
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className='bg-white border border-gray-200 rounded-xl p-3 hover:shadow-lg hover:border-indigo-400 transition-all duration-200 flex flex-col h-full group'
+                  >
+                    <div className='aspect-square bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg mb-2 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-105 transition'>
+                      🍽️
+                    </div>
+                    <h3 className='font-semibold text-sm md:text-base text-gray-900 mb-1 line-clamp-2'>
+                      {product.name}
+                    </h3>
+                    <div className='flex items-center justify-between mt-auto'>
+                      <span className='text-lg md:text-xl font-bold text-indigo-600'>
+                        KSh {product.price.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className='text-xs text-gray-500'>#{product.sku}</span>
+                    </div>
+                    <div className='text-xs text-gray-500 mt-1'>
+                      Stock: {product.stock}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
@@ -1225,7 +1396,7 @@ return
                       <span className='text-gray-600'>Cash Sales</span>
                       <span className='font-medium text-green-600'>+KSh {shiftStats?.cashSales.toLocaleString('en-KE', { minimumFractionDigits: 2 }) || '0.00'}</span>
                     </div>
-                     <div className='flex justify-between text-sm'>
+                    <div className='flex justify-between text-sm'>
                       <span className='text-gray-600'>Card Sales</span>
                       <span className='font-medium text-indigo-600'>KSh {shiftStats?.cardSales.toLocaleString('en-KE', { minimumFractionDigits: 2 }) || '0.00'}</span>
                     </div>
@@ -1255,7 +1426,7 @@ return
                     </div>
                   </div>
 
-                   <div>
+                  <div>
                     <label className='block text-sm font-medium text-gray-700 mb-2'>Notes</label>
                     <textarea
                       value={shiftClosingNotes}
@@ -1557,6 +1728,11 @@ return
                           <div>
                             <div className='font-semibold text-gray-900 capitalize'>{payment.method}</div>
                             <div className='text-sm text-gray-600'>KSh {payment.amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</div>
+                            {(payment.reference || payment.phone) && (
+                              <div className='text-xs text-gray-500'>
+                                Ref: {String(payment.reference || payment.phone)}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <button
@@ -1640,6 +1816,37 @@ return
                   />
                 </div>
 
+                {paymentMethod === 'mpesa' && (
+                  <div className='mt-3 space-y-2'>
+                    <label className='block text-sm font-medium text-gray-700'>Customer M-PESA Phone</label>
+                    <input
+                      type='tel'
+                      value={mpesaPhone}
+                      onChange={(e) => setMpesaPhone(e.target.value)}
+                      className='w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-base'
+                      placeholder='e.g. 0712345678 or 254712345678'
+                    />
+                    {mpesaPrompt?.message && (
+                      <div className={`text-sm ${mpesaPrompt.status === 'success' ? 'text-green-700' : mpesaPrompt.status === 'failed' ? 'text-red-700' : 'text-gray-600'}`}>
+                        {mpesaPrompt.message}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(paymentMethod === 'card' || paymentMethod === 'bank') && (
+                  <div className='mt-3 space-y-2'>
+                    <label className='block text-sm font-medium text-gray-700'>Transaction Reference</label>
+                    <input
+                      type='text'
+                      value={paymentReference}
+                      onChange={(e) => setPaymentReference(e.target.value)}
+                      className='w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-base'
+                      placeholder='Enter receipt/reference number'
+                    />
+                  </div>
+                )}
+
                 {/* Quick Amount Buttons */}
                 <div className='mt-3 grid grid-cols-5 gap-2'>
                   {[
@@ -1663,12 +1870,20 @@ return
 
               {/* Add Payment Button */}
               <button
-                onClick={addSplitPayment}
-                disabled={!currentPaymentAmount || parseFloat(currentPaymentAmount) <= 0 || remainingBalance <= 0}
+                onClick={handleAddPayment}
+                disabled={
+                  remainingBalance <= 0 ||
+                  (paymentMethod !== 'mpesa' && (!currentPaymentAmount || parseFloat(currentPaymentAmount) <= 0)) ||
+                  ((paymentMethod === 'card' || paymentMethod === 'bank') && !String(paymentReference || '').trim()) ||
+                  (paymentMethod === 'mpesa' && (mpesaBusy || !mpesaPhone || !currentPaymentAmount || parseFloat(currentPaymentAmount) <= 0))
+                }
                 className='w-full py-3 bg-indigo-100 hover:bg-indigo-200 disabled:bg-gray-100 disabled:text-gray-400 text-indigo-700 font-semibold rounded-lg transition flex items-center justify-center gap-2'
               >
                 <i className='tabler-plus text-xl' />
-                Add {paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} Payment
+                {paymentMethod === 'mpesa'
+                  ? (mpesaBusy ? 'Sending M-PESA Prompt...' : 'Send M-PESA Prompt')
+                  : `Add ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} Payment`
+                }
               </button>
             </div>
 
@@ -1681,7 +1896,7 @@ return
               </button>
               <button
                 onClick={processPayment}
-                disabled={remainingBalance > 0 && splitPayments.length === 0}
+                disabled={remainingBalance > 0}
                 className='flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition'
               >
                 {remainingBalance > 0 ? `Pay KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}` : 'Complete Payment'}

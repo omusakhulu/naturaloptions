@@ -109,6 +109,21 @@ const authOptions = {
         token.id = user.id
       }
 
+      if (!token.id && token.sub) {
+        token.id = token.sub
+      }
+
+      if (!token.role && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: String(token.id) },
+          select: { role: true }
+        })
+
+        if (dbUser?.role) {
+          token.role = dbUser.role
+        }
+      }
+
       return token
     },
     async session({ session, token }: { session: Session; token: JWT }) {

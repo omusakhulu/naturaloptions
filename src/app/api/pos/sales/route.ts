@@ -6,6 +6,11 @@ import { authOptions } from '@/config/auth'
 import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
 import { PaymentMethod, PaymentStatus, SaleStatus } from '@prisma/client'
 
+function asNumber(value: any): number {
+  const n = typeof value === 'number' ? value : parseFloat(String(value ?? '0'))
+  return Number.isFinite(n) ? n : 0
+}
+
 // Map payment method strings to valid PaymentMethod enum values
 function mapPaymentMethod(method: string): PaymentMethod {
   const methodMap: { [key: string]: PaymentMethod } = {
@@ -44,6 +49,11 @@ export async function POST(request: Request) {
       payments,
       paymentMethod
     } = body
+
+    const totalAmountNum = asNumber(total)
+    const paymentsArray = Array.isArray(payments) ? payments : []
+    const paymentsTotal = paymentsArray.reduce((sum: number, p: any) => sum + asNumber(p?.amount), 0)
+    const isPaid = paymentsArray.length > 0 ? paymentsTotal >= totalAmountNum : true
 
     console.log('💾 Creating POS sale:', { total, itemCount: items.length, customer: customer?.id })
 
@@ -235,8 +245,8 @@ export async function POST(request: Request) {
       taxAmount: parseFloat(tax?.toString() || '0'),
       totalAmount: parseFloat(total?.toString() || '0'),
       paymentMethod: mapPaymentMethod(payments && payments.length > 0 ? 'split' : paymentMethod),
-      paymentStatus: PaymentStatus.COMPLETED,
-      status: SaleStatus.COMPLETED,
+      paymentStatus: isPaid ? PaymentStatus.COMPLETED : PaymentStatus.PENDING,
+      status: isPaid ? SaleStatus.COMPLETED : SaleStatus.PENDING,
       customerId: posCustomerId,
       saleItems: {
         create: saleItems
@@ -256,6 +266,43 @@ export async function POST(request: Request) {
         employee: true
       }
     })
+
+    // Create payment records
+    try {
+      if (paymentsArray.length > 0) {
+        const paymentCreates = paymentsArray.map((p: any) => {
+          const method = mapPaymentMethod(String(p?.method || p?.paymentMethod || 'cash'))
+          const amount = asNumber(p?.amount)
+          const reference = p?.reference ? String(p.reference) : p?.checkoutRequestId ? String(p.checkoutRequestId) : null
+          const status = String(p?.status || '').toUpperCase() === 'FAILED' ? PaymentStatus.FAILED : PaymentStatus.COMPLETED
+
+          return {
+            saleId: sale.id,
+            amount,
+            paymentMethod: method,
+            status,
+            reference
+          }
+        }).filter((p: any) => p.amount > 0)
+
+        if (paymentCreates.length > 0) {
+          await prisma.payment.createMany({ data: paymentCreates })
+        }
+      } else {
+        // Single payment: store a payment record as completed
+        await prisma.payment.create({
+          data: {
+            saleId: sale.id,
+            amount: totalAmountNum,
+            paymentMethod: mapPaymentMethod(String(paymentMethod || 'cash')),
+            status: PaymentStatus.COMPLETED,
+            reference: null
+          }
+        })
+      }
+    } catch (payErr) {
+      console.error('❌ Failed to create payment records:', payErr)
+    }
 
     // Update product stock
     for (const item of saleItems) {
@@ -308,10 +355,10 @@ export async function POST(request: Request) {
 
       // Prepare WooCommerce order data
       const wooOrderData = {
-        status: 'completed', // Since payment is paid in full
+        status: isPaid ? 'completed' : 'pending',
         payment_method: paymentMethod,
         payment_method_title: paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1),
-        set_paid: true, // Mark as paid since POS payment is complete
+        set_paid: isPaid,
 
         // Customer information
         billing: customer ? {

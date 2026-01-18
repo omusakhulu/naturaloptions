@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import prisma from '@/lib/prisma'
 import { UserRole } from '@prisma/client'
 
+import { authOptions } from '@/config/auth'
+import { canChangeRole, isAdmin, isSuperAdmin } from '@/lib/auth-utils'
+
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -40,7 +43,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -48,6 +51,14 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
     const { id } = await context.params
     const body = await request.json().catch(() => ({}))
+
+    const sessionUserId = (session.user as any)?.id
+    const sessionRole = (session.user as any)?.role
+
+    // Only admins can edit other users.
+    if (sessionUserId && String(sessionUserId) !== String(id) && !isAdmin(session as any)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const firstName = typeof body.firstName === 'string' ? body.firstName.trim() : ''
     const lastName = typeof body.lastName === 'string' ? body.lastName.trim() : ''
@@ -63,6 +74,22 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
     const roleRaw = typeof body.role === 'string' ? body.role.trim().toUpperCase() : undefined
     const role = roleRaw && Object.values(UserRole).includes(roleRaw as UserRole) ? (roleRaw as UserRole) : undefined
+
+    if (role) {
+      if (!canChangeRole(session as any, role as any)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+
+      // Prevent accidental self-demotion for super admins.
+      if (sessionUserId && String(sessionUserId) === String(id) && sessionRole === 'SUPER_ADMIN' && role !== 'SUPER_ADMIN') {
+        return NextResponse.json({ error: 'You cannot change your own SUPER_ADMIN role' }, { status: 400 })
+      }
+
+      // Only super admin can assign super admin.
+      if (role === 'SUPER_ADMIN' && !isSuperAdmin(session as any)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
 
     if (!name && !email && typeof active !== 'boolean' && !role) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
@@ -116,7 +143,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
