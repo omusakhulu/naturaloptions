@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import Preview from '@views/apps/invoice/preview'
 
 // Data Imports
-import { getAllInvoices } from '@/lib/db/invoices'
+import { getInvoiceById } from '@/lib/db/invoices'
 
 /**
  * ! If you need data using an API call, uncomment the below API code, update the `process.env.API_URL` variable in the
@@ -27,8 +27,7 @@ const PreviewPage = async props => {
   const params = await props.params
 
   // Fetch invoices from database
-  const invoices = await getAllInvoices()
-  const invoice = invoices?.find(inv => inv.id === params.id)
+  const invoice = await getInvoiceById(params.id)
 
   if (!invoice) {
     redirect('/not-found')

@@ -1,8 +1,6 @@
 // Next Imports
 import { headers } from 'next/headers'
 
-import { getServerSession } from 'next-auth'
-
 // MUI Imports
 import InitColorSchemeScript from '@mui/material/InitColorSchemeScript'
 
@@ -50,13 +48,12 @@ const RootLayout = async props => {
   const headersList = await headers()
   const systemMode = await getSystemMode()
   const direction = i18n.langDirection[params.lang]
-  const session = await getServerSession()
 
   return (
     <TranslationWrapper headersList={headersList} lang={params.lang}>
       <div id='__next' lang={params.lang} dir={direction} className='flex is-full min-bs-full flex-auto flex-col'>
         <InitColorSchemeScript attribute='data' defaultMode={systemMode} />
-        <AuthProvider session={session}>
+        <AuthProvider session={null}>
           <WebhookInitializer />
           {children}
           <ToastContainer />

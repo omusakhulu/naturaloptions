@@ -20,7 +20,6 @@ import { prisma } from '@/lib/prisma'
 
 const OverViewTab = nextDynamic(() => import('@views/apps/user/view/user-right/overview'))
 const SecurityTab = nextDynamic(() => import('@views/apps/user/view/user-right/security'))
-const BillingPlans = nextDynamic(() => import('@views/apps/user/view/user-right/billing-plans'))
 const NotificationsTab = nextDynamic(() => import('@views/apps/user/view/user-right/notifications'))
 const ConnectionsTab = nextDynamic(() => import('@views/apps/user/view/user-right/connections'))
 
@@ -28,18 +27,73 @@ const ConnectionsTab = nextDynamic(() => import('@views/apps/user/view/user-righ
 const tabContentList = data => ({
   overview: <OverViewTab userData={data} />,
   security: <SecurityTab userData={data} />,
-  'billing-plans': <BillingPlans data={data} />,
   notifications: <NotificationsTab />,
   connections: <ConnectionsTab />
 })
 
 const UserViewTab = async props => {
   const params = await props.params
-  const userId = parseInt(params.id)
+  const idParam = params?.id
 
-  if (!params.id || isNaN(userId)) {
+  if (!idParam) {
     redirect('/not-found')
   }
+
+  // If this is a Prisma user id (string), load from Prisma
+  const isNumericId = /^\d+$/.test(String(idParam))
+
+  if (!isNumericId) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: String(idParam) },
+      select: { id: true, name: true, email: true, role: true, active: true, image: true, createdAt: true }
+    })
+
+    if (!dbUser) {
+      redirect('/not-found')
+    }
+
+    const fullName = dbUser.name || dbUser.email?.split('@')[0] || 'User'
+    const nameParts = fullName.split(' ').filter(Boolean)
+    const firstName = nameParts[0] || 'User'
+    const lastName = nameParts.slice(1).join(' ')
+
+    const transformedUser = {
+      id: dbUser.id,
+      firstName,
+      lastName,
+      fullName,
+      email: dbUser.email || '',
+      billingEmail: dbUser.email || '',
+      username: dbUser.email?.split('@')[0] || '',
+      role: dbUser.role,
+      status: dbUser.active ? 'active' : 'inactive',
+      avatar: dbUser.image || '',
+      phone: '',
+      company: '',
+      country: '',
+      state: '',
+      address: '',
+      zipCode: '',
+      billingAddress: {},
+      shippingAddress: {},
+      boothNumber: '',
+      ordersCount: 0,
+      createdAt: dbUser.createdAt
+    }
+
+    return (
+      <Grid container spacing={6}>
+        <Grid size={{ xs: 12, lg: 4, md: 5 }}>
+          <UserLeftOverview userData={transformedUser} />
+        </Grid>
+        <Grid size={{ xs: 12, lg: 8, md: 7 }}>
+          <UserRight tabContentList={tabContentList(transformedUser)} userData={transformedUser} />
+        </Grid>
+      </Grid>
+    )
+  }
+
+  const userId = parseInt(String(idParam))
 
   // Try WooCommerce live customer first
   let transformedUser

@@ -26,7 +26,7 @@ import { getAllInvoices } from '@/lib/db/invoices'
 } */
 const InvoiceApp = async ({ searchParams }) => {
   // Fetch real invoices from database
-  const invoices = await getAllInvoices()
+  const invoices = await getAllInvoices({ take: 500 })
 
   // Transform database invoices for display using only real data
   const safeFormatDate = d => {

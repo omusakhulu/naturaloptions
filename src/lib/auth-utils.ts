@@ -6,13 +6,15 @@ const SALT_ROUNDS = 12
 // User roles hierarchy (higher number = more permissions)
 export const RoleHierarchy = {
   USER: 1,
+  CASHIER: 2,
   SALES: 2,
-  MANAGER: 3,
-  ADMIN: 4,
-  SUPER_ADMIN: 5
+  ACCOUNTANT: 3,
+  MANAGER: 4,
+  ADMIN: 5,
+  SUPER_ADMIN: 6
 }
 
-export type UserRole = 'USER' | 'SALES' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'
+export type UserRole = 'USER' | 'CASHIER' | 'SALES' | 'ACCOUNTANT' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'
 
 /**
  * Hash a password using bcrypt
@@ -184,6 +186,8 @@ export function getRoleName(role: UserRole): string {
     SUPER_ADMIN: 'Super Admin',
     ADMIN: 'Admin',
     MANAGER: 'Manager',
+    ACCOUNTANT: 'Accountant',
+    CASHIER: 'Cashier',
     SALES: 'Sales',
     USER: 'User'
   }
@@ -200,11 +204,15 @@ export function getAssignableRoles(session: Session | null): UserRole[] {
   const userRole = session.user.role as UserRole
 
   if (userRole === 'SUPER_ADMIN') {
-    return ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SALES', 'USER']
+    return ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ACCOUNTANT', 'CASHIER', 'SALES', 'USER']
   }
 
   if (userRole === 'ADMIN') {
-    return ['MANAGER', 'SALES', 'USER']
+    return ['MANAGER', 'ACCOUNTANT', 'CASHIER', 'SALES', 'USER']
+  }
+
+  if (userRole === 'MANAGER') {
+    return ['ACCOUNTANT', 'CASHIER', 'SALES', 'USER']
   }
 
   return []

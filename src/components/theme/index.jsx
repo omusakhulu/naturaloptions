@@ -9,6 +9,9 @@ import { ThemeProvider, lighten, darken, createTheme } from '@mui/material/style
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter'
 import CssBaseline from '@mui/material/CssBaseline'
 
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+
 // Third-party Imports
 import { useMedia } from 'react-use'
 import stylisRTLPlugin from 'stylis-plugin-rtl'
@@ -96,11 +99,13 @@ const CustomThemeProvider = props => {
         defaultMode={systemMode}
         modeStorageKey={`${themeConfig.templateName.toLowerCase().split(' ').join('-')}-mui-template-mode`}
       >
-        <>
-          <ModeChanger systemMode={systemMode} />
-          <CssBaseline />
-          {children}
-        </>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <>
+            <ModeChanger systemMode={systemMode} />
+            <CssBaseline />
+            {children}
+          </>
+        </LocalizationProvider>
       </ThemeProvider>
     </AppRouterCacheProvider>
   )

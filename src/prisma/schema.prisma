@@ -1807,6 +1807,7 @@ model PurchaseRequisitionItem {
   productName     String
   description     String?
   quantity        Int
+  alertQuantity   Int                 @default(0)
   estimatedPrice  Decimal? @db.Decimal(10, 2)
   preferredVendor String? // Suggested vendor
 

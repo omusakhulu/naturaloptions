@@ -9,7 +9,7 @@ import EditCard from '@views/apps/invoice/edit/EditCard'
 import EditActions from '@views/apps/invoice/edit/EditActions'
 
 // Data Imports
-import { getAllInvoices } from '@/lib/db/invoices'
+import { getAllInvoices, getInvoiceById } from '@/lib/db/invoices'
 
 /**
  * ! If you need data using an API call, uncomment the below API code, update the `process.env.API_URL` variable in the
@@ -31,8 +31,10 @@ const EditPage = async props => {
   const params = await props.params
 
   // Load invoices from database and select the one requested
-  const invoices = await getAllInvoices()
-  const filteredData = invoices?.find(inv => inv.id === params.id)
+  const [filteredData, invoices] = await Promise.all([
+    getInvoiceById(params.id),
+    getAllInvoices({ take: 500 }).catch(() => [])
+  ])
 
   if (!filteredData) {
     redirect('/not-found')

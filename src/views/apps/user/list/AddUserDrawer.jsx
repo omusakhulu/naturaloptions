@@ -8,6 +8,7 @@ import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
+import Alert from '@mui/material/Alert'
 
 // Third-party Imports
 import { useForm, Controller } from 'react-hook-form'
@@ -24,10 +25,12 @@ const initialData = {
 
 const AddUserDrawer = props => {
   // Props
-  const { open, handleClose, userData, setData } = props
+  const { open, handleClose, userData, setData, onUserCreated } = props
 
   // States
   const [formData, setFormData] = useState(initialData)
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   // Hooks
   const {
@@ -41,31 +44,52 @@ const AddUserDrawer = props => {
       username: '',
       email: '',
       role: '',
-      plan: '',
       status: ''
     }
   })
 
-  const onSubmit = data => {
-    const newUser = {
-      id: (userData?.length && userData?.length + 1) || 1,
-      avatar: `/images/avatars/${Math.floor(Math.random() * 8) + 1}.png`,
-      fullName: data.fullName,
-      username: data.username,
-      email: data.email,
-      role: data.role,
-      currentPlan: data.plan,
-      status: data.status,
-      company: formData.company,
-      country: formData.country,
-      contact: formData.contact,
-      billing: userData?.[Math.floor(Math.random() * 50) + 1].billing ?? 'Auto Debit'
-    }
+  const onSubmit = async data => {
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const payload = {
+        fullName: data.fullName,
+        email: data.email,
+        role: String(data.role || 'USER').toUpperCase(),
+        status: data.status || 'active',
+        username: data.username,
+        company: formData.company,
+        country: formData.country,
+        contact: formData.contact
+      }
 
-    setData([...(userData ?? []), newUser])
-    handleClose()
-    setFormData(initialData)
-    resetForm({ fullName: '', username: '', email: '', role: '', plan: '', status: '' })
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSubmitError(json?.error || 'Failed to create user')
+        return
+      }
+
+      if (typeof onUserCreated === 'function') {
+        await onUserCreated()
+      } else if (typeof setData === 'function') {
+        const createdUser = json?.user
+        if (createdUser) setData([...(userData ?? []), createdUser])
+      }
+
+      handleClose()
+      setFormData(initialData)
+      resetForm({ fullName: '', username: '', email: '', role: '', status: '' })
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Failed to create user')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleReset = () => {
@@ -91,6 +115,7 @@ const AddUserDrawer = props => {
       <Divider />
       <div>
         <form onSubmit={handleSubmit(data => onSubmit(data))} className='flex flex-col gap-6 p-6'>
+          {submitError ? <Alert severity='error'>{submitError}</Alert> : null}
           <Controller
             name='fullName'
             control={control}
@@ -147,34 +172,13 @@ const AddUserDrawer = props => {
                 {...field}
                 {...(errors.role && { error: true, helperText: 'This field is required.' })}
               >
-                <MenuItem value='admin'>Admin</MenuItem>
-                <MenuItem value='author'>Author</MenuItem>
-                <MenuItem value='editor'>Editor</MenuItem>
-                <MenuItem value='maintainer'>Maintainer</MenuItem>
-                <MenuItem value='subscriber'>Subscriber</MenuItem>
-              </CustomTextField>
-            )}
-          />
-          <Controller
-            name='plan'
-            control={control}
-            rules={{ required: true }}
-            render={({ field }) => (
-              <CustomTextField
-                select
-                fullWidth
-                id='select-plan'
-                label='Select Plan'
-                {...field}
-                slotProps={{
-                  htmlInput: { placeholder: 'Select Plan' }
-                }}
-                {...(errors.plan && { error: true, helperText: 'This field is required.' })}
-              >
-                <MenuItem value='basic'>Basic</MenuItem>
-                <MenuItem value='company'>Company</MenuItem>
-                <MenuItem value='enterprise'>Enterprise</MenuItem>
-                <MenuItem value='team'>Team</MenuItem>
+                <MenuItem value='SUPER_ADMIN'>Super Admin</MenuItem>
+                <MenuItem value='ADMIN'>Admin</MenuItem>
+                <MenuItem value='MANAGER'>Manager</MenuItem>
+                <MenuItem value='ACCOUNTANT'>Accountant</MenuItem>
+                <MenuItem value='CASHIER'>Cashier</MenuItem>
+                <MenuItem value='SALES'>Sales</MenuItem>
+                <MenuItem value='USER'>User</MenuItem>
               </CustomTextField>
             )}
           />
@@ -229,7 +233,7 @@ const AddUserDrawer = props => {
             onChange={e => setFormData({ ...formData, contact: e.target.value })}
           />
           <div className='flex items-center gap-4'>
-            <Button variant='contained' type='submit'>
+            <Button variant='contained' type='submit' disabled={submitting}>
               Submit
             </Button>
             <Button variant='tonal' color='error' type='reset' onClick={() => handleReset()}>

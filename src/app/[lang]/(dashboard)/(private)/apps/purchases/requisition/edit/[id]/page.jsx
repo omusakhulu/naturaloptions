@@ -24,6 +24,7 @@ export default function EditPurchaseRequisitionPage() {
   const [brands, setBrands] = useState([])
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
+  const [selectedProductId, setSelectedProductId] = useState('')
   const [selectedItems, setSelectedItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -65,7 +66,7 @@ export default function EditPurchaseRequisitionPage() {
             sku: item.sku,
             productName: item.productName,
             quantity: item.quantity,
-            alertQuantity: 0, // We'd need to fetch this from products
+            alertQuantity: item.alertQuantity || 0,
             estimatedPrice: item.estimatedPrice || 0
           })))
         } else {
@@ -110,20 +111,25 @@ export default function EditPurchaseRequisitionPage() {
   }
 
   const addItem = (product) => {
-    const exists = selectedItems.find(item => item.sku === product.sku)
-    if (exists) {
-      toast.warn('Product already added')
-      return
-    }
+    setSelectedItems(prev => {
+      const exists = prev.some(item => item.sku === product.sku)
+      if (exists) {
+        toast.warn('Product already added')
+        return prev
+      }
 
-    setSelectedItems([...selectedItems, {
-      id: `new-${Date.now()}`,
-      sku: product.sku,
-      productName: product.name,
-      quantity: 1,
-      alertQuantity: product.stockQuantity || 0,
-      estimatedPrice: product.price || 0
-    }])
+      return [
+        ...prev,
+        {
+          id: `new-${Date.now()}`,
+          sku: product.sku,
+          productName: product.name,
+          quantity: 1,
+          alertQuantity: product.stockQuantity || 0,
+          estimatedPrice: product.price || 0
+        }
+      ]
+    })
   }
 
   const removeItem = (id) => {
@@ -133,6 +139,12 @@ export default function EditPurchaseRequisitionPage() {
   const updateQuantity = (id, qty) => {
     setSelectedItems(selectedItems.map(item => 
       item.id === id ? { ...item, quantity: parseFloat(qty) || 0 } : item
+    ))
+  }
+
+  const updateAlertQuantity = (id, qty) => {
+    setSelectedItems(selectedItems.map(item =>
+      item.id === id ? { ...item, alertQuantity: parseFloat(qty) || 0 } : item
     ))
   }
 
@@ -157,6 +169,7 @@ export default function EditPurchaseRequisitionPage() {
             sku: item.sku,
             productName: item.productName,
             quantity: item.quantity,
+            alertQuantity: item.alertQuantity,
             estimatedPrice: item.estimatedPrice
           }))
         })
@@ -251,11 +264,16 @@ export default function EditPurchaseRequisitionPage() {
             <div className='flex-1'>
               <select 
                 className='w-full border p-2 rounded text-sm'
+                value={selectedProductId}
                 onChange={(e) => {
-                  const p = products.find(prod => prod.id === parseInt(e.target.value))
-                  if (p) addItem(p)
+                  const value = e.target.value
+                  setSelectedProductId(value)
+                  const p = products.find(prod => String(prod.id) === String(value))
+                  if (p) {
+                    addItem(p)
+                    setSelectedProductId('')
+                  }
                 }}
-                defaultValue=''
               >
                 <option value='' disabled>Select product to add...</option>
                 {products.map(p => (
@@ -353,8 +371,14 @@ export default function EditPurchaseRequisitionPage() {
                     {item.productName}
                     <div className='text-xs text-gray-400'>{item.sku}</div>
                   </td>
-                  <td className='border px-4 py-2 text-center text-red-500 font-semibold'>
-                    {item.alertQuantity}
+                  <td className='border px-4 py-2'>
+                    <input
+                      type='number'
+                      className='w-full border p-1 rounded text-center'
+                      value={item.alertQuantity}
+                      min='0'
+                      onChange={(e) => updateAlertQuantity(item.id, e.target.value)}
+                    />
                   </td>
                   <td className='border px-4 py-2'>
                     <input 

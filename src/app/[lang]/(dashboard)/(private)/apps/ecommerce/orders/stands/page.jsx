@@ -20,8 +20,10 @@ import { getAllInvoices } from '@/lib/db/invoices'
 const OrdersByStandsPage = async ({ params }) => {
   const lang = params?.lang || 'en'
 
-  const orders = await getAllOrders()
-  const invoices = await getAllInvoices()
+  const [orders, invoices] = await Promise.all([
+    getAllOrders({ take: 500 }).catch(() => []),
+    getAllInvoices({ take: 500 }).catch(() => [])
+  ])
 
   const safeDate = v => {
     try {

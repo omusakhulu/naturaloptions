@@ -143,6 +143,7 @@ export default function PurchaseOrderPage() {
                     <td className='border px-2 py-1 text-center'>
                       <div className='flex items-center justify-center gap-2'>
                         <button 
+                          type='button'
                           onClick={() => router.push(`/${lang}/apps/purchases/order/edit/${o.id}`)}
                           className='text-primary hover:text-primary-dark transition-colors'
                           title='Edit'
@@ -150,6 +151,7 @@ export default function PurchaseOrderPage() {
                           <i className='tabler-edit text-lg' />
                         </button>
                         <button 
+                          type='button'
                           onClick={() => handleDelete(o.id)}
                           className='text-error hover:text-error-dark transition-colors'
                           title='Delete'

@@ -22,6 +22,29 @@ async function generatePONumber(): Promise<string> {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (id) {
+      const order = await prisma.purchaseOrder.findUnique({
+        where: { id },
+        include: {
+          vendor: {
+            select: { id: true, name: true, email: true, phone: true }
+          },
+          items: true,
+          requisition: {
+            select: { id: true, requisitionNumber: true }
+          }
+        }
+      })
+
+      if (!order) {
+        return NextResponse.json({ error: 'Purchase Order not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({ order })
+    }
+
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const status = searchParams.get('status')
@@ -128,9 +151,13 @@ export async function POST(request: Request) {
     let taxAmount = 0
 
     const processedItems = items.map((item: any) => {
-      const itemTotal = item.quantity * parseFloat(item.unitPrice)
-      const itemTax = itemTotal * (parseFloat(item.taxRate || 0) / 100)
-      const itemDiscount = parseFloat(item.discount || 0)
+      const qty = Math.max(0, Math.round(Number(item.quantity) || 0))
+      const unitPrice = Number(item.unitPrice) || 0
+      const taxRate = Number(item.taxRate || 0) || 0
+      const itemDiscount = Number(item.discount || 0) || 0
+
+      const itemTotal = qty * unitPrice
+      const itemTax = itemTotal * (taxRate / 100)
       const lineTotal = itemTotal + itemTax - itemDiscount
 
       subtotal += itemTotal
@@ -140,9 +167,9 @@ export async function POST(request: Request) {
         sku: item.sku,
         productName: item.productName,
         description: item.description || null,
-        quantity: item.quantity,
-        unitPrice: parseFloat(item.unitPrice),
-        taxRate: parseFloat(item.taxRate || 0),
+        quantity: qty,
+        unitPrice,
+        taxRate,
         discount: itemDiscount,
         totalPrice: lineTotal,
         batchNumber: item.batchNumber || null,

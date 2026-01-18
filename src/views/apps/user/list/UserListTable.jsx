@@ -87,12 +87,13 @@ const DebouncedInput = ({ value: initialValue, onChange, debounce = 500, ...prop
 
 // Vars
 const userRoleObj = {
-  admin: { icon: 'tabler-crown', color: 'error' },
-  author: { icon: 'tabler-device-desktop', color: 'warning' },
-  editor: { icon: 'tabler-edit', color: 'info' },
-  customer: { icon: 'tabler-user', color: 'primary' },
-  maintainer: { icon: 'tabler-chart-pie', color: 'success' },
-  subscriber: { icon: 'tabler-user', color: 'primary' }
+  SUPER_ADMIN: { icon: 'tabler-shield-check', color: 'error' },
+  ADMIN: { icon: 'tabler-user-shield', color: 'warning' },
+  MANAGER: { icon: 'tabler-user-cog', color: 'info' },
+  ACCOUNTANT: { icon: 'tabler-report-money', color: 'success' },
+  CASHIER: { icon: 'tabler-cash', color: 'primary' },
+  SALES: { icon: 'tabler-shopping-cart', color: 'success' },
+  USER: { icon: 'tabler-user', color: 'primary' }
 }
 
 const userStatusObj = {
@@ -111,6 +112,27 @@ const UserListTable = ({ tableData }) => {
   const [data, setData] = useState(...[tableData])
   const [filteredData, setFilteredData] = useState(data)
   const [globalFilter, setGlobalFilter] = useState('')
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users', { cache: 'no-store' })
+      if (!res.ok) return
+      const json = await res.json()
+      setData(Array.isArray(json) ? json : [])
+      setFilteredData(Array.isArray(json) ? json : [])
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    if (Array.isArray(tableData)) {
+      setData(tableData)
+      setFilteredData(tableData)
+    }
+    fetchUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Hooks
   const { lang: locale } = useParams()
@@ -167,18 +189,6 @@ const UserListTable = ({ tableData }) => {
           </div>
         )
       }),
-      columnHelper.accessor('currentPlan', {
-        header: 'Plan',
-        cell: ({ row }) => (
-          <Typography className='capitalize' color='text.primary'>
-            {row.original.currentPlan}
-          </Typography>
-        )
-      }),
-      columnHelper.accessor('billing', {
-        header: 'Billing',
-        cell: ({ row }) => <Typography>{row.original.billing}</Typography>
-      }),
       columnHelper.accessor('status', {
         header: 'Status',
         cell: ({ row }) => (
@@ -217,7 +227,9 @@ const UserListTable = ({ tableData }) => {
                 {
                   text: 'Edit',
                   icon: 'tabler-edit',
-                  menuItemProps: { className: 'flex items-center gap-2 text-textSecondary' }
+                  href: getLocalizedUrl(`/apps/user/view/${row.original.id}`, locale),
+                  linkProps: { className: 'flex items-center gap-2 text-textSecondary pli-4 plb-2 is-full' },
+                  menuItemProps: { className: 'flex items-center gap-2 text-textSecondary p-0' }
                 }
               ]}
             />
@@ -380,6 +392,7 @@ const UserListTable = ({ tableData }) => {
         handleClose={() => setAddUserOpen(!addUserOpen)}
         userData={data}
         setData={setData}
+        onUserCreated={fetchUsers}
       />
     </>
   )

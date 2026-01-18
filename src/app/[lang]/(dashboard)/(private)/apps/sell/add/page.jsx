@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 
 export default function AddSalePage() {
   const router = useRouter()
+  const { lang } = useParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -18,24 +19,17 @@ export default function AddSalePage() {
   const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [discount, setDiscount] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
+  const [loadingProducts, setLoadingProducts] = useState(false)
 
   // Load customers and products
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [custRes, prodRes] = await Promise.all([
-          fetch('/api/pos/customers'),
-          fetch('/api/products/fetch-all?limit=100')
-        ])
+        const custRes = await fetch('/api/pos/customers')
         
         if (custRes.ok) {
           const custData = await custRes.json()
           setCustomers(custData.customers || custData || [])
-        }
-        
-        if (prodRes.ok) {
-          const prodData = await prodRes.json()
-          setProducts(prodData.products || prodData || [])
         }
       } catch (e) {
         console.error('Failed to load data:', e)
@@ -44,13 +38,40 @@ export default function AddSalePage() {
     loadData()
   }, [])
 
-  const filteredProducts = products.filter(p => 
-    p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  useEffect(() => {
+    let cancelled = false
+    const q = searchTerm.trim()
+
+    if (q.length < 2) {
+      setProducts([])
+      setLoadingProducts(false)
+      return
+    }
+
+    setLoadingProducts(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products/search?query=${encodeURIComponent(q)}&limit=20`)
+        const data = await res.json()
+        if (!cancelled) {
+          setProducts(Array.isArray(data?.products) ? data.products : [])
+        }
+      } catch (e) {
+        if (!cancelled) setProducts([])
+      } finally {
+        if (!cancelled) setLoadingProducts(false)
+      }
+    }, 250)
+
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [searchTerm])
 
   const addToCart = (product) => {
     const existing = cartItems.find(item => item.productId === product.id)
+    const unitPrice = parseFloat(product.salePrice || product.price || product.regularPrice || 0)
     if (existing) {
       setCartItems(cartItems.map(item => 
         item.productId === product.id 
@@ -62,7 +83,7 @@ export default function AddSalePage() {
         productId: product.id,
         name: product.name,
         sku: product.sku,
-        price: parseFloat(product.price || product.regularPrice || 0),
+        price: unitPrice,
         quantity: 1
       }])
     }
@@ -98,36 +119,44 @@ export default function AddSalePage() {
     setSuccess('')
 
     try {
-      const res = await fetch('/api/sell/pos', {
+      const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+      const discountAmount = (subtotal * discount) / 100
+      const total = subtotal - discountAmount
+
+      const res = await fetch('/api/pos/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId: selectedCustomer || null,
           items: cartItems.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.price
+            id: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity
           })),
-          paymentMethod,
-          discountPercent: discount,
-          notes
+          subtotal,
+          discount,
+          discountAmount,
+          tax: 0,
+          total,
+          customer: selectedCustomer ? { id: selectedCustomer } : null,
+          payments: [],
+          paymentMethod: paymentMethod
         })
       })
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to create sale')
+      const data = await res.json()
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || data?.details || 'Failed to create sale')
       }
 
-      const sale = await res.json()
-      setSuccess(`Sale #${sale.saleNumber} created successfully!`)
+      setSuccess(`Sale #${data.sale?.saleNumber} created successfully!`)
       setCartItems([])
       setSelectedCustomer('')
       setNotes('')
       setDiscount(0)
       
       // Optionally redirect
-      setTimeout(() => router.push('/en/apps/sell/sales'), 1500)
+      setTimeout(() => router.push(`/${lang}/apps/sell/pos/list`), 1500)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -196,27 +225,37 @@ export default function AddSalePage() {
         <div className='lg:col-span-2 space-y-4'>
           <div className='bg-white border rounded-lg p-4'>
             <h2 className='font-medium mb-3'>Select Products</h2>
-            <input
-              type='text'
-              placeholder='Search products by name or SKU...'
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className='w-full border rounded px-3 py-2 mb-4'
-            />
-            <div className='grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto'>
-              {filteredProducts.slice(0, 50).map(product => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className='p-3 border rounded hover:bg-blue-50 hover:border-blue-300 text-left transition-colors'
-                >
-                  <div className='font-medium text-sm truncate'>{product.name}</div>
-                  <div className='text-xs text-gray-500'>{product.sku || 'No SKU'}</div>
-                  <div className='text-sm font-semibold mt-1'>
-                    KES {parseFloat(product.price || product.regularPrice || 0).toLocaleString()}
-                  </div>
-                </button>
-              ))}
+            <div className='relative'>
+              <input
+                type='text'
+                placeholder='Search products by name or SKU...'
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className='w-full border rounded px-3 py-2 mb-2'
+                autoComplete='off'
+              />
+              {loadingProducts && (
+                <div className='absolute right-3 top-3 text-xs text-gray-400'>Loading...</div>
+              )}
+              {searchTerm.trim().length >= 2 && products.length > 0 && (
+                <div className='absolute z-10 left-0 right-0 bg-white border rounded shadow max-h-80 overflow-y-auto'>
+                  {products.map(product => (
+                    <button
+                      type='button'
+                      key={product.id}
+                      onClick={() => {
+                        addToCart(product)
+                        setSearchTerm('')
+                        setProducts([])
+                      }}
+                      className='w-full px-3 py-2 hover:bg-blue-50 text-left border-b last:border-b-0'
+                    >
+                      <div className='font-medium text-sm truncate'>{product.name}</div>
+                      <div className='text-xs text-gray-500'>{product.sku || 'No SKU'}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -294,7 +333,7 @@ export default function AddSalePage() {
               <option value=''>Walk-in Customer</option>
               {customers.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.firstName} {c.lastName} {c.email ? `(${c.email})` : ''}
+                  {c.name || 'Unknown'} {c.email ? `(${c.email})` : ''}
                 </option>
               ))}
             </select>

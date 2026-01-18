@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { createPortal } from 'react-dom'
 
 export default function VendorsPage() {
-  const { lang } = useParams()
 
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -27,8 +26,19 @@ export default function VendorsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const [mounted, setMounted] = useState(false)
+
   const [addOpen, setAddOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(true)
+
+  const openAdd = () => {
+    setAddOpen(true)
+  }
+
+  const closeAdd = reason => {
+    setAddOpen(false)
+  }
+
   const initialForm = {
     name: '',
     email: '',
@@ -95,6 +105,23 @@ export default function VendorsPage() {
 
   useEffect(() => { fetchAll() }, [])
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!addOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [addOpen])
+
+  useEffect(() => {
+    console.log('[vendors] state', { mounted, addOpen })
+  }, [mounted, addOpen])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     let list = rows
@@ -145,7 +172,7 @@ export default function VendorsPage() {
         body: JSON.stringify(payload)
       })
       if (!res.ok) throw new Error('Failed to save vendor')
-      setAddOpen(false)
+      closeAdd('saveVendor-success')
       setForm(initialForm)
       await fetchAll()
     } catch (e) {
@@ -236,7 +263,18 @@ export default function VendorsPage() {
               placeholder='Search ...'
               className='border rounded p-2 text-sm'
             />
-            <button onClick={() => setAddOpen(true)} className='bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 text-sm'>+ Add Vendor</button>
+            <button
+              type='button'
+              onClick={e => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('[vendors] open add vendor modal')
+                openAdd()
+              }}
+              className='bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 text-sm relative z-50 pointer-events-auto'
+            >
+              + Add Vendor
+            </button>
           </div>
         </div>
 
@@ -286,164 +324,241 @@ export default function VendorsPage() {
       </div>
 
       {/* Add Vendor Modal (simple drawer-like card) */}
-      {addOpen && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/30'>
-          <div className='bg-white rounded shadow-lg w-full max-w-5xl p-4 space-y-4'>
-            <div className='flex items-center justify-between'>
+      {mounted && addOpen && createPortal(
+        <div
+          data-vendors-add-modal-backdrop
+          className='p-4 md:p-8'
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0, 0, 0, 0.45)', overflowY: 'auto' }}
+          role='dialog'
+          aria-modal='true'
+          onClick={e => {
+            if (e.target === e.currentTarget) closeAdd('backdrop')
+          }}
+        >
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+                [data-vendors-add-modal-card] { color: rgb(17 24 39); }
+                [data-vendors-add-modal-card] label { display: block; font-size: 12px; color: rgb(107 114 128); margin-bottom: 4px; }
+                [data-vendors-add-modal-card] input,
+                [data-vendors-add-modal-card] select,
+                [data-vendors-add-modal-card] textarea {
+                  width: 100%;
+                  border: 1px solid rgb(209 213 219);
+                  border-radius: 8px;
+                  padding: 10px 12px;
+                  font-size: 14px;
+                  line-height: 20px;
+                  background: #fff;
+                }
+                [data-vendors-add-modal-card] textarea { resize: vertical; }
+                [data-vendors-add-modal-card] input[type='radio'] { width: auto; padding: 0; border: 0; }
+                [data-vendors-add-modal-card] .vendors-radio-row { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid rgb(209 213 219); border-radius: 8px; }
+                [data-vendors-add-modal-card] .vendors-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+                @media (min-width: 640px) {
+                  [data-vendors-add-modal-card] .vendors-grid { grid-template-columns: 1fr 1fr; }
+                  [data-vendors-add-modal-card] [data-vendors-span='2'] { grid-column: 1 / -1; }
+                }
+              `
+            }}
+          />
+          <div
+            data-vendors-add-modal-card
+            className='flex flex-col'
+            style={{
+              position: 'relative',
+              width: 'min(96vw, 72rem)',
+              margin: '2rem auto',
+              height: 'calc(100vh - 4rem)',
+              minHeight: 0,
+              background: '#fff',
+              borderRadius: '0.75rem',
+              overflow: 'hidden',
+              boxShadow: '0 20px 45px rgba(0,0,0,0.25)'
+            }}
+            onClick={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <div className='flex items-center justify-between p-4 border-b flex-none'>
               <h2 className='text-lg font-medium'>Add Vendor</h2>
-              <button onClick={() => setAddOpen(false)} className='text-gray-500 hover:text-gray-700'>✕</button>
+              <button onClick={() => closeAdd('x')} className='text-gray-500 hover:text-gray-700'>✕</button>
             </div>
-            <div className='grid grid-cols-1 md:grid-cols-12 gap-4'>
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Contact type*</label>
-                <select value={form.profile.contactType} onChange={e => setForm({ ...form, profile: { ...form.profile, contactType: e.target.value } })} className='border rounded p-2 w-full'>
-                  <option>Suppliers</option>
-                  <option>Customers</option>
-                </select>
-              </div>
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Individual / Business</label>
-                <div className='flex items-center gap-4 border rounded p-2'>
-                  <label className='flex items-center gap-1 text-sm'>
-                    <input type='radio' checked={!form.profile.isBusiness} onChange={() => setForm({ ...form, profile: { ...form.profile, isBusiness: false } })} /> Individual
-                  </label>
-                  <label className='flex items-center gap-1 text-sm'>
-                    <input type='radio' checked={form.profile.isBusiness} onChange={() => setForm({ ...form, profile: { ...form.profile, isBusiness: true } })} /> Business
-                  </label>
+
+            <div
+              className='p-4 overflow-y-auto flex-1 min-h-0'
+              style={{ overflowY: 'auto', flex: '1 1 0%', minHeight: 0, WebkitOverflowScrolling: 'touch' }}
+            >
+              <div className='vendors-grid'>
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Contact type*</label>
+                  <select value={form.profile.contactType} onChange={e => setForm({ ...form, profile: { ...form.profile, contactType: e.target.value } })} className='border rounded p-2 w-full'>
+                    <option>Suppliers</option>
+                    <option>Customers</option>
+                  </select>
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Individual / Business</label>
+                  <div className='vendors-radio-row'>
+                    <label className='flex items-center gap-1 text-sm'>
+                      <input type='radio' checked={!form.profile.isBusiness} onChange={() => setForm({ ...form, profile: { ...form.profile, isBusiness: false } })} /> Individual
+                    </label>
+                    <label className='flex items-center gap-1 text-sm'>
+                      <input type='radio' checked={form.profile.isBusiness} onChange={() => setForm({ ...form, profile: { ...form.profile, isBusiness: true } })} /> Business
+                    </label>
+                  </div>
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Contact ID</label>
+                  <input value={form.profile.contactId} onChange={e => setForm({ ...form, profile: { ...form.profile, contactId: e.target.value } })} className='border rounded p-2 w-full' placeholder='Leave blank to auto generate' />
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Email</label>
+                  <input type='email' value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className='border rounded p-2 w-full' />
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Mobile*</label>
+                  <input value={form.profile.mobile} onChange={e => setForm({ ...form, profile: { ...form.profile, mobile: e.target.value } })} className='border rounded p-2 w-full' placeholder='Mobile' />
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Alternate contact number</label>
+                  <input value={form.profile.alternateContact} onChange={e => setForm({ ...form, profile: { ...form.profile, alternateContact: e.target.value } })} className='border rounded p-2 w-full' placeholder='Alternate contact' />
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Landline</label>
+                  <input value={form.profile.landline} onChange={e => setForm({ ...form, profile: { ...form.profile, landline: e.target.value } })} className='border rounded p-2 w-full' placeholder='Landline' />
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Assigned to</label>
+                  <input value={form.profile.assignedTo} onChange={e => setForm({ ...form, profile: { ...form.profile, assignedTo: e.target.value } })} className='border rounded p-2 w-full' placeholder='Assignee' />
+                </div>
+
+                <div className='sm:col-span-2' data-vendors-span='2'>
+                  <button onClick={() => setMoreOpen(o => !o)} className='bg-indigo-600 text-white rounded px-3 py-2 text-sm'>More Information {moreOpen ? '▲' : '▼'}</button>
+                </div>
+
+                {moreOpen && (
+                  <>
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Tax number</label>
+                      <input value={form.profile.taxNumber} onChange={e => setForm({ ...form, profile: { ...form.profile, taxNumber: e.target.value } })} className='border rounded p-2 w-full' placeholder='Tax number' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Opening Balance</label>
+                      <input type='number' value={form.profile.openingBalance} onChange={e => setForm({ ...form, profile: { ...form.profile, openingBalance: e.target.value } })} className='border rounded p-2 w-full' placeholder='0' />
+                    </div>
+
+                    <div className='sm:col-span-2' data-vendors-span='2'>
+                      <label className='block text-xs text-gray-500 mb-1'>Pay term</label>
+                      <div className='grid grid-cols-2 gap-2'>
+                        <select value={form.paymentTermId} onChange={e => setForm({ ...form, paymentTermId: e.target.value })} className='border rounded p-2 w-full'>
+                          <option value=''>Please Select</option>
+                          {terms.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                        <input value={form.profile.payTermNote} onChange={e => setForm({ ...form, profile: { ...form.profile, payTermNote: e.target.value } })} className='border rounded p-2 w-full' placeholder='Pay term note' />
+                      </div>
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Address line 1</label>
+                      <input value={form.profile.addressLine1} onChange={e => setForm({ ...form, profile: { ...form.profile, addressLine1: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Address line 2</label>
+                      <input value={form.profile.addressLine2} onChange={e => setForm({ ...form, profile: { ...form.profile, addressLine2: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>City</label>
+                      <input value={form.profile.city} onChange={e => setForm({ ...form, profile: { ...form.profile, city: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>State</label>
+                      <input value={form.profile.state} onChange={e => setForm({ ...form, profile: { ...form.profile, state: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Country</label>
+                      <input value={form.profile.country} onChange={e => setForm({ ...form, profile: { ...form.profile, country: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Zip Code</label>
+                      <input value={form.profile.zip} onChange={e => setForm({ ...form, profile: { ...form.profile, zip: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Landmark</label>
+                      <input value={form.profile.landmark} onChange={e => setForm({ ...form, profile: { ...form.profile, landmark: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Street name</label>
+                      <input value={form.profile.streetName} onChange={e => setForm({ ...form, profile: { ...form.profile, streetName: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Building number</label>
+                      <input value={form.profile.buildingNumber} onChange={e => setForm({ ...form, profile: { ...form.profile, buildingNumber: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    <div className='sm:col-span-1'>
+                      <label className='block text-xs text-gray-500 mb-1'>Additional number</label>
+                      <input value={form.profile.additionalNumber} onChange={e => setForm({ ...form, profile: { ...form.profile, additionalNumber: e.target.value } })} className='border rounded p-2 w-full' />
+                    </div>
+
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className='sm:col-span-1'>
+                        <label className='block text-xs text-gray-500 mb-1'>Custom Field {i + 1}</label>
+                        <input value={form.profile[`custom${i + 1}`] || ''} onChange={e => setForm({ ...form, profile: { ...form.profile, [`custom${i + 1}`]: e.target.value } })} className='border rounded p-2 w-full' placeholder={`Custom Field ${i + 1}`} />
+                      </div>
+                    ))}
+
+                    <div className='sm:col-span-2' data-vendors-span='2'>
+                      <label className='block text-xs text-gray-500 mb-1'>Shipping Address</label>
+                      <input value={form.shippingAddress} onChange={e => setForm({ ...form, shippingAddress: e.target.value })} className='border rounded p-2 w-full' placeholder='Search address' />
+                    </div>
+                  </>
+                )}
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Vendor Name</label>
+                  <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className='border rounded p-2 w-full' />
+                </div>
+
+                <div className='sm:col-span-1'>
+                  <label className='block text-xs text-gray-500 mb-1'>Status</label>
+                  <select value={form.isActive ? 'Active' : 'Inactive'} onChange={e => setForm({ ...form, isActive: e.target.value === 'Active' })} className='border rounded p-2 w-full'>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                  </select>
+                </div>
+
+                <div className='sm:col-span-2' data-vendors-span='2'>
+                  <label className='block text-xs text-gray-500 mb-1'>Billing Address</label>
+                  <textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className='border rounded p-2 w-full' rows={2} />
                 </div>
               </div>
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Contact ID</label>
-                <input value={form.profile.contactId} onChange={e => setForm({ ...form, profile: { ...form.profile, contactId: e.target.value } })} className='border rounded p-2 w-full' placeholder='Leave blank to auto generate' />
-              </div>
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Email</label>
-                <input type='email' value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className='border rounded p-2 w-full' />
-              </div>
-
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Mobile*</label>
-                <input value={form.profile.mobile} onChange={e => setForm({ ...form, profile: { ...form.profile, mobile: e.target.value } })} className='border rounded p-2 w-full' placeholder='Mobile' />
-              </div>
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Alternate contact number</label>
-                <input value={form.profile.alternateContact} onChange={e => setForm({ ...form, profile: { ...form.profile, alternateContact: e.target.value } })} className='border rounded p-2 w-full' placeholder='Alternate contact' />
-              </div>
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Landline</label>
-                <input value={form.profile.landline} onChange={e => setForm({ ...form, profile: { ...form.profile, landline: e.target.value } })} className='border rounded p-2 w-full' placeholder='Landline' />
-              </div>
-              <div className='md:col-span-3'>
-                <label className='block text-xs text-gray-500 mb-1'>Assigned to</label>
-                <input value={form.profile.assignedTo} onChange={e => setForm({ ...form, profile: { ...form.profile, assignedTo: e.target.value } })} className='border rounded p-2 w-full' placeholder='Assignee' />
-              </div>
-
-              <div className='md:col-span-12'>
-                <button onClick={() => setMoreOpen(o => !o)} className='bg-indigo-600 text-white rounded px-3 py-2 text-sm'>More Information {moreOpen ? '▲' : '▼'}</button>
-              </div>
-
-              {moreOpen && (
-                <>
-                  <div className='md:col-span-4'>
-                    <label className='block text-xs text-gray-500 mb-1'>Tax number</label>
-                    <input value={form.profile.taxNumber} onChange={e => setForm({ ...form, profile: { ...form.profile, taxNumber: e.target.value } })} className='border rounded p-2 w-full' placeholder='Tax number' />
-                  </div>
-                  <div className='md:col-span-4'>
-                    <label className='block text-xs text-gray-500 mb-1'>Opening Balance</label>
-                    <input type='number' value={form.profile.openingBalance} onChange={e => setForm({ ...form, profile: { ...form.profile, openingBalance: e.target.value } })} className='border rounded p-2 w-full' placeholder='0' />
-                  </div>
-                  <div className='md:col-span-4'>
-                    <label className='block text-xs text-gray-500 mb-1'>Pay term</label>
-                    <div className='grid grid-cols-2 gap-2'>
-                      <select value={form.paymentTermId} onChange={e => setForm({ ...form, paymentTermId: e.target.value })} className='border rounded p-2 w-full'>
-                        <option value=''>Please Select</option>
-                        {terms.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                      <input value={form.profile.payTermNote} onChange={e => setForm({ ...form, profile: { ...form.profile, payTermNote: e.target.value } })} className='border rounded p-2 w-full' placeholder='Pay term note' />
-                    </div>
-                  </div>
-
-                  <div className='md:col-span-6'>
-                    <label className='block text-xs text-gray-500 mb-1'>Address line 1</label>
-                    <input value={form.profile.addressLine1} onChange={e => setForm({ ...form, profile: { ...form.profile, addressLine1: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-6'>
-                    <label className='block text-xs text-gray-500 mb-1'>Address line 2</label>
-                    <input value={form.profile.addressLine2} onChange={e => setForm({ ...form, profile: { ...form.profile, addressLine2: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>City</label>
-                    <input value={form.profile.city} onChange={e => setForm({ ...form, profile: { ...form.profile, city: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>State</label>
-                    <input value={form.profile.state} onChange={e => setForm({ ...form, profile: { ...form.profile, state: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>Country</label>
-                    <input value={form.profile.country} onChange={e => setForm({ ...form, profile: { ...form.profile, country: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>Zip Code</label>
-                    <input value={form.profile.zip} onChange={e => setForm({ ...form, profile: { ...form.profile, zip: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>Landmark</label>
-                    <input value={form.profile.landmark} onChange={e => setForm({ ...form, profile: { ...form.profile, landmark: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>Street name</label>
-                    <input value={form.profile.streetName} onChange={e => setForm({ ...form, profile: { ...form.profile, streetName: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>Building number</label>
-                    <input value={form.profile.buildingNumber} onChange={e => setForm({ ...form, profile: { ...form.profile, buildingNumber: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-                  <div className='md:col-span-3'>
-                    <label className='block text-xs text-gray-500 mb-1'>Additional number</label>
-                    <input value={form.profile.additionalNumber} onChange={e => setForm({ ...form, profile: { ...form.profile, additionalNumber: e.target.value } })} className='border rounded p-2 w-full' />
-                  </div>
-
-                  {/* Custom fields */}
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className='md:col-span-3'>
-                      <label className='block text-xs text-gray-500 mb-1'>Custom Field {i + 1}</label>
-                      <input value={form.profile[`custom${i + 1}`] || ''} onChange={e => setForm({ ...form, profile: { ...form.profile, [`custom${i + 1}`]: e.target.value } })} className='border rounded p-2 w-full' placeholder={`Custom Field ${i + 1}`} />
-                    </div>
-                  ))}
-
-                  <div className='md:col-span-12'>
-                    <label className='block text-xs text-gray-500 mb-1'>Shipping Address</label>
-                    <input value={form.shippingAddress} onChange={e => setForm({ ...form, shippingAddress: e.target.value })} className='border rounded p-2 w-full' placeholder='Search address' />
-                  </div>
-                </>
-              )}
-
-              {/* Basic core fields */}
-              <div className='md:col-span-6'>
-                <label className='block text-xs text-gray-500 mb-1'>Vendor Name</label>
-                <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className='border rounded p-2 w-full' />
-              </div>
-              <div className='md:col-span-6'>
-                <label className='block text-xs text-gray-500 mb-1'>Status</label>
-                <select value={form.isActive ? 'Active' : 'Inactive'} onChange={e => setForm({ ...form, isActive: e.target.value === 'Active' })} className='border rounded p-2 w-full'>
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
-              </div>
-              <div className='md:col-span-12'>
-                <label className='block text-xs text-gray-500 mb-1'>Billing Address</label>
-                <textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className='border rounded p-2 w-full' rows={2} />
-              </div>
             </div>
-            <div className='flex items-center justify-end gap-2'>
-              <button onClick={() => setAddOpen(false)} className='border rounded px-4 py-2 text-sm'>Cancel</button>
+
+            <div className='flex items-center justify-end gap-2 p-4 border-t flex-none'>
+              <button onClick={() => closeAdd('cancel')} className='border rounded px-4 py-2 text-sm'>Cancel</button>
               <button disabled={!canSave} onClick={saveVendor} className={`rounded px-4 py-2 text-sm ${canSave ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

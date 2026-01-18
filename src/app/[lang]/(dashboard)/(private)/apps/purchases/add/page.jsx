@@ -210,12 +210,55 @@ export default function AddPurchasePage() {
 
     setSaving(true)
     try {
-      // In a real app, this would call /api/purchases
-      toast.info('Save functionality implementation in progress')
-      setTimeout(() => {
+      const itemsTotal = lineItems.reduce((sum, item) => sum + (item.total || 0), 0)
+      const payload = {
+        vendorId: selectedSupplier.id,
+        expectedDate: purchaseDate,
+        warehouseId: selectedWarehouse?.id,
+        notes,
+        terms: payTerm?.name,
+        items: lineItems.map(item => {
+          const qty = parseFloat(item.quantity) || 0
+          const unitPrice = parseFloat(item.unitCost) || 0
+          const discountPercent = parseFloat(item.discountPercent) || 0
+          const itemTotalBeforeDiscount = qty * unitPrice
+          const discount = itemTotalBeforeDiscount * (discountPercent / 100)
+
+          return {
+            sku: item.sku,
+            productName: item.name,
+            quantity: Math.max(1, Math.round(qty)),
+            unitPrice,
+            discount,
+            taxRate: parseFloat(item.taxPercent) || 0,
+            lotNumber: item.lotNumber || null,
+            expiryDate: item.expDate ? item.expDate : null
+          }
+        }),
+        shippingCost: parseFloat(shippingCharges) || 0,
+        discount:
+          discountType === 'Fixed'
+            ? parseFloat(discountAmount) || 0
+            : discountType === 'Percentage'
+              ? itemsTotal * ((parseFloat(discountAmount) || 0) / 100)
+              : 0
+      }
+
+      const res = await fetch('/api/purchases/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+        toast.success('Purchase saved successfully')
         router.push(`/${lang}/apps/purchases/list`)
-      }, 1000)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || 'Failed to save purchase')
+      }
     } catch (error) {
+      console.error('Failed to save purchase:', error)
       toast.error('Failed to save purchase')
     } finally {
       setSaving(false)
@@ -434,7 +477,13 @@ export default function AddPurchasePage() {
                       />
                     </td>
                     <td className='border p-2'>
-                      <TextField size='small' placeholder='Lot' className='mb-1' />
+                      <TextField
+                        size='small'
+                        placeholder='Lot'
+                        className='mb-1'
+                        value={item.lotNumber || ''}
+                        onChange={(e) => updateLineItem(index, 'lotNumber', e.target.value)}
+                      />
                       <DatePicker
                         selected={item.expDate}
                         onChange={d => updateLineItem(index, 'expDate', d)}

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import prisma from '@/lib/prisma'
+import { UserRole } from '@prisma/client'
 
 export async function PUT(
   request: Request,
@@ -19,16 +20,15 @@ export async function PUT(
     const { role } = await request.json()
 
     // Validate role
-    const validRoles = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SALES', 'USER']
-    
-    if (!validRoles.includes(role)) {
+    const finalRole = String(role || '').trim().toUpperCase() as UserRole
+    if (!Object.values(UserRole).includes(finalRole)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
     // Update user role
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { role },
+      data: { role: finalRole },
       select: {
         id: true,
         name: true,

@@ -24,45 +24,12 @@ const authOptions = {
         }
 
         try {
-          // DEBUG: Show server DB connection details
-          const maskedDbUrl = (process.env.DATABASE_URL || '').replace(/:\/\/.*@/, '://***@')
-
-          console.log('🔍 AUTH DEBUG: DATABASE_URL =', maskedDbUrl)
-
-          try {
-            const dbInfo = await prisma.$queryRawUnsafe<any[]>(
-              'select current_database() as db, current_schema() as schema'
-            )
-
-            console.log('🔍 AUTH DEBUG: Connected to:', dbInfo?.[0] || dbInfo)
-          } catch (e) {
-            console.log('🔍 AUTH DEBUG: Failed to fetch DB info:', (e as Error).message)
-          }
-
-          const totalUsers = await prisma.user.count()
-
-          console.log('🔍 AUTH DEBUG: Visible user count:', totalUsers)
-
-          console.log('🔍 AUTH DEBUG: Attempting login with:', {
-            email: credentials.email,
-            passwordLength: credentials.password.length
-          })
-
           // Find user by email
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email.toLowerCase()
             }
           })
-
-          console.log('🔍 AUTH DEBUG: User query result:', user ? {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            active: user.active,
-            hasPassword: !!user.password
-          } : 'NO USER FOUND')
 
           if (!user) {
             throw new Error('Invalid email or password')
@@ -79,16 +46,11 @@ const authOptions = {
           }
 
           // Verify password with bcrypt
-          console.log('🔍 AUTH DEBUG: Comparing password...')
           const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-
-          console.log('🔍 AUTH DEBUG: Password comparison result:', isPasswordValid)
 
           if (!isPasswordValid) {
             throw new Error('Invalid email or password')
           }
-
-          console.log('User authenticated successfully:', user.email)
 
           // Return user object (password excluded)
           return {
@@ -124,7 +86,6 @@ const authOptions = {
       return token
     },
     async session({ session, token }: { session: Session; token: JWT }) {
-      console.log('Debug: Session callback executed', { token, session });
       if (session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id

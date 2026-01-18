@@ -1,10 +1,9 @@
 // Component Imports
 import UserList from '@views/apps/user/list'
-import FetchUsersButton from '@/components/users/FetchUsersButton'
 import Grid from '@mui/material/Grid'
 
 // Data Imports
-import { getAllCustomers, saveCustomers } from '@/lib/db/customers'
+import { getUsers } from '@/lib/db/prisma'
 
 /**
  * ! If you need data using an API call, uncomment the below API code, update the `process.env.API_URL` variable in the
@@ -23,26 +22,10 @@ import { getAllCustomers, saveCustomers } from '@/lib/db/customers'
   return res.json()
 } */
 const UserListApp = async () => {
-  // Fetch customers from database
-  const customers = await getAllCustomers()
-
-  // Transform database customers for display
-  const userData = customers.map(customer => ({
-    id: customer.wooId,
-    fullName: `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.username,
-    email: customer.email,
-    username: customer.username,
-    role: customer.role,
-    avatar: customer.avatarUrl,
-    status: customer.role === 'customer' ? 'active' : 'inactive',
-    joinDate: customer.createdAt
-  }))
+  const userData = await getUsers()
 
   return (
     <Grid container spacing={6}>
-      <Grid size={12}>
-        <FetchUsersButton />
-      </Grid>
       <Grid size={12}>
         <UserList userData={userData} />
       </Grid>

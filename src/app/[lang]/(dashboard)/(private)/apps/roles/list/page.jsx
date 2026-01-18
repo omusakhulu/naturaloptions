@@ -55,6 +55,18 @@ const roleConfig = {
     description: 'Can manage projects, orders, inventory',
     icon: 'tabler-user-cog'
   },
+  ACCOUNTANT: {
+    label: 'Accountant',
+    color: 'success',
+    description: 'Can access accounting features',
+    icon: 'tabler-report-money'
+  },
+  CASHIER: {
+    label: 'Cashier',
+    color: 'primary',
+    description: 'Can operate POS terminals',
+    icon: 'tabler-cash'
+  },
   SALES: {
     label: 'Sales',
     color: 'success',
@@ -212,6 +224,8 @@ const RolesListPage = () => {
                 <MenuItem value='SUPER_ADMIN'>Super Admin</MenuItem>
                 <MenuItem value='ADMIN'>Admin</MenuItem>
                 <MenuItem value='MANAGER'>Manager</MenuItem>
+                <MenuItem value='ACCOUNTANT'>Accountant</MenuItem>
+                <MenuItem value='CASHIER'>Cashier</MenuItem>
                 <MenuItem value='SALES'>Sales</MenuItem>
                 <MenuItem value='USER'>User</MenuItem>
               </Select>

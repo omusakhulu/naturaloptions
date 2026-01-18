@@ -34,15 +34,42 @@ export async function GET(request: Request) {
   const to = toStr ? new Date(toStr) : today
 
   try {
-    const invoices = await prisma.invoice.findMany({
-      where: { date: { gte: from, lte: to } },
-      select: { lineItems: true, date: true }
-    })
-
     const bySku = new Map<string, { sku: string; name: string; quantity: number; amount: number }>()
 
-    for (const inv of invoices) {
-      const items = safeParse((inv as any).lineItems)
+    const posRows = await prisma.pOSSaleItem.groupBy({
+      by: ['productId'],
+      where: { sale: { saleDate: { gte: from, lte: to }, status: 'COMPLETED' } },
+      _sum: { quantity: true, total: true }
+    })
+
+    const posProductIds = posRows.map(r => r.productId)
+    const posProducts = posProductIds.length
+      ? await prisma.product.findMany({ where: { id: { in: posProductIds } }, select: { id: true, name: true, sku: true } })
+      : []
+
+    for (const r of posRows) {
+      const p = posProducts.find(pp => pp.id === r.productId)
+      const sku = String(p?.sku || '').trim()
+      const name = String(p?.name || 'Item')
+      const qty = toNumber(r._sum.quantity)
+      const total = toNumber(r._sum.total)
+      const key = sku || name
+      const prev = bySku.get(key) || { sku, name, quantity: 0, amount: 0 }
+      prev.quantity += qty
+      prev.amount += total
+      bySku.set(key, prev)
+    }
+
+    const wooOrders = await prisma.order.findMany({
+      where: {
+        dateCreated: { gte: from, lte: to },
+        status: { in: ['completed', 'processing'] }
+      },
+      select: { lineItems: true }
+    })
+
+    for (const order of wooOrders) {
+      const items = safeParse((order as any).lineItems)
       for (const li of items) {
         const sku = String(li?.sku || '').trim() || String(li?.product_id || '')
         const name = String(li?.name || 'Item')

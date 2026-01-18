@@ -23,6 +23,7 @@ export default function AddPurchaseRequisitionPage() {
   const [brands, setBrands] = useState([])
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
+  const [selectedProductId, setSelectedProductId] = useState('')
   const [selectedItems, setSelectedItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -77,20 +78,25 @@ export default function AddPurchaseRequisitionPage() {
   }
 
   const addItem = (product) => {
-    const exists = selectedItems.find(item => item.id === product.id)
-    if (exists) {
-      toast.warn('Product already added')
-      return
-    }
+    setSelectedItems(prev => {
+      const exists = prev.some(item => String(item.id) === String(product.id))
+      if (exists) {
+        toast.warn('Product already added')
+        return prev
+      }
 
-    setSelectedItems([...selectedItems, {
-      id: product.id,
-      sku: product.sku,
-      productName: product.name,
-      quantity: 1,
-      alertQuantity: product.stockQuantity || 0,
-      estimatedPrice: product.price || 0
-    }])
+      return [
+        ...prev,
+        {
+          id: product.id,
+          sku: product.sku,
+          productName: product.name,
+          quantity: 1,
+          alertQuantity: product.stockQuantity || 0,
+          estimatedPrice: product.price || 0
+        }
+      ]
+    })
   }
 
   const removeItem = (id) => {
@@ -123,6 +129,7 @@ export default function AddPurchaseRequisitionPage() {
             sku: item.sku,
             productName: item.productName,
             quantity: item.quantity,
+            alertQuantity: item.alertQuantity,
             estimatedPrice: item.estimatedPrice
           }))
         })
@@ -200,11 +207,16 @@ export default function AddPurchaseRequisitionPage() {
             <div className='flex-1'>
               <select 
                 className='w-full border p-2 rounded text-sm'
+                value={selectedProductId}
                 onChange={(e) => {
-                  const p = products.find(prod => prod.id === parseInt(e.target.value))
-                  if (p) addItem(p)
+                  const value = e.target.value
+                  setSelectedProductId(value)
+                  const p = products.find(prod => String(prod.id) === String(value))
+                  if (p) {
+                    addItem(p)
+                    setSelectedProductId('')
+                  }
                 }}
-                defaultValue=''
               >
                 <option value='' disabled>Select product to add...</option>
                 {products.map(p => (

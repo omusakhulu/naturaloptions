@@ -12,15 +12,9 @@ import { getAllOrders } from '@/lib/db/orders'
  */
 async function getOrdersFromDatabase() {
   try {
-    console.log('Fetching orders from database...')
-    const dbOrders = await getAllOrders()
+    const dbOrders = await getAllOrders({ take: 500 })
 
-    if (!Array.isArray(dbOrders) || dbOrders.length === 0) {
-      console.log('No orders found in database')
-      return []
-    }
-
-    console.log(`Found ${dbOrders.length} orders in database`)
+    if (!Array.isArray(dbOrders) || dbOrders.length === 0) return []
 
     // Transform database orders for display
     const transformedOrders = dbOrders.map(order => ({
@@ -44,8 +38,6 @@ async function getOrdersFromDatabase() {
       customer: order.customer ? JSON.parse(order.customer) : {},
       _cachedAt: Date.now()
     }))
-
-    console.log(`Transformed ${transformedOrders.length} orders for display`)
 
     return transformedOrders
   } catch (error) {

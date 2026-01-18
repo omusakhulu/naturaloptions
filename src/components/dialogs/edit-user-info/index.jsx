@@ -53,11 +53,33 @@ const EditUserInfo = ({ open, setOpen, data }) => {
       const id = data?.id || data?.wooId
 
       if (!id) return handleClose()
-      await fetch('/api/customers/booth/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: Number(id), boothNumber: userData?.boothNumber || '' })
-      })
+
+      const idStr = String(id)
+      const isNumericId = /^\d+$/.test(idStr)
+
+      // Woo customer (numeric id) - keep existing booth update behavior
+      if (isNumericId) {
+        await fetch('/api/customers/booth/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customerId: Number(idStr), boothNumber: userData?.boothNumber || '' })
+        })
+      } else {
+        // Prisma user (string id)
+        const payload = {
+          firstName: userData?.firstName || '',
+          lastName: userData?.lastName || '',
+          fullName: userData?.fullName || '',
+          email: userData?.email || userData?.billingEmail || '',
+          status: userData?.status || ''
+        }
+
+        await fetch(`/api/users/${encodeURIComponent(idStr)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+      }
     } catch {}
 
     handleClose()

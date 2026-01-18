@@ -141,10 +141,10 @@ const EcommerceDashboard = async ({ params, searchParams }) => {
 
   try {
     [orders, customers, products, invoicesRaw] = await Promise.all([
-      getAllOrders().catch(() => []),
-      getAllCustomers().catch(() => []),
-      getAllProducts().catch(() => []),
-      getAllInvoices().catch(() => [])
+      getAllOrders({ take: 500 }).catch(() => []),
+      getAllCustomers({ take: 500 }).catch(() => []),
+      getAllProducts({ take: 500 }).catch(() => []),
+      getAllInvoices({ take: 500 }).catch(() => [])
     ])
   } catch (error) {
     console.error('Error fetching dashboard data:', error)

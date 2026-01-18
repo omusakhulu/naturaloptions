@@ -147,6 +147,7 @@ export async function POST(request: Request) {
       productName: item.productName,
       description: item.description || null,
       quantity: item.quantity,
+      alertQuantity: typeof item.alertQuantity === 'number' ? item.alertQuantity : parseInt(item.alertQuantity || '0'),
       estimatedPrice: item.estimatedPrice ? parseFloat(item.estimatedPrice) : null,
       preferredVendor: item.preferredVendor || null
     }))
@@ -226,6 +227,7 @@ export async function PUT(request: Request) {
         productName: item.productName,
         description: item.description || null,
         quantity: item.quantity,
+        alertQuantity: typeof item.alertQuantity === 'number' ? item.alertQuantity : parseInt(item.alertQuantity || '0'),
         estimatedPrice: item.estimatedPrice ? parseFloat(item.estimatedPrice) : null,
         preferredVendor: item.preferredVendor || null
       }))

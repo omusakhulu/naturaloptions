@@ -23,16 +23,9 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
  */
 async function getProductsFromDatabase() {
   try {
-    console.log('Fetching products from database...')
-    const dbProducts = await getAllProducts()
+    const dbProducts = await getAllProducts({ take: 500 })
 
-    if (!Array.isArray(dbProducts) || dbProducts.length === 0) {
-      console.log('No products found in database')
-
-      return []
-    }
-
-    console.log(`Found ${dbProducts.length} products in database`)
+    if (!Array.isArray(dbProducts) || dbProducts.length === 0) return []
 
     // Transform database products for display
     const transformedProducts = dbProducts.map(product => {
@@ -71,8 +64,6 @@ async function getProductsFromDatabase() {
       }
     })
 
-    console.log(`Transformed ${transformedProducts.length} products for display`)
-
     return transformedProducts
   } catch (error) {
     console.error('Failed to fetch products from database:', error instanceof Error ? error.message : 'Unknown error')
@@ -98,35 +89,9 @@ async function getWooCommerceProducts() {
   // Check cache first
   const cachedProducts = cache.get(PRODUCTS_CACHE_KEY)
 
-  if (cachedProducts) {
-    console.log('Returning cached products')
-
-    return cachedProducts
-  }
+  if (cachedProducts) return cachedProducts
 
   try {
-    console.log('Fetching fresh products from WooCommerce...')
-    console.log('Environment Variables:', {
-      storeUrl: process.env.WOO_STORE_URL,
-      hasKey: !!process.env.WOO_CONSUMER_KEY,
-      hasSecret: !!process.env.WOO_CONSUMER_SECRET
-    })
-
-
-
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('WooCommerce Config:', {
-        storeUrl: process.env.WOO_STORE_URL ? `${process.env.WOO_STORE_URL.substring(0, 20)}...` : 'Not set',
-        hasKey: !!process.env.WOO_CONSUMER_KEY,
-        hasSecret: !!process.env.WOO_CONSUMER_SECRET
-      })
-    }
-
-
-    console.log('Sending request to WooCommerce API...')
-    console.log('Fetching products from:', process.env.WOO_STORE_URL)
-
     const productsRes = await wooClient.get('products', { status: 'publish', per_page: 20, orderby: 'modified', order: 'desc' })
     const products = productsRes.data || []
 
@@ -135,15 +100,11 @@ async function getWooCommerceProducts() {
       throw new Error('Invalid products data format received from API')
     }
 
-    console.log(`Received ${products.length} products from WooCommerce`)
-
     // Fetch categories first to create mapping
-    console.log('🔄 Fetching categories from WooCommerce...')
     let categories = []
 
     try {
       categories = (await wooClient.get('products/categories', { per_page: 100, orderby: 'count', order: 'desc' })).data || []
-      console.log(`✅ Fetched ${categories.length} categories`)
     } catch (error) {
       console.warn('⚠️ Failed to fetch categories:', error)
     }
@@ -174,12 +135,9 @@ async function getWooCommerceProducts() {
       }
     })
 
-    console.log(`✅ Mapped categories for ${productsWithCategories.length} products`)
-
     // Save products to database
     try {
       await saveProducts(productsWithCategories)
-      console.log(`✅ Saved ${productsWithCategories.length} products to database`)
     } catch (dbError) {
       console.warn(
         '⚠️ Failed to save products to database:',
@@ -201,8 +159,6 @@ async function getWooCommerceProducts() {
 
     // Cache the transformed products
     cache.set(PRODUCTS_CACHE_KEY, transformedProducts, CACHE_TTL)
-    console.log(`Cached ${transformedProducts.length} products for ${CACHE_TTL / 1000} seconds`)
-
     return transformedProducts
   } catch (error) {
     console.error('Failed to fetch WooCommerce products:', {
@@ -223,27 +179,19 @@ const ProductListPage = async ({ searchParams }) => {
   // Await searchParams before accessing properties (Next.js 15 requirement)
   const params = await searchParams
   
-  console.log('SearchParams received:', params)
-  
   // Get category filter from query params
   const categoryId = params?.category ? parseInt(params.category) : null
-  
-  console.log('Category ID parsed:', categoryId, 'Type:', typeof categoryId)
 
   // Try to fetch products from database first
   let productsData = await getProductsFromDatabase()
 
   // If no products in database, fetch from WooCommerce API
   if (!productsData || productsData.length === 0) {
-    console.log('No products in database, fetching from WooCommerce API...')
     productsData = await getWooCommerceProducts()
   }
 
   // Filter by category if specified
   if (categoryId && Array.isArray(productsData)) {
-    console.log(`Filtering products by category ID: ${categoryId}`)
-    const originalCount = productsData.length
-    
     productsData = productsData.filter(product => {
       if (Array.isArray(product.categories)) {
         // Check if any category matches the ID
@@ -253,16 +201,10 @@ const ProductListPage = async ({ searchParams }) => {
           return catId === categoryId
         })
         
-        if (hasCategory) {
-          console.log(`Product ${product.id} matches category ${categoryId}:`, product.categories)
-        }
-        
         return hasCategory
       }
       return false
     })
-    
-    console.log(`Filtered from ${originalCount} to ${productsData.length} products in category ${categoryId}`)
   }
 
   // ** Keep original structure, but pass the new data **

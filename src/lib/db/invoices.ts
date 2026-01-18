@@ -139,7 +139,7 @@ export async function createInvoice(invoiceData: InvoiceData) {
 /**
  * Get all invoices
  */
-export async function getAllInvoices() {
+export async function getAllInvoices(options?: { take?: number }) {
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ Skipping invoices fetch: DATABASE_URL not configured')
 
@@ -149,7 +149,8 @@ export async function getAllInvoices() {
   try {
     const invoices = await prisma.invoice.findMany({
       where: { deletedAt: null },
-      orderBy: { date: 'desc' }
+      orderBy: { date: 'desc' },
+      ...(typeof options?.take === 'number' ? { take: options.take } : {})
     })
 
     return invoices.map(inv => {
@@ -166,6 +167,35 @@ export async function getAllInvoices() {
     console.error('Error fetching invoices:', error instanceof Error ? error.message : 'Unknown error')
 
     return []
+  }
+}
+
+export async function getInvoiceById(invoiceId: string) {
+  if (!process.env.DATABASE_URL) {
+    console.warn('⚠️ Skipping invoice fetch: DATABASE_URL not configured')
+
+    return null
+  }
+
+  try {
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, deletedAt: null }
+    })
+
+    if (!invoice) return null
+
+    const raw = invoice?.amount
+    const cleaned = String(raw ?? '0').replace(/[^0-9.-]/g, '')
+    const n = Number.parseFloat(cleaned)
+
+    return {
+      ...invoice,
+      amount: Number.isFinite(n) ? String(n) : '0'
+    }
+  } catch (error) {
+    console.error('Error fetching invoice by id:', error instanceof Error ? error.message : 'Unknown error')
+
+    return null
   }
 }
 

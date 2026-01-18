@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 
 export default function AllSalesPage() {
@@ -9,6 +9,11 @@ export default function AllSalesPage() {
   const [search, setSearch] = useState('')
   const [entries, setEntries] = useState('All')
   const [showColMenu, setShowColMenu] = useState(false)
+
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('')
+  const [locationFilter, setLocationFilter] = useState('')
 
   const [columns, setColumns] = useState([
     { key: 'action', label: 'Action', visible: true },
@@ -29,7 +34,37 @@ export default function AllSalesPage() {
   ])
 
   // Local data placeholder
-  const [rows] = useState([])
+  const [rows, setRows] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch('/api/sales')
+        const data = await res.json()
+
+        if (!cancelled) {
+          if (res.ok && data?.success && Array.isArray(data?.sales)) {
+            const mapped = data.sales.map(s => ({
+              ...s,
+              action: 'View'
+            }))
+            setRows(mapped)
+          } else {
+            setRows([])
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setRows([])
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

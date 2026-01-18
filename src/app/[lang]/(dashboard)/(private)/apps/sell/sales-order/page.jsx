@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 
 export default function SalesOrderPage() {
@@ -25,7 +25,54 @@ export default function SalesOrderPage() {
   ])
 
   // Local data placeholder
-  const [rows] = useState([])
+  const [rows, setRows] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch('/api/pos/sales?limit=100')
+        const data = await res.json()
+
+        if (!cancelled) {
+          if (res.ok && data?.success && Array.isArray(data?.sales)) {
+            const mapped = data.sales.map(sale => {
+              const customerName = sale.customer
+                ? `${sale.customer.firstName || ''} ${sale.customer.lastName || ''}`.trim()
+                : 'Walk-in Customer'
+
+              const dateValue = sale.saleDate ? new Date(sale.saleDate).toISOString().split('T')[0] : ''
+
+              return {
+                action: 'View',
+                date: dateValue,
+                orderNo: sale.saleNumber,
+                customer: customerName || 'Walk-in Customer',
+                contact: sale.customer?.phone || 'N/A',
+                location: sale.terminal?.name || 'N/A',
+                status: sale.status,
+                shipStatus: 'N/A',
+                qtyRemaining: 0,
+                addedBy: sale.employee?.email || 'N/A',
+                rawData: sale
+              }
+            })
+            setRows(mapped)
+          } else {
+            setRows([])
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setRows([])
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

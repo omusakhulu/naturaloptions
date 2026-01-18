@@ -124,7 +124,7 @@ export async function saveProducts(productsData: ProductData[]) {
 /**
  * Get all products from database
  */
-export async function getAllProducts() {
+export async function getAllProducts(options?: { take?: number }) {
   // Skip if DATABASE_URL is not configured
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ Skipping products fetch: DATABASE_URL not configured')
@@ -137,7 +137,8 @@ export async function getAllProducts() {
       orderBy: [
         { syncedAt: 'desc' },
         { createdAt: 'desc' } // Fallback to createdAt if syncedAt is null
-      ]
+      ],
+      ...(typeof options?.take === 'number' ? { take: options.take } : {})
     })
 
     return products

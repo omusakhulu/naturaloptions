@@ -15,7 +15,6 @@ async function getWooCommerceOrders() {
   // Service handles auth via env; continue if present
 
   try {
-    console.log('Fetching fresh orders from WooCommerce...')
     const woo = WooCommerceService.getInstance()
 
     // Fetch orders with pagination (per_page=100)
@@ -23,8 +22,13 @@ async function getWooCommerceOrders() {
     let page = 1
     const perPage = 100
     let hasMore = true
+    const maxPages = 3
 
     while (hasMore) {
+      if (page > maxPages) {
+        hasMore = false
+        break
+      }
       try {
         const orders = await woo.executeApiRequest(
           `/wp-json/wc/v3/orders?status=any&orderby=date&order=desc&per_page=${perPage}&page=${page}`,
@@ -35,7 +39,6 @@ async function getWooCommerceOrders() {
           hasMore = false
         } else {
           allOrders = [...allOrders, ...orders]
-          console.log(`📦 Fetched ${orders.length} orders from page ${page}`)
           page++
         }
       } catch (error) {
@@ -44,12 +47,9 @@ async function getWooCommerceOrders() {
       }
     }
 
-    console.log(`Received ${allOrders.length} orders from WooCommerce`)
-
     // Save orders to database
     try {
       await saveOrders(allOrders)
-      console.log(`✅ Saved ${allOrders.length} orders to database`)
     } catch (dbError) {
       console.warn('⚠️ Failed to save orders to database:', dbError instanceof Error ? dbError.message : 'Unknown error')
     }
@@ -88,8 +88,6 @@ async function getWooCommerceOrders() {
       }
     })
 
-    console.log(`Transformed ${transformedOrders.length} orders for display`)
-
     return transformedOrders
   } catch (error) {
     console.error('Failed to fetch WooCommerce orders:', {
@@ -110,15 +108,9 @@ async function getWooCommerceOrders() {
  */
 async function getOrdersFromDatabase() {
   try {
-    console.log('Fetching orders from database...')
-    const dbOrders = await getAllOrders()
+    const dbOrders = await getAllOrders({ take: 500 })
 
-    if (!Array.isArray(dbOrders) || dbOrders.length === 0) {
-      console.log('No orders found in database')
-      return []
-    }
-
-    console.log(`Found ${dbOrders.length} orders in database`)
+    if (!Array.isArray(dbOrders) || dbOrders.length === 0) return []
 
     // Transform database orders for display
     const transformedOrders = dbOrders.map(order => ({
@@ -142,8 +134,6 @@ async function getOrdersFromDatabase() {
       customer: order.customer ? JSON.parse(order.customer) : {},
       _cachedAt: Date.now()
     }))
-
-    console.log(`Transformed ${transformedOrders.length} orders for display`)
 
     return transformedOrders
   } catch (error) {

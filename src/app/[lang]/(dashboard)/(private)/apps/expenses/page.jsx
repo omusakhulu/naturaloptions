@@ -247,8 +247,9 @@ export default function Page() {
 
       {/* Add/Edit Modal */}
       {open && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/30'>
-          <div className='bg-white rounded shadow-lg w-full max-w-5xl p-5 space-y-4 overflow-y-auto max-h-[90vh]'>
+        <div className='fixed inset-0 z-50 bg-black/30 overflow-y-auto'>
+          <div className='min-h-full flex items-start sm:items-center justify-center p-4 sm:p-6'>
+            <div className='bg-white rounded shadow-lg w-full max-w-5xl p-5 space-y-4 overflow-y-auto max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)]'>
             <div className='flex items-center justify-between'>
               <div className='text-lg font-medium'>Add Expense</div>
               <button onClick={() => setOpen(false)} className='text-gray-500 hover:text-gray-700'>✕</button>
@@ -381,6 +382,7 @@ export default function Page() {
             <div className='flex items-center justify-end gap-2'>
               <button onClick={() => setOpen(false)} className='border rounded px-4 py-2 text-sm'>Cancel</button>
               <button onClick={onSubmit} className='bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 text-sm'>Save</button>
+            </div>
             </div>
           </div>
         </div>

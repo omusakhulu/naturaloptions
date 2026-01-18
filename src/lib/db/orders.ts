@@ -113,7 +113,7 @@ export async function saveOrders(ordersData: OrderData[]) {
 /**
  * Get all orders from database
  */
-export async function getAllOrders() {
+export async function getAllOrders(options?: { take?: number }) {
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ Skipping orders fetch: DATABASE_URL not configured')
 
@@ -122,7 +122,8 @@ export async function getAllOrders() {
 
   try {
     const orders = await prisma.order.findMany({
-      orderBy: { dateCreated: 'desc' }
+      orderBy: { dateCreated: 'desc' },
+      ...(typeof options?.take === 'number' ? { take: options.take } : {})
     })
 
     return orders

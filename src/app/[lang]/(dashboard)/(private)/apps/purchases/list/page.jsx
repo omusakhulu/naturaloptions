@@ -17,11 +17,12 @@ export default function PurchasesListPage() {
 
     const load = async () => {
       try {
-        const res = await axios.get('/api/purchases/list')
+        const res = await axios.get('/api/purchases/orders')
+        const orders = res?.data?.orders
 
-        setData(Array.isArray(res.data) ? res.data : [])
+        setData(Array.isArray(orders) ? orders : [])
       } catch (e) {
-        console.error(e)
+        console.error('Failed to load purchases:', e)
       } finally {
         setLoading(false)
       }
@@ -105,15 +106,15 @@ export default function PurchasesListPage() {
                 (Array.isArray(data) ? data : []).map(p => (
                   <tr key={p.id} className='odd:bg-gray-50'>
                     <td className='border px-2 py-1'>view</td>
-                    <td className='border px-2 py-1'>{p.date}</td>
-                    <td className='border px-2 py-1'>{p.ref}</td>
-                    <td className='border px-2 py-1'>{p.location}</td>
-                    <td className='border px-2 py-1'>{p.supplier}</td>
-                    <td className='border px-2 py-1'>{p.purchaseStatus}</td>
-                    <td className='border px-2 py-1'>{p.paymentStatus}</td>
-                    <td className='border px-2 py-1'>{p.grandTotal}</td>
-                    <td className='border px-2 py-1'>{p.paymentDue}</td>
-                    <td className='border px-2 py-1'>{p.user}</td>
+                    <td className='border px-2 py-1'>{p.orderDate ? new Date(p.orderDate).toLocaleDateString() : ''}</td>
+                    <td className='border px-2 py-1'>{p.orderNumber || ''}</td>
+                    <td className='border px-2 py-1'>{p.warehouseId || ''}</td>
+                    <td className='border px-2 py-1'>{p.vendor?.name || ''}</td>
+                    <td className='border px-2 py-1'>{p.status || ''}</td>
+                    <td className='border px-2 py-1'>{p.paymentStatus || ''}</td>
+                    <td className='border px-2 py-1'>{p.totalAmount ?? ''}</td>
+                    <td className='border px-2 py-1'>{(p.totalAmount != null && p.paidAmount != null) ? Number(p.totalAmount) - Number(p.paidAmount) : ''}</td>
+                    <td className='border px-2 py-1'>{p.createdBy || ''}</td>
                   </tr>
                 ))
               )}

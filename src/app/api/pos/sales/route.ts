@@ -120,6 +120,76 @@ export async function POST(request: Request) {
     
     console.log('✅ Employee found:', employee.id)
 
+    let posCustomerId: string | null = null
+    if (customer) {
+      const customerEmail = typeof customer?.email === 'string' ? customer.email.trim() : null
+
+      if (customer?.id) {
+        const existingById = await prisma.pOSCustomer.findUnique({
+          where: { id: customer.id }
+        })
+        if (existingById) posCustomerId = existingById.id
+      }
+
+      if (!posCustomerId && customerEmail) {
+        const existingByEmail = await prisma.pOSCustomer.findFirst({
+          where: {
+            email: {
+              equals: customerEmail,
+              mode: 'insensitive'
+            }
+          }
+        })
+        if (existingByEmail) posCustomerId = existingByEmail.id
+      }
+
+      if (!posCustomerId && customer?.id && !customerEmail) {
+        const user = await prisma.user.findUnique({
+          where: { id: customer.id },
+          select: { email: true }
+        })
+  
+        if (user?.email) {
+          const existingFromUserEmail = await prisma.pOSCustomer.findFirst({
+            where: {
+              email: {
+                equals: user.email,
+                mode: 'insensitive'
+              }
+            }
+          })
+  
+          if (existingFromUserEmail) {
+            posCustomerId = existingFromUserEmail.id
+          } else {
+            const createdFromUser = await prisma.pOSCustomer.create({
+              data: {
+                customerNumber: `POSC-${Date.now()}`,
+                email: user.email
+              }
+            })
+            posCustomerId = createdFromUser.id
+          }
+        }
+      }
+
+      if (!posCustomerId && (customerEmail || customer?.firstName || customer?.lastName || customer?.phone)) {
+        const createdCustomer = await prisma.pOSCustomer.create({
+          data: {
+            customerNumber: `POSC-${Date.now()}`,
+            firstName: customer?.firstName || null,
+            lastName: customer?.lastName || null,
+            email: customerEmail,
+            phone: customer?.phone || null,
+            address: customer?.address || null,
+            city: customer?.city || null,
+            country: customer?.country || null
+          }
+        })
+        posCustomerId = createdCustomer.id
+      }
+    }
+
     // Prepare sale data
     const saleItems = []
 
@@ -167,7 +237,7 @@ export async function POST(request: Request) {
       paymentMethod: mapPaymentMethod(payments && payments.length > 0 ? 'split' : paymentMethod),
       paymentStatus: PaymentStatus.COMPLETED,
       status: SaleStatus.COMPLETED,
-      customerId: customer?.id || null,
+      customerId: posCustomerId,
       saleItems: {
         create: saleItems
       }
@@ -203,9 +273,9 @@ export async function POST(request: Request) {
     }
 
     // Update customer total spent if customer exists
-    if (customer?.id) {
+    if (posCustomerId) {
       await prisma.pOSCustomer.update({
-        where: { id: customer.id },
+        where: { id: posCustomerId },
         data: {
           totalSpent: {
             increment: parseFloat(total?.toString() || '0')

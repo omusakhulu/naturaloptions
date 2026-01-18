@@ -86,7 +86,7 @@ export async function saveCustomers(customersData: CustomerData[]) {
 /**
  * Get all customers from the database
  */
-export async function getAllCustomers() {
+export async function getAllCustomers(options?: { take?: number }) {
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ Skipping customers fetch: DATABASE_URL not configured')
 
@@ -95,7 +95,8 @@ export async function getAllCustomers() {
 
   try {
     const customers = await prisma.customer.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      ...(typeof options?.take === 'number' ? { take: options.take } : {})
     })
 
     return customers

@@ -7,7 +7,7 @@ const UserViewPage = async props => {
   const locale = params.lang || 'en'
 
   // Get first customer from database
-  const customers = await getAllCustomers()
+  const customers = await getAllCustomers({ take: 1 })
 
   if (!customers || customers.length === 0) {
     redirect(`/${locale}/not-found`)

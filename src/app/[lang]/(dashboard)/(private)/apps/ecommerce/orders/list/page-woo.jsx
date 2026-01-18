@@ -22,13 +22,17 @@ return []
   }
 
   try {
-    console.log('Fetching orders from WooCommerce via wooClient...')
     const perPage = 100
     let page = 1
     let hasMore = true
     const allOrders = []
+    const maxPages = 3
 
     while (hasMore) {
+      if (page > maxPages) {
+        hasMore = false
+        break
+      }
       const res = await wooClient.get('orders', {
         status: 'any',
         per_page: perPage,
@@ -43,16 +47,12 @@ return []
         hasMore = false
       } else {
         allOrders.push(...orders)
-        console.log(`📦 fetched ${orders.length} orders page ${page}`)
         page += 1
       }
     }
 
-    console.log(`Total Woo orders fetched: ${allOrders.length}`)
-
     try {
       await saveOrders(allOrders)
-      console.log('Saved orders to DB')
     } catch (e) {
       console.warn('Failed saving Woo orders to DB:', e?.message)
     }
@@ -91,16 +91,9 @@ return []
  */
 async function getOrdersFromDatabase() {
   try {
-    console.log('Fetching orders from database...')
-    const dbOrders = await getAllOrders()
+    const dbOrders = await getAllOrders({ take: 500 })
 
-    if (!Array.isArray(dbOrders) || dbOrders.length === 0) {
-      console.log('No orders found in database')
-
-return []
-    }
-
-    console.log(`Found ${dbOrders.length} orders in database`)
+    if (!Array.isArray(dbOrders) || dbOrders.length === 0) return []
 
     // Transform database orders for display
     const transformedOrders = dbOrders.map(order => ({
@@ -124,8 +117,6 @@ return []
       customer: order.customer ? JSON.parse(order.customer) : {},
       _cachedAt: Date.now()
     }))
-
-    console.log(`Transformed ${transformedOrders.length} orders for display`)
 
 return transformedOrders
   } catch (error) {

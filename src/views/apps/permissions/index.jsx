@@ -40,11 +40,13 @@ import tableStyles from '@core/styles/table.module.css'
 
 // Vars
 const colors = {
-  support: 'info',
-  users: 'success',
-  manager: 'warning',
-  administrator: 'primary',
-  'restricted-user': 'error'
+  SUPER_ADMIN: 'error',
+  ADMIN: 'warning',
+  MANAGER: 'info',
+  ACCOUNTANT: 'success',
+  CASHIER: 'primary',
+  SALES: 'success',
+  USER: 'default'
 }
 
 const fuzzyFilter = (row, columnId, value, addMeta) => {

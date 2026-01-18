@@ -10,6 +10,7 @@ async function getCustomerAggregates() {
 
   try {
     const invoices = await prisma.invoice.findMany({
+      take: 2000,
       select: { customerId: true, customerEmail: true, amount: true, invoiceStatus: true, date: true }
     })
 
@@ -36,7 +37,11 @@ async function getCustomerAggregates() {
       if (d && (!target.lastInvoice || d > target.lastInvoice)) target.lastInvoice = d
     }
 
-    const orders = await prisma.order.findMany({ select: { customerId: true, dateCreated: true } })
+    const orders = await prisma.order.findMany({
+      take: 5000,
+      orderBy: { dateCreated: 'desc' },
+      select: { customerId: true, dateCreated: true }
+    })
 
     for (const o of orders) {
       const keyId = o.customerId != null ? String(o.customerId) : undefined
@@ -60,7 +65,6 @@ async function getCustomerAggregates() {
  */
 async function getWooCommerceCustomers() {
   try {
-    console.log('Fetching fresh customers from WooCommerce...')
     const woo = WooCommerceService.getInstance()
 
     // Fetch customers with pagination
@@ -68,8 +72,13 @@ async function getWooCommerceCustomers() {
     let page = 1
     const perPage = 100
     let hasMore = true
+    const maxPages = 3
 
     while (hasMore) {
+      if (page > maxPages) {
+        hasMore = false
+        break
+      }
       try {
         const customers = await woo.executeApiRequest(
           `/wp-json/wc/v3/customers?per_page=${perPage}&page=${page}`,
@@ -80,7 +89,6 @@ async function getWooCommerceCustomers() {
           hasMore = false
         } else {
           allCustomers = [...allCustomers, ...customers]
-          console.log(`👥 Fetched ${customers.length} customers from page ${page}`)
           page++
         }
       } catch (error) {
@@ -89,12 +97,9 @@ async function getWooCommerceCustomers() {
       }
     }
 
-    console.log(`Received ${allCustomers.length} customers from WooCommerce`)
-
     // Save customers to database
     try {
       await saveCustomers(allCustomers)
-      console.log(`✅ Saved ${allCustomers.length} customers to database`)
     } catch (dbError) {
       console.warn(
         '⚠️ Failed to save customers to database:',
@@ -123,8 +128,6 @@ async function getWooCommerceCustomers() {
       _cachedAt: Date.now()
     }))
 
-    console.log(`Transformed ${transformedCustomers.length} customers for display`)
-
     return transformedCustomers
   } catch (error) {
     console.error('Failed to fetch WooCommerce customers:', {
@@ -144,16 +147,9 @@ async function getWooCommerceCustomers() {
  */
 async function getCustomersFromDatabase() {
   try {
-    console.log('Fetching customers from database...')
-    const dbCustomers = await getAllCustomers()
+    const dbCustomers = await getAllCustomers({ take: 500 })
 
-    if (!Array.isArray(dbCustomers) || dbCustomers.length === 0) {
-      console.log('No customers found in database')
-
-      return []
-    }
-
-    console.log(`Found ${dbCustomers.length} customers in database`)
+    if (!Array.isArray(dbCustomers) || dbCustomers.length === 0) return []
 
     // Transform database customers for display
     const transformedCustomers = dbCustomers.map(customer => ({
@@ -169,8 +165,6 @@ async function getCustomersFromDatabase() {
       dateCreated: customer.createdAt,
       _cachedAt: Date.now()
     }))
-
-    console.log(`Transformed ${transformedCustomers.length} customers for display`)
 
     return transformedCustomers
   } catch (error) {

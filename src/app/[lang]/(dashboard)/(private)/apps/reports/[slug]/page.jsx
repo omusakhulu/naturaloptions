@@ -8,6 +8,7 @@ import ItemsReport from '@/components/reports/ItemsReportTSX'
 import ProfitLossReport from '@/components/reports/ProfitLossReport'
 import SupplierReport from '@/components/reports/SupplierReportTSX'
 import CustomerReport from '@/components/reports/CustomerReportTSX'
+import SupplierCustomerReport from '@/components/reports/SupplierCustomerReportTSX'
 import CustomerGroupsReport from '@/components/reports/CustomerGroupsReportTSX'
 import StockExpiryReport from '@/components/reports/StockExpiryReportTSX'
 import LotReport from '@/components/reports/LotReportTSX'
@@ -72,6 +73,9 @@ export default function ReportPage({ params }) {
   }
   if (slug === 'customers') {
     return <CustomerReport lang={lang} />
+  }
+  if (slug === 'supplier-customer') {
+    return <SupplierCustomerReport lang={lang} />
   }
   if (slug === 'customer-groups') {
     return <CustomerGroupsReport lang={lang} />
