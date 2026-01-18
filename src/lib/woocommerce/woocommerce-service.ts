@@ -433,6 +433,34 @@ export class WooCommerceService {
   }
 
   /**
+   * List customers with pagination
+   */
+  public async listCustomers(
+    params: {
+      per_page?: number
+      page?: number
+      orderby?: string
+      order?: string
+      role?: string
+      search?: string
+    } = {}
+  ): Promise<WooCommerceCustomer[]> {
+    const queryParams = new URLSearchParams({
+      per_page: String(params.per_page || 100),
+      page: String(params.page || 1),
+      orderby: params.orderby || 'id',
+      order: params.order || 'asc'
+    })
+
+    if (params.role) queryParams.set('role', params.role)
+    if (params.search) queryParams.set('search', params.search)
+
+    const path = `/wp-json/wc/v3/customers?${queryParams.toString()}`
+
+    return this.executeApiRequest(path, 'GET')
+  }
+
+  /**
    * Update a WooCommerce customer by ID
    */
   public async updateCustomer(
