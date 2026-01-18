@@ -1,5 +1,7 @@
-import LoginV1 from '@/views/pages/auth/LoginV1'
+import { redirect } from 'next/navigation'
+
+import { i18n } from '@/configs/i18n'
 
 export default function LoginPage() {
-  return <LoginV1 />
+  redirect(`/${i18n.defaultLocale}/login`)
 }
