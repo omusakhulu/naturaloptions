@@ -13,6 +13,7 @@ import Box from '@mui/material/Box'
 // Component Imports
 import RoleCards from './RoleCards'
 import RolesTable from './RolesTable'
+import RoleMenuAccessEditor from './RoleMenuAccessEditor'
 
 const Roles = ({ userData, onRefresh }) => {
   const [activeTab, setActiveTab] = useState('all')
@@ -113,6 +114,10 @@ const Roles = ({ userData, onRefresh }) => {
 
       <Grid size={12}>
         <RoleCards userData={filteredUsers} onRoleUpdate={onRefresh} />
+      </Grid>
+
+      <Grid size={12}>
+        <RoleMenuAccessEditor />
       </Grid>
       <Grid size={{ xs: 12 }} className='!pbs-12'>
         <Typography variant='h4' className='mbe-1'>

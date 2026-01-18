@@ -54,19 +54,24 @@ const ChangePassword = ({ userData }) => {
 
             try {
               setSubmitting(true)
-              const id = userData?.wooId || userData?.id
+              const wooId = userData?.wooId
+              const userId = userData?.id
 
-              if (!id) {
-                setError('Missing customer id')
+              if (!wooId && !userId) {
+                setError('Missing user id')
                 setSubmitting(false)
 
                 return
               }
 
+              const payload = wooId
+                ? { customerId: Number(wooId), newPassword: pwd }
+                : { userId: String(userId), newPassword: pwd }
+
               const res = await fetch('/api/customers/password/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ customerId: Number(id), newPassword: pwd })
+                body: JSON.stringify(payload)
               })
 
               const json = await res.json()

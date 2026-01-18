@@ -4,6 +4,12 @@ export { prisma }
 
 export async function getUsers() {
   const users = await prisma.user.findMany({
+    where: {
+      active: true,
+      NOT: {
+        email: { contains: '@deleted.local' }
+      }
+    },
     select: {
       id: true,
       name: true,

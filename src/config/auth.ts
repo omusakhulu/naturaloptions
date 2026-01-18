@@ -28,11 +28,18 @@ const authOptions = {
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email.toLowerCase()
+            },
+            include: {
+              accounts: {
+                select: {
+                  provider: true
+                }
+              }
             }
           })
 
           if (!user) {
-            throw new Error('Invalid email or password')
+            return null
           }
 
           // Check if user is active
@@ -42,14 +49,20 @@ const authOptions = {
 
           // Check if user has a password (may be OAuth only user)
           if (!user.password) {
-            throw new Error('Please login using your social account')
+            const hasOAuthAccount = Array.isArray((user as any).accounts) && (user as any).accounts.length > 0
+
+            if (hasOAuthAccount) {
+              throw new Error('Please login using your social account')
+            }
+
+            throw new Error('Password not set for this account. Please use "Forgot password" to set one.')
           }
 
           // Verify password with bcrypt
           const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
 
           if (!isPasswordValid) {
-            throw new Error('Invalid email or password')
+            return null
           }
 
           // Return user object (password excluded)
@@ -61,8 +74,21 @@ const authOptions = {
             image: user.image
           }
         } catch (error) {
-          console.error('Authentication error:', error)
-          throw new Error((error as Error).message || 'Authentication failed. Please try again.')
+          const message = (error as Error).message || 'Authentication failed. Please try again.'
+
+          if (
+            message === 'Invalid email or password' ||
+            message === 'Email and password are required' ||
+            message === 'Please login using your social account' ||
+            message === 'Password not set for this account. Please use "Forgot password" to set one.' ||
+            message === 'Your account has been deactivated. Please contact support.'
+          ) {
+            console.warn('Authentication failed:', message)
+          } else {
+            console.error('Authentication error:', error)
+          }
+
+          throw new Error(message)
         }
       }
     }),

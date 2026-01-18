@@ -125,6 +125,28 @@ const UserListTable = ({ tableData }) => {
     }
   }
 
+  const deleteUser = async id => {
+    if (!id) return
+    const confirmed = typeof window !== 'undefined' ? window.confirm('Delete this user?') : false
+    if (!confirmed) return
+
+    try {
+      const res = await fetch(`/api/users/${encodeURIComponent(String(id))}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        if (typeof window !== 'undefined') window.alert(json?.error || 'Failed to delete user')
+        return
+      }
+
+      setData(prev => (Array.isArray(prev) ? prev.filter(u => u.id !== id) : prev))
+      setFilteredData(prev => (Array.isArray(prev) ? prev.filter(u => u.id !== id) : prev))
+      fetchUsers()
+    } catch {
+      if (typeof window !== 'undefined') window.alert('Failed to delete user')
+    }
+  }
+
   useEffect(() => {
     if (Array.isArray(tableData)) {
       setData(tableData)
@@ -207,7 +229,7 @@ const UserListTable = ({ tableData }) => {
         header: 'Action',
         cell: ({ row }) => (
           <div className='flex items-center'>
-            <IconButton onClick={() => setData(data?.filter(product => product.id !== row.original.id))}>
+            <IconButton onClick={() => deleteUser(row.original.id)}>
               <i className='tabler-trash text-textSecondary' />
             </IconButton>
             <IconButton>

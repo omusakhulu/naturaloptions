@@ -1,5 +1,9 @@
+// React Imports
+import { useEffect, useMemo, useState } from 'react'
+
 // Next Imports
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 // MUI Imports
 import { useTheme } from '@mui/material/styles'
@@ -41,10 +45,60 @@ const HorizontalMenu = ({ dictionary }) => {
   const verticalNavOptions = useVerticalNav()
   const theme = useTheme()
   const params = useParams()
+  const { data: session } = useSession()
+
+  const [menuAccessMap, setMenuAccessMap] = useState(null)
 
   // Vars
   const { transitionDuration } = verticalNavOptions
   const { lang: locale } = params
+
+  const role = session?.user?.role
+
+  useEffect(() => {
+    const fetchMenuAccess = async () => {
+      try {
+        const res = await fetch('/api/roles/menu-access')
+
+        if (!res.ok) {
+          setMenuAccessMap({})
+
+          return
+        }
+
+        const json = await res.json().catch(() => ({}))
+        setMenuAccessMap(json?.map || {})
+      } catch {
+        setMenuAccessMap({})
+      }
+    }
+
+    fetchMenuAccess()
+  }, [])
+
+  const allowedKeysSet = useMemo(() => {
+    if (!role || role === 'SUPER_ADMIN') return null
+    if (!menuAccessMap || typeof menuAccessMap !== 'object') return null
+
+    const roleKeys = menuAccessMap[role]
+
+    if (!Array.isArray(roleKeys)) return null
+
+    return new Set(roleKeys)
+  }, [menuAccessMap, role])
+
+  const can = key => {
+    if (!role) return false
+    if (role === 'SUPER_ADMIN') return true
+    if (!allowedKeysSet) return true
+
+    return allowedKeysSet.has(key)
+  }
+
+  const canAny = keys => keys.some(k => can(k))
+
+  const showUserMenu = can('users.list')
+  const showRolesPermissions = canAny(['users.roles', 'users.permissions'])
 
   return (
     <HorizontalNav
@@ -160,14 +214,20 @@ const HorizontalMenu = ({ dictionary }) => {
             </MenuItem>
             <MenuItem href={`/${locale}/apps/invoice/add`}>{dictionary['navigation'].add}</MenuItem>
           </SubMenu>
-          <SubMenu label={dictionary['navigation'].user} icon={<i className='tabler-user' />}>
-            <MenuItem href={`/${locale}/apps/user/list`}>{dictionary['navigation'].list}</MenuItem>
-            <MenuItem href={`/${locale}/apps/user/view`}>{dictionary['navigation'].view}</MenuItem>
-          </SubMenu>
-          <SubMenu label={dictionary['navigation'].rolesPermissions} icon={<i className='tabler-lock' />}>
-            <MenuItem href={`/${locale}/apps/roles`}>{dictionary['navigation'].roles}</MenuItem>
-            <MenuItem href={`/${locale}/apps/permissions`}>{dictionary['navigation'].permissions}</MenuItem>
-          </SubMenu>
+          {showUserMenu && (
+            <SubMenu label={dictionary['navigation'].user} icon={<i className='tabler-user' />}>
+              <MenuItem href={`/${locale}/apps/user/list`}>{dictionary['navigation'].list}</MenuItem>
+              <MenuItem href={`/${locale}/apps/user/view`}>{dictionary['navigation'].view}</MenuItem>
+            </SubMenu>
+          )}
+          {showRolesPermissions && (
+            <SubMenu label={dictionary['navigation'].rolesPermissions} icon={<i className='tabler-lock' />}>
+              {can('users.roles') && <MenuItem href={`/${locale}/apps/roles`}>{dictionary['navigation'].roles}</MenuItem>}
+              {can('users.permissions') && (
+                <MenuItem href={`/${locale}/apps/permissions`}>{dictionary['navigation'].permissions}</MenuItem>
+              )}
+            </SubMenu>
+          )}
         </SubMenu>
         <SubMenu label={dictionary['navigation'].pages} icon={<i className='tabler-file' />}>
           <MenuItem href={`/${locale}/pages/user-profile`} icon={<i className='tabler-user-circle' />}>

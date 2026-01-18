@@ -33,7 +33,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
     return NextResponse.json(user)
   } catch (error) {
-    console.error('Error fetching user:', error)
+    console.error('Error fetching user')
     return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 })
   }
 }
@@ -109,7 +109,69 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
     return NextResponse.json({ success: true, user: updated })
   } catch (error) {
-    console.error('Error updating user:', error)
+    console.error('Error updating user')
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await context.params
+
+    const sessionUserId = (session.user as any)?.id
+    if (sessionUserId && String(sessionUserId) === String(id)) {
+      return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 })
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    if (!existing) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    try {
+      await prisma.user.delete({ where: { id } })
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      // If user is referenced by POS sales or other FK constraints, fall back to soft-delete.
+      // (We cannot hard delete employees referenced by transactions.)
+      try {
+        await prisma.session.deleteMany({ where: { userId: id } })
+      } catch {
+        // ignore
+      }
+
+      const anonymizedEmail = `deleted+${id}@deleted.local`
+
+      try {
+        await prisma.user.update({
+          where: { id },
+          data: {
+            active: false,
+            name: 'Deleted User',
+            email: anonymizedEmail,
+            password: null,
+            image: null
+          }
+        })
+
+        return NextResponse.json({
+          success: true,
+          softDeleted: true,
+          message: 'User could not be hard deleted because of linked transactions. The account was deactivated instead.'
+        })
+      } catch {
+        console.error('Error deleting user')
+        return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
+      }
+    }
+  } catch {
+    console.error('Error deleting user')
+    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
   }
 }

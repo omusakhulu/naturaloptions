@@ -112,7 +112,12 @@ const LoginV2 = ({ mode }) => {
       })
 
       if (result?.error) {
-        setError('Invalid email or password')
+        if (result.error.includes('CredentialsSignin')) {
+          setError('Invalid email or password')
+        } else {
+          setError(result.error)
+        }
+
         setLoading(false)
       } else {
         // Success - redirect to dashboard
@@ -120,6 +125,18 @@ const LoginV2 = ({ mode }) => {
       }
     } catch (err) {
       setError('An error occurred. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setError('')
+    setLoading(true)
+
+    try {
+      await signIn('google', { callbackUrl: '/en/apps/ecommerce/dashboard' })
+    } catch (err) {
+      setError('Unable to sign in with Google. Please try again.')
       setLoading(false)
     }
   }
@@ -229,7 +246,7 @@ const LoginV2 = ({ mode }) => {
               <IconButton className='text-textPrimary' size='small'>
                 <i className='tabler-brand-github-filled' />
               </IconButton>
-              <IconButton className='text-error' size='small'>
+              <IconButton className='text-error' size='small' onClick={handleGoogleSignIn} disabled={loading}>
                 <i className='tabler-brand-google-filled' />
               </IconButton>
             </div>

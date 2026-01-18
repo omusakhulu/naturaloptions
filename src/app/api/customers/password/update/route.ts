@@ -1,15 +1,44 @@
 import { NextResponse } from 'next/server'
 
 import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
+import prisma from '@/lib/prisma'
+import bcrypt from 'bcrypt'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const customerId = Number(body?.customerId)
+    const customerIdRaw = body?.customerId
+    const customerId = Number(customerIdRaw)
+    const userId = typeof body?.userId === 'string' && body.userId.trim() ? body.userId.trim() : undefined
     const newPassword = String(body?.newPassword || '').trim()
 
-    if (!customerId || !newPassword) {
-      return NextResponse.json({ ok: false, error: 'customerId and newPassword are required' }, { status: 400 })
+    if (!newPassword) {
+      return NextResponse.json({ ok: false, error: 'newPassword is required' }, { status: 400 })
+    }
+
+    if (newPassword.length < 8) {
+      return NextResponse.json({ ok: false, error: 'Password must be at least 8 characters long' }, { status: 400 })
+    }
+
+    if (userId) {
+      const existing = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
+
+      if (!existing) {
+        return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 })
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword }
+      })
+
+      return NextResponse.json({ ok: true })
+    }
+
+    if (!Number.isFinite(customerId) || customerId <= 0) {
+      return NextResponse.json({ ok: false, error: 'customerId (number) or userId (string) is required' }, { status: 400 })
     }
 
     const woo = WooCommerceService.getInstance()
