@@ -13,7 +13,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: process.env.PORT ? Number(process.env.PORT) : 3000,
         BASEPATH: process.env.BASEPATH || "/admin",
-        NEXTAUTH_URL: process.env.NEXTAUTH_URL || "https://102.220.12.78.sslip.io/admin"
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL || "https://102.212.246.251.sslip.io/admin"
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
