@@ -8,6 +8,9 @@ import bcrypt from 'bcrypt'
 
 import prisma from '@/lib/prisma'
 
+const basePath = process.env.BASEPATH || ''
+const withBasePath = (path: string) => (basePath ? `${basePath}${path}`.replace(/\/{2,}/g, '/') : path)
+
 const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -136,8 +139,8 @@ const authOptions = {
     }
   },
   pages: {
-    signIn: '/en/pages/auth/login-v2',
-    error: '/en/error'
+    signIn: withBasePath('/en/pages/auth/login-v2'),
+    error: withBasePath('/en/error')
   },
   secret: process.env.NEXTAUTH_SECRET
 }

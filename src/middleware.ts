@@ -9,6 +9,18 @@ import { getToken } from 'next-auth/jwt'
 export default async function middleware(request: NextRequest) {
   //console.log('🔒 Middleware running for path:', request.nextUrl.pathname)
   
+  const basePath = request.nextUrl.basePath || process.env.BASEPATH || ''
+  const withBasePath = (path: string) => {
+    if (!basePath) return path
+    const joined = `${basePath}${path}`
+    const normalized = joined.replace(/\/{2,}/g, '/')
+    return normalized || '/'
+  }
+  const pathname = request.nextUrl.pathname
+  const pathnameWithoutBase = basePath && pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || '/'
+    : pathname
+  
   // Get token using getToken (works in middleware)
   const token = await getToken({ 
     req: request, 
@@ -19,19 +31,19 @@ export default async function middleware(request: NextRequest) {
   //console.log('Session status:', isAuthenticated ? '✅ Authenticated' : '❌ Unauthenticated')
   
   // Define public/allowed paths
-  const isLoginPage = request.nextUrl.pathname === '/login' || 
-                     request.nextUrl.pathname === '/en/login' ||
-                     request.nextUrl.pathname.startsWith('/en/login/') ||
-                     request.nextUrl.pathname === '/en/pages/auth/login-v2' ||
-                     request.nextUrl.pathname.startsWith('/en/pages/auth/login-v2/')
+  const isLoginPage = pathnameWithoutBase === '/login' || 
+                     pathnameWithoutBase === '/en/login' ||
+                     pathnameWithoutBase.startsWith('/en/login/') ||
+                     pathnameWithoutBase === '/en/pages/auth/login-v2' ||
+                     pathnameWithoutBase.startsWith('/en/pages/auth/login-v2/')
   
-  const isAuthApi = request.nextUrl.pathname.startsWith('/api/auth')
+  const isAuthApi = pathnameWithoutBase.startsWith('/api/auth')
   
-  const isPublicAsset = request.nextUrl.pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/) ||
-                       request.nextUrl.pathname.startsWith('/_next/') ||
-                       request.nextUrl.pathname.startsWith('/favicon')
+  const isPublicAsset = pathnameWithoutBase.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/) ||
+                       pathnameWithoutBase.startsWith('/_next/') ||
+                       pathnameWithoutBase.startsWith('/favicon')
 
-  const isRootPath = request.nextUrl.pathname === '/'
+  const isRootPath = pathnameWithoutBase === '/'
 
   //console.log('Path analysis:', {
   //   path: request.nextUrl.pathname,
@@ -43,14 +55,14 @@ export default async function middleware(request: NextRequest) {
   // })
 
   // Handle root path and language roots - redirect to login if not authenticated, dashboard if authenticated
-  if (isRootPath || request.nextUrl.pathname === '/en' || request.nextUrl.pathname === '/fr' || request.nextUrl.pathname === '/ar') {
+  if (isRootPath || pathnameWithoutBase === '/en' || pathnameWithoutBase === '/fr' || pathnameWithoutBase === '/ar') {
     if (isAuthenticated) {
       console.log('🏠 Root/Lang path: Redirecting authenticated user to dashboard')
-      const lang = request.nextUrl.pathname.slice(1) || 'en'
-      return NextResponse.redirect(new URL(`/${lang}/apps/ecommerce/dashboard`, request.url))
+      const lang = pathnameWithoutBase.slice(1) || 'en'
+      return NextResponse.redirect(new URL(withBasePath(`/${lang}/apps/ecommerce/dashboard`), request.url))
     } else {
       console.log('🏠 Root/Lang path: Redirecting unauthenticated user to login')
-      return NextResponse.redirect(new URL('/en/pages/auth/login-v2', request.url))
+      return NextResponse.redirect(new URL(withBasePath('/en/pages/auth/login-v2'), request.url))
     }
   }
 
@@ -63,13 +75,13 @@ export default async function middleware(request: NextRequest) {
   // If not authenticated and trying to access protected route, redirect to login
   if (!isAuthenticated && !isLoginPage) {
   //console.log('🚫 Unauthenticated user trying to access protected route, redirecting to login')
-    return NextResponse.redirect(new URL('/en/pages/auth/login-v2', request.url))
+    return NextResponse.redirect(new URL(withBasePath('/en/pages/auth/login-v2'), request.url))
   }
 
   // If authenticated and trying to access login page, redirect to dashboard
   if (isAuthenticated && isLoginPage) {
     //console.log('🔄 Authenticated user on login page, redirecting to dashboard')
-    return NextResponse.redirect(new URL('/en/dashboard', request.url))
+    return NextResponse.redirect(new URL(withBasePath('/en/apps/ecommerce/dashboard'), request.url))
   }
 
   // Allow the request to continue
