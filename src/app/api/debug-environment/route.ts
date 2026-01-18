@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       hasConsumerKey: !!process.env.WOOCOMMERCE_CONSUMER_KEY,
       hasConsumerSecret: !!process.env.WOOCOMMERCE_CONSUMER_SECRET,
       storeUrl: process.env.WOO_STORE_URL?.substring(0, 30) + '...',
-      userAgent: 'Omnishop Admin Dashboard/1.0'
+      userAgent: 'Natural Options Admin Dashboard/1.0'
     },
     network: {} as Record<string, any>,
     recommendation: ''

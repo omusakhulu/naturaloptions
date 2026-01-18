@@ -549,7 +549,7 @@ export class WooCommerceService {
         lookup: this.lookupIPv4,
         headers: {
           Authorization: `Basic ${this.baseAuthHeader}`,
-          'User-Agent': 'Omnishop Admin Dashboard/1.0',
+          'User-Agent': 'Natural Options Admin Dashboard/1.0',
           'Content-Type': 'application/json',
           Accept: 'application/json',
           Connection: 'keep-alive'

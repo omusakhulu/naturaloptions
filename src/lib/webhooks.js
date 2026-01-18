@@ -35,7 +35,7 @@ export async function registerWebhooks() {
     const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET
 
     const webhookData = {
-      name: 'Omnishop Product Sync',
+      name: 'Natural Options Product Sync',
       topic: 'product.updated', // Start with product updates
       delivery_url: webhookUrl,
       secret: secret,

@@ -24,8 +24,11 @@ import '@/app/globals.css'
 import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
-  title: 'Omnishop Portal',
-  description: 'Omnishop Portal.'
+  title: {
+    default: 'Natural Options',
+    template: 'Natural Options - %s'
+  },
+  description: 'Natural Options Portal.'
 }
 
 const Layout = async ({ children }) => {

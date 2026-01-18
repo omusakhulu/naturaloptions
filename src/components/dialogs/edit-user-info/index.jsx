@@ -29,13 +29,13 @@ const initialData = {
   taxId: 'Tax-8894',
   contact: '+ 1 609 933 4422',
   language: ['English'],
-  country: 'US',
+  country: 'kenya',
   useAsBillingAddress: true
 }
 
 const status = ['Status', 'Active', 'Inactive', 'Suspended']
 const languages = ['English', 'Spanish', 'French', 'German', 'Hindi']
-const countries = ['Select Country', 'France', 'Russia', 'China', 'UK', 'US']
+const countries = ['Kenya']
 
 const EditUserInfo = ({ open, setOpen, data }) => {
   // States

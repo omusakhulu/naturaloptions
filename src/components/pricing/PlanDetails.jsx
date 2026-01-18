@@ -38,7 +38,7 @@ const PlanDetails = ({ data, pricingPlan }) => {
       <div className='relative mbe-4'>
         <div className='flex justify-center'>
           <Typography component='sup' className='self-start font-medium'>
-            $
+            KES
           </Typography>
           <Typography variant='h1' component='span' color='primary.main'>
             {pricingPlan === 'monthly' ? data?.monthlyPrice : data?.yearlyPlan.monthly}
@@ -51,7 +51,7 @@ const PlanDetails = ({ data, pricingPlan }) => {
           <Typography
             variant='caption'
             className='absolute inline-end-1/2 translate-x-[50%]'
-          >{`USD ${data?.yearlyPlan.annually}/year`}</Typography>
+          >{`KES ${data?.yearlyPlan.annually}/year`}</Typography>
         ) : null}
       </div>
       <div className='flex flex-col gap-4'>

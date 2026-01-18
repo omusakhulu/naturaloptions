@@ -18,12 +18,7 @@ import { useForm, Controller } from 'react-hook-form'
 import CustomTextField from '@core/components/mui/TextField'
 
 export const country = {
-  india: { country: 'India' },
-  australia: { country: 'Australia' },
-  france: { country: 'France' },
-  brazil: { country: 'Brazil' },
-  us: { country: 'United States' },
-  china: { country: 'China' }
+  kenya: { country: 'Kenya' }
 }
 
 // Vars
@@ -53,7 +48,7 @@ const AddCustomerDrawer = props => {
     defaultValues: {
       fullName: '',
       email: '',
-      country: ''
+      country: 'kenya'
     }
   })
 
@@ -61,7 +56,7 @@ const AddCustomerDrawer = props => {
     const [firstName, ...lastParts] = String(data.fullName || '').trim().split(' ')
     const lastName = lastParts.join(' ')
 
-    const countryMap = { india: 'IN', australia: 'AU', france: 'FR', brazil: 'BR', us: 'US', china: 'CN' }
+    const countryMap = { kenya: 'KE' }
     const countryCode = countryMap[data.country] || data.country || ''
 
     const payload = {
@@ -116,7 +111,7 @@ const AddCustomerDrawer = props => {
       }
 
       setData([...(customerData ?? []), created])
-      resetForm({ fullName: '', email: '', country: '' })
+      resetForm({ fullName: '', email: '', country: 'kenya' })
       setFormData(initialData)
       handleClose()
     } catch (e) {
@@ -126,7 +121,7 @@ const AddCustomerDrawer = props => {
 
   const handleReset = () => {
     handleClose()
-    resetForm({ fullName: '', email: '', country: '' })
+    resetForm({ fullName: '', email: '', country: 'kenya' })
     setFormData(initialData)
   }
 
@@ -194,12 +189,7 @@ const AddCustomerDrawer = props => {
                   {...field}
                   {...(errors.country && { error: true, helperText: 'This field is required.' })}
                 >
-                  <MenuItem value='india'>India</MenuItem>
-                  <MenuItem value='australia'>Australia</MenuItem>
-                  <MenuItem value='france'>France</MenuItem>
-                  <MenuItem value='brazil'>Brazil</MenuItem>
-                  <MenuItem value='us'>USA</MenuItem>
-                  <MenuItem value='china'>China</MenuItem>
+                  <MenuItem value='kenya'>Kenya</MenuItem>
                 </CustomTextField>
               )}
             />

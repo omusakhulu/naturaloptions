@@ -12,7 +12,7 @@ import CustomTextField from '@core/components/mui/TextField'
 
 const StoreCurrency = () => {
   // States
-  const [currency, setCurrency] = useState('')
+  const [currency, setCurrency] = useState('KES')
 
   return (
     <Card>
@@ -26,10 +26,7 @@ const StoreCurrency = () => {
           onChange={e => setCurrency(e.target.value)}
         >
           <MenuItem value=''>Select Currency</MenuItem>
-          <MenuItem value='INR'>INR</MenuItem>
-          <MenuItem value='USD'>USD</MenuItem>
-          <MenuItem value='Euro'>Euro</MenuItem>
-          <MenuItem value='Pound'>Pound</MenuItem>
+          <MenuItem value='KES'>KES</MenuItem>
         </CustomTextField>
       </CardContent>
     </Card>

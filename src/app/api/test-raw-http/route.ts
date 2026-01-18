@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         method: 'GET',
         headers: {
           'Authorization': `Basic ${basicAuth}`,
-          'User-Agent': 'Omnishop Admin Dashboard/1.0',
+          'User-Agent': 'Natural Options Admin Dashboard/1.0',
           'Accept': 'application/json'
         },
         timeout: 30000

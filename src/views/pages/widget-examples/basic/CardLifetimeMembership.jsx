@@ -61,9 +61,9 @@ const CardLifetimeMembership = () => {
           <CardContent className='flex items-center justify-center bs-full bg-actionHover'>
             <div className='flex flex-col items-center justify-center gap-2'>
               <div className='flex items-baseline justify-center'>
-                <Typography variant='h5'>$</Typography>
+                <Typography variant='h5'>KES</Typography>
                 <Typography variant='h1'>899</Typography>
-                <Typography variant='h5'>USD</Typography>
+                <Typography variant='h5'>KES</Typography>
               </div>
               <Typography color='text.secondary' className='flex flex-col text-center'>
                 <span>5 Tips For Offshore</span>

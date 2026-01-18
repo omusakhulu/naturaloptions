@@ -12,7 +12,7 @@
         - img "OmniSpace 3D" [ref=e11]
       - generic [ref=e12]:
         - generic [ref=e13]:
-          - heading "Welcome to Omnishop Dashboard! 👋🏻" [level=4] [ref=e14]
+          - heading "Welcome to Natural Options Dashboard! 👋🏻" [level=4] [ref=e14]
           - paragraph [ref=e15]: Please sign-in to your account and start the adventure
         - generic [ref=e16]:
           - generic [ref=e17]:

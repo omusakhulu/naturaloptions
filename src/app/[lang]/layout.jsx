@@ -29,8 +29,11 @@ import '@/app/globals.css'
 import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
-  title: 'Natural Options Portal',
-  description: 'Omnishop Portal.'
+  title: {
+    default: 'Natural Options',
+    template: 'Natural Options - %s'
+  },
+  description: 'Natural Options Portal.'
 }
 
 // Generate static params for all supported languages
@@ -53,7 +56,7 @@ const RootLayout = async props => {
     <TranslationWrapper headersList={headersList} lang={params.lang}>
       <div id='__next' lang={params.lang} dir={direction} className='flex is-full min-bs-full flex-auto flex-col'>
         <InitColorSchemeScript attribute='data' defaultMode={systemMode} />
-        <AuthProvider session={null}>
+        <AuthProvider>
           <WebhookInitializer />
           {children}
           <ToastContainer />

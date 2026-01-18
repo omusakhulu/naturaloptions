@@ -81,12 +81,12 @@ async function PackingSlipView({ params }) {
                 <div className='flex items-center gap-4 mb-4'>
                   <img 
                     src='/images/logos/logo.png' 
-                    alt='Omnishop Logo' 
+                    alt='Natural Options Logo' 
                     className='h-16 w-auto'
                   />
                   <div>
                     <Typography variant='h4' className='font-bold mb-1'>
-                      Omnishop
+                      Natural Options
                     </Typography>
                     <Typography variant='h6' color='text.secondary'>
                       Packing Slip

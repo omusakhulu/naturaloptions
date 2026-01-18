@@ -52,7 +52,11 @@ export async function POST(request: Request) {
 
     const totalAmountNum = asNumber(total)
     const paymentsArray = Array.isArray(payments) ? payments : []
-    const paymentsTotal = paymentsArray.reduce((sum: number, p: any) => sum + asNumber(p?.amount), 0)
+    const paymentsTotal = paymentsArray.reduce((sum: number, p: any) => {
+      const rawStatus = String(p?.status || '').toUpperCase()
+      const isCompleted = !rawStatus || rawStatus === 'COMPLETED'
+      return sum + (isCompleted ? asNumber(p?.amount) : 0)
+    }, 0)
     const isPaid = paymentsArray.length > 0 ? paymentsTotal >= totalAmountNum : true
 
     console.log('💾 Creating POS sale:', { total, itemCount: items.length, customer: customer?.id })
@@ -274,7 +278,12 @@ export async function POST(request: Request) {
           const method = mapPaymentMethod(String(p?.method || p?.paymentMethod || 'cash'))
           const amount = asNumber(p?.amount)
           const reference = p?.reference ? String(p.reference) : p?.checkoutRequestId ? String(p.checkoutRequestId) : null
-          const status = String(p?.status || '').toUpperCase() === 'FAILED' ? PaymentStatus.FAILED : PaymentStatus.COMPLETED
+          const rawStatus = String(p?.status || '').toUpperCase()
+          const status = rawStatus === 'FAILED'
+            ? PaymentStatus.FAILED
+            : rawStatus === 'PENDING'
+              ? PaymentStatus.PENDING
+              : PaymentStatus.COMPLETED
 
           return {
             saleId: sale.id,

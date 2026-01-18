@@ -23,12 +23,12 @@ import CustomInputVertical from '@core/components/custom-inputs/Vertical'
 import DialogCloseButton from '../DialogCloseButton'
 import CustomTextField from '@core/components/mui/TextField'
 
-const countries = ['Select Country', 'France', 'Russia', 'China', 'UK', 'US']
+const countries = ['Kenya']
 
 const initialAddressData = {
   firstName: '',
   lastName: '',
-  country: '',
+  country: 'kenya',
   address1: '',
   address2: '',
   landmark: '',

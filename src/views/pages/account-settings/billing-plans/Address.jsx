@@ -17,7 +17,7 @@ import CustomTextField from '@core/components/mui/TextField'
 
 const Address = () => {
   // States
-  const [state, setState] = useState('')
+  const [state, setState] = useState('kenya')
 
   return (
     <Card>
@@ -45,7 +45,7 @@ const Address = () => {
                 placeholder='202 555 0111'
                 slotProps={{
                   input: {
-                    startAdornment: <InputAdornment position='start'>US (+1)</InputAdornment>
+                    startAdornment: <InputAdornment position='start'>KE (+254)</InputAdornment>
                   }
                 }}
               />
@@ -53,11 +53,7 @@ const Address = () => {
             <Grid size={{ xs: 12, sm: 6 }}>
               <CustomTextField select fullWidth label='Country' value={state} onChange={e => setState(e.target.value)}>
                 <MenuItem value=''>Select Country</MenuItem>
-                <MenuItem value='australia'>Australia</MenuItem>
-                <MenuItem value='canada'>Canada</MenuItem>
-                <MenuItem value='france'>France</MenuItem>
-                <MenuItem value='united-kingdom'>United Kingdom</MenuItem>
-                <MenuItem value='united-states'>United States</MenuItem>
+                <MenuItem value='kenya'>Kenya</MenuItem>
               </CustomTextField>
             </Grid>
             <Grid size={12}>

@@ -74,7 +74,7 @@ const createWooCommerceClient = () => {
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'User-Agent': 'Omnishop Admin/1.0',
+      'User-Agent': 'Natural Options Admin/1.0',
       'Cache-Control': 'no-cache',
       Pragma: 'no-cache'
     },
@@ -336,7 +336,7 @@ const createWooCommerceClient = () => {
           )
 
           const webhookData = {
-            name: `Omnishop - ${event}`,
+            name: `Natural Options - ${event}`,
             topic: event,
             delivery_url: webhookUrl,
             secret: process.env.WOOCOMMERCE_WEBHOOK_SECRET || 'your-secret-key-here',

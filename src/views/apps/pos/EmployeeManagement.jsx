@@ -115,14 +115,14 @@ const EmployeeManagement = () => {
   }, [])
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-KE', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'KES'
     }).format(amount)
   }
 
   const formatTime = (dateTime) => {
-    return new Date(dateTime).toLocaleTimeString('en-US', {
+    return new Date(dateTime).toLocaleTimeString('en-KE', {
       hour: '2-digit',
       minute: '2-digit'
     })
@@ -494,7 +494,7 @@ const EmployeeManagement = () => {
                 onChange={(e) => setFormData({...formData, hourlyRate: e.target.value})}
                 fullWidth
                 InputProps={{
-                  startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>
+                  startAdornment: <Typography sx={{ mr: 1 }}>KES</Typography>
                 }}
               />
             </Grid>

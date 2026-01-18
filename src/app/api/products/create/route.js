@@ -85,7 +85,7 @@ export async function POST(request) {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         'Content-Length': Buffer.byteLength(body).toString(),
-        'User-Agent': 'Omnishop Admin/1.0',
+        'User-Agent': 'Natural Options Admin/1.0',
         'Cache-Control': 'no-cache',
         Pragma: 'no-cache'
       }
@@ -139,7 +139,7 @@ export async function POST(request) {
             'Content-Type': 'application/json',
             Accept: 'application/json',
             'Content-Length': Buffer.byteLength(updateBody).toString(),
-            'User-Agent': 'Omnishop Admin/1.0',
+            'User-Agent': 'Natural Options Admin/1.0',
             'Cache-Control': 'no-cache',
             Pragma: 'no-cache'
           }

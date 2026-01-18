@@ -171,7 +171,7 @@ const CustomerAddress = props => {
               <Grid size={{ xs: 8 }}>
                 <div className='flex flex-col gap-1'>
                   <Typography variant='body2' color='text.primary' className='font-medium'>
-                    USA
+                    Kenya
                   </Typography>
                   <Typography variant='body2' color='text.primary' className='font-medium'>
                     +7634 983 637
@@ -181,9 +181,9 @@ const CustomerAddress = props => {
                   </Typography>
                   <div className='flex gap-2'>
                     <Typography variant='body2' color='text.primary' className='font-medium'>
-                      United States
+                      Kenya
                     </Typography>
-                    <img src='/images/cards/us.png' height={20} />
+                    <img src='/images/avatars/1.png' height={20} />
                   </div>
                   <div className='flex gap-2'>
                     <Typography variant='body2' color='text.primary' className='font-medium'>

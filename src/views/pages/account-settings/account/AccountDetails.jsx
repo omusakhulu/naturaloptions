@@ -20,15 +20,15 @@ const initialData = {
   firstName: 'John',
   lastName: 'Doe',
   email: 'john.doe@example.com',
-  organization: 'Pixinvent',
-  phoneNumber: '+1 (917) 543-9876',
-  address: '123 Main St, New York, NY 10001',
-  state: 'New York',
-  zipCode: '634880',
-  country: 'usa',
+  organization: 'Natural Options',
+  phoneNumber: '+254 712 345 678',
+  address: 'Nairobi, Kenya',
+  state: 'Nairobi County',
+  zipCode: '00100',
+  country: 'kenya',
   language: 'english',
-  timezone: 'gmt-12',
-  currency: 'usd'
+  timezone: 'gmt+3',
+  currency: 'kes'
 }
 
 const languageData = ['English', 'Arabic', 'French', 'German', 'Portuguese']
@@ -141,7 +141,7 @@ const AccountDetails = () => {
                 fullWidth
                 label='Phone Number'
                 value={formData.phoneNumber}
-                placeholder='+1 (234) 567-8901'
+                placeholder='+254 712 345 678'
                 onChange={e => handleFormChange('phoneNumber', e.target.value)}
               />
             </Grid>
@@ -159,7 +159,7 @@ const AccountDetails = () => {
                 fullWidth
                 label='State'
                 value={formData.state}
-                placeholder='New York'
+                placeholder='Nairobi County'
                 onChange={e => handleFormChange('state', e.target.value)}
               />
             </Grid>
@@ -181,10 +181,7 @@ const AccountDetails = () => {
                 value={formData.country}
                 onChange={e => handleFormChange('country', e.target.value)}
               >
-                <MenuItem value='usa'>USA</MenuItem>
-                <MenuItem value='uk'>UK</MenuItem>
-                <MenuItem value='australia'>Australia</MenuItem>
-                <MenuItem value='germany'>Germany</MenuItem>
+                <MenuItem value='kenya'>Kenya</MenuItem>
               </CustomTextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -232,6 +229,7 @@ const AccountDetails = () => {
                   select: { MenuProps: { PaperProps: { style: { maxHeight: 250 } } } }
                 }}
               >
+                <MenuItem value='gmt+3'>(GMT+03:00) Nairobi</MenuItem>
                 <MenuItem value='gmt-12'>(GMT-12:00) International Date Line West</MenuItem>
                 <MenuItem value='gmt-11'>(GMT-11:00) Midway Island, Samoa</MenuItem>
                 <MenuItem value='gmt-10'>(GMT-10:00) Hawaii</MenuItem>
@@ -259,10 +257,7 @@ const AccountDetails = () => {
                 value={formData.currency}
                 onChange={e => handleFormChange('currency', e.target.value)}
               >
-                <MenuItem value='usd'>USD</MenuItem>
-                <MenuItem value='euro'>EUR</MenuItem>
-                <MenuItem value='pound'>Pound</MenuItem>
-                <MenuItem value='bitcoin'>Bitcoin</MenuItem>
+                <MenuItem value='kes'>KES</MenuItem>
               </CustomTextField>
             </Grid>
             <Grid size={{ xs: 12 }} className='flex gap-4 flex-wrap'>

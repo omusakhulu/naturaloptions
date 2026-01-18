@@ -19,7 +19,7 @@ import CustomTextField from '@core/components/mui/TextField'
 // Vars
 const initialData = {
   company: '',
-  country: '',
+  country: 'Kenya',
   contact: ''
 }
 
@@ -219,10 +219,7 @@ const AddUserDrawer = props => {
               htmlInput: { placeholder: 'Country' }
             }}
           >
-            <MenuItem value='India'>India</MenuItem>
-            <MenuItem value='USA'>USA</MenuItem>
-            <MenuItem value='Australia'>Australia</MenuItem>
-            <MenuItem value='Germany'>Germany</MenuItem>
+            <MenuItem value='Kenya'>Kenya</MenuItem>
           </CustomTextField>
           <CustomTextField
             label='Contact'

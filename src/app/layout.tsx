@@ -6,8 +6,11 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Omnishop Admin Dashboard',
-  description: 'Admin dashboard for Omnishop'
+  title: {
+    default: 'Natural Options',
+    template: 'Natural Options - %s'
+  },
+  description: 'Admin dashboard for Natural Options'
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

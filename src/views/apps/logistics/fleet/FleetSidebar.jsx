@@ -64,28 +64,28 @@ const Timeline = styled(MuiTimeline)({
 const vehicleTrackingData = [
   {
     name: 'VOL-342808',
-    location: 'Chelsea, NY, USA',
+    location: 'Westlands, Nairobi, Kenya',
     progress: 88,
     driverName: 'Veronica Herman',
     passengerName: 'Helen Jacobs'
   },
   {
     name: 'VOL-954784',
-    location: 'Lincoln Harbor, NY, USA',
+    location: 'Kilimani, Nairobi, Kenya',
     progress: 90,
     driverName: 'Myrtle Ullrich',
     passengerName: 'William Miller'
   },
   {
     name: 'VOL-342808',
-    location: 'Midtown East, NY, USA',
+    location: 'CBD, Nairobi, Kenya',
     progress: 60,
     driverName: 'Barry Schowalter',
     passengerName: 'Charles Anderson'
   },
   {
     name: 'VOL-343908',
-    location: 'Hoboken, NY, USA',
+    location: 'Karen, Nairobi, Kenya',
     progress: 28,
     driverName: 'Frank Jones',
     passengerName: 'Edward Smith'

@@ -13,7 +13,7 @@ import CustomTextField from '@core/components/mui/TextField'
 
 const BillingInformation = () => {
   // States
-  const [country, setCountry] = useState('')
+  const [country, setCountry] = useState('Kenya')
 
   return (
     <Card>
@@ -32,10 +32,7 @@ const BillingInformation = () => {
               onChange={e => setCountry(e.target.value)}
             >
               <MenuItem value=''>Select Country</MenuItem>
-              <MenuItem value='India'>India</MenuItem>
-              <MenuItem value='Canada'>Canada</MenuItem>
-              <MenuItem value='UK'>UK</MenuItem>
-              <MenuItem value='United States'>United States</MenuItem>
+              <MenuItem value='Kenya'>Kenya</MenuItem>
             </CustomTextField>
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>

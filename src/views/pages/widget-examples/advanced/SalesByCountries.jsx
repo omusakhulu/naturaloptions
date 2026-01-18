@@ -13,42 +13,42 @@ import OptionMenu from '@core/components/option-menu'
 // Vars
 const data = [
   {
-    title: '$8.45k',
-    subtitle: 'United States',
+    title: 'KES 8.45k',
+    subtitle: 'Kenya',
     trendNumber: 25.8,
-    imgSrc: '/images/cards/us.png'
+    imgSrc: '/images/cards/1.png'
   },
   {
-    title: '$7.78k',
-    subtitle: 'Brazil',
+    title: 'KES 7.78k',
+    subtitle: 'Kenya',
     trendNumber: 16.2,
     trend: 'negative',
-    imgSrc: '/images/cards/brazil.png'
+    imgSrc: '/images/cards/1.png'
   },
   {
-    title: '$6.48k',
-    subtitle: 'India',
+    title: 'KES 6.48k',
+    subtitle: 'Kenya',
     trendNumber: 12.3,
-    imgSrc: '/images/cards/india.png'
+    imgSrc: '/images/cards/1.png'
   },
   {
-    title: '$5.12k',
-    subtitle: 'Australia',
+    title: 'KES 5.12k',
+    subtitle: 'Kenya',
     trendNumber: 11.9,
     trend: 'negative',
-    imgSrc: '/images/cards/australia.png'
+    imgSrc: '/images/cards/1.png'
   },
   {
-    title: '$4.45k',
-    subtitle: 'France',
+    title: 'KES 4.45k',
+    subtitle: 'Kenya',
     trendNumber: 16.2,
-    imgSrc: '/images/cards/france.png'
+    imgSrc: '/images/cards/1.png'
   },
   {
-    title: '$3.90k',
-    subtitle: 'China',
+    title: 'KES 3.90k',
+    subtitle: 'Kenya',
     trendNumber: 14.8,
-    imgSrc: '/images/cards/china.png'
+    imgSrc: '/images/cards/1.png'
   }
 ]
 

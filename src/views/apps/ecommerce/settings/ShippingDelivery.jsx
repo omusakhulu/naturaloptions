@@ -16,15 +16,15 @@ import tableStyles from '@core/styles/table.module.css'
 
 // Vars
 const domesticTableData = [
-  { rate: 'Weight', condition: '5Kg-10Kg', price: 'KSh 900' },
-  { rate: 'VAT', condition: '16%', price: 'KSh 2,500' },
+  { rate: 'Weight', condition: '5Kg-10Kg', price: 'KES 900' },
+  { rate: 'VAT', condition: '16%', price: 'KES 2,500' },
   { rate: 'Duty', condition: '-', price: '-' }
 ]
 
 const internationalTableData = [
-  { rate: 'Weight', condition: '5Kg-10Kg', price: 'KSh 1,900' },
-  { rate: 'VAT', condition: '16%', price: 'KSh 2,500' },
-  { rate: 'Duty', condition: 'Global', price: 'KSh 4,900' }
+  { rate: 'Weight', condition: '5Kg-10Kg', price: 'KES 1,900' },
+  { rate: 'VAT', condition: '16%', price: 'KES 2,500' },
+  { rate: 'Duty', condition: 'Global', price: 'KES 4,900' }
 ]
 
 const ShippingRateCard = props => {
@@ -39,7 +39,7 @@ const ShippingRateCard = props => {
           <Typography className='font-medium' color='text.primary'>
             {title}
           </Typography>
-          <Typography variant='body2'>United states of America</Typography>
+          <Typography variant='body2'>Kenya</Typography>
         </div>
         <IconButton color='secondary' size='small'>
           <i className='tabler-pencil' />
@@ -101,7 +101,7 @@ const ShippingDelivery = () => {
       />
       <CardContent className='flex flex-col gap-6'>
         <ShippingRateCard title='Domestic' avatar='/images/avatars/1.png' data={domesticTableData} />
-        <ShippingRateCard title='International' avatar='/images/cards/us.png' data={internationalTableData} />
+        <ShippingRateCard title='International' avatar='/images/avatars/1.png' data={internationalTableData} />
       </CardContent>
     </Card>
   )

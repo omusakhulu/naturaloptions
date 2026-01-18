@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 
 import toast from 'react-hot-toast'
 
@@ -31,6 +31,8 @@ export default function POSTerminalModern() {
   const [mpesaPhone, setMpesaPhone] = useState('')
   const [mpesaPrompt, setMpesaPrompt] = useState({ status: 'idle', checkoutRequestId: '', message: '' })
   const [mpesaBusy, setMpesaBusy] = useState(false)
+  const [pesapalOrder, setPesapalOrder] = useState({ status: 'idle', orderTrackingId: '', redirectUrl: '', message: '' })
+  const [pesapalBusy, setPesapalBusy] = useState(false)
 
   // Customer search state
   const [customerSearch, setCustomerSearch] = useState('')
@@ -530,7 +532,11 @@ export default function POSTerminalModern() {
   }
 
   const totalPaid = useMemo(() => {
-    return splitPayments.reduce((sum, payment) => sum + payment.amount, 0)
+    return splitPayments.reduce((sum, payment) => {
+      const rawStatus = String(payment?.status || '').toUpperCase()
+      const isCompleted = !rawStatus || rawStatus === 'COMPLETED'
+      return sum + (isCompleted ? payment.amount : 0)
+    }, 0)
   }, [splitPayments])
 
   const remainingBalance = useMemo(() => {
@@ -565,7 +571,8 @@ export default function POSTerminalModern() {
     const newPayment = {
       id: Date.now(),
       method: paymentMethod,
-      amount: amount
+      amount: amount,
+      status: 'COMPLETED'
     }
 
     setSplitPayments([...splitPayments, newPayment])
@@ -588,7 +595,167 @@ export default function POSTerminalModern() {
     setCurrentPaymentAmount('')
     setPaymentReference('')
     setMpesaPrompt({ status: 'idle', checkoutRequestId: '', message: '' })
+    setPesapalOrder({ status: 'idle', orderTrackingId: '', redirectUrl: '', message: '' })
   }
+
+  const startPesapalCheckout = useCallback(async () => {
+    const amount = parseFloat(currentPaymentAmount)
+
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+
+    if (amount > remainingBalance) {
+      toast.error(`Amount cannot exceed remaining balance of KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
+      return
+    }
+
+    setPesapalBusy(true)
+    setPesapalOrder({ status: 'pending', orderTrackingId: '', redirectUrl: '', message: 'Creating Pesapal checkout...' })
+
+    try {
+      const response = await fetch('/api/payments/pesapal/submitorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency: 'KES',
+          description: `POS ${paymentMethod} payment`,
+          customer: customer ? {
+            email: customer?.email || undefined,
+            phone: customer?.phone || undefined,
+            firstName: customer?.firstName || undefined,
+            lastName: customer?.lastName || undefined,
+            address: customer?.address || undefined,
+            city: customer?.city || undefined
+          } : undefined
+        })
+      })
+
+      const data = await response.json()
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to create Pesapal order')
+      }
+
+      const orderTrackingId = String(data?.orderTrackingId || '').trim()
+      const redirectUrl = String(data?.redirectUrl || '').trim()
+
+      if (!orderTrackingId || !redirectUrl) {
+        throw new Error('Pesapal response missing orderTrackingId/redirectUrl')
+      }
+
+      try {
+        localStorage.setItem(`pos_pesapal_${orderTrackingId}`, JSON.stringify({ amount, method: paymentMethod }))
+      } catch (e) {
+        console.warn('Could not store Pesapal pending payment in localStorage', e)
+      }
+
+      setSplitPayments(prev => ([
+        ...prev,
+        {
+          id: Date.now(),
+          method: paymentMethod,
+          amount,
+          status: 'PENDING',
+          reference: orderTrackingId,
+          orderTrackingId,
+          gateway: 'pesapal'
+        }
+      ]))
+
+      setPesapalOrder({ status: 'pending', orderTrackingId, redirectUrl, message: 'Checkout opened. Complete payment, then click Verify.' })
+      setCurrentPaymentAmount('')
+
+      if (typeof window !== 'undefined') {
+        window.open(redirectUrl, '_blank', 'noopener,noreferrer')
+      }
+
+      toast.success('Pesapal checkout opened')
+    } catch (error) {
+      console.error('Pesapal checkout error:', error)
+      toast.error(error?.message || 'Pesapal checkout failed')
+      setPesapalOrder({ status: 'failed', orderTrackingId: '', redirectUrl: '', message: error?.message || 'Pesapal checkout failed' })
+    } finally {
+      setPesapalBusy(false)
+    }
+  }, [currentPaymentAmount, remainingBalance, paymentMethod, customer])
+
+  const verifyPesapalOrder = useCallback(async (orderTrackingId) => {
+    const trackingId = String(orderTrackingId || '').trim()
+    if (!trackingId) {
+      toast.error('Missing Pesapal order tracking id')
+      return
+    }
+
+    setPesapalBusy(true)
+    setPesapalOrder(prev => ({ ...prev, status: 'verifying', orderTrackingId: trackingId, message: 'Checking Pesapal status...' }))
+
+    try {
+      const response = await fetch('/api/payments/pesapal/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderTrackingId: trackingId })
+      })
+
+      const data = await response.json()
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to query Pesapal status')
+      }
+
+      const status = String(data?.status || 'PENDING').toUpperCase()
+      const statusDescription = String(data?.statusDescription || '')
+      const confirmationCode = data?.confirmationCode ? String(data.confirmationCode) : ''
+      const paymentMethodName = data?.paymentMethod ? String(data.paymentMethod) : ''
+
+      setSplitPayments(prev => prev.map(p => {
+        const ref = String(p?.reference || p?.orderTrackingId || '')
+        if (ref !== trackingId) return p
+        return {
+          ...p,
+          status,
+          confirmationCode: confirmationCode || p?.confirmationCode,
+          providerPaymentMethod: paymentMethodName || p?.providerPaymentMethod
+        }
+      }))
+
+      if (status === 'COMPLETED') {
+        toast.success('Pesapal payment confirmed')
+        try {
+          localStorage.removeItem(`pos_pesapal_${trackingId}`)
+        } catch (e) {
+          console.warn('Could not remove Pesapal pending payment in localStorage', e)
+        }
+        setPesapalOrder(prev => ({
+          ...prev,
+          status: 'success',
+          orderTrackingId: trackingId,
+          message: confirmationCode ? `Confirmed (${confirmationCode})` : 'Confirmed'
+        }))
+      } else if (status === 'FAILED') {
+        toast.error('Pesapal payment failed')
+        setPesapalOrder(prev => ({ ...prev, status: 'failed', orderTrackingId: trackingId, message: statusDescription || 'Payment failed' }))
+      } else {
+        toast('Pesapal payment still pending')
+        setPesapalOrder(prev => ({ ...prev, status: 'pending', orderTrackingId: trackingId, message: statusDescription || 'Still pending. Please try again shortly.' }))
+      }
+
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        if (url.searchParams.get('pesapalOrderTrackingId')) {
+          url.searchParams.delete('pesapalOrderTrackingId')
+          url.searchParams.delete('pesapalMerchantReference')
+          window.history.replaceState({}, '', url.toString())
+        }
+      }
+    } catch (error) {
+      console.error('Pesapal verify error:', error)
+      toast.error(error?.message || 'Pesapal verification failed')
+      setPesapalOrder(prev => ({ ...prev, status: 'failed', message: error?.message || 'Verification failed' }))
+    } finally {
+      setPesapalBusy(false)
+    }
+  }, [])
 
   const processPayment = async () => {
     if (!shift.isOpen) {
@@ -907,37 +1074,74 @@ export default function POSTerminalModern() {
 
     if (paymentMethod === 'card' || paymentMethod === 'bank') {
       const ref = String(paymentReference || '').trim()
-      if (!ref) {
-        toast.error('Please enter a transaction reference')
 
+      if (ref) {
+        const amount = parseFloat(currentPaymentAmount)
+        if (!amount || amount <= 0) {
+          toast.error('Please enter a valid amount')
+          return
+        }
+
+        if (amount > remainingBalance) {
+          toast.error(`Amount cannot exceed remaining balance of KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
+          return
+        }
+
+        setSplitPayments(prev => ([
+          ...prev,
+          { id: Date.now(), method: paymentMethod, amount, status: 'COMPLETED', reference: ref }
+        ]))
+        setCurrentPaymentAmount('')
+        setPaymentReference('')
+        toast.success(`Payment added and marked verified (${paymentMethod})`)
         return
       }
 
-      const amount = parseFloat(currentPaymentAmount)
-      if (!amount || amount <= 0) {
-        toast.error('Please enter a valid amount')
-
-        return
-      }
-
-      if (amount > remainingBalance) {
-        toast.error(`Amount cannot exceed remaining balance of KSh ${remainingBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`)
-
-        return
-      }
-
-      setSplitPayments(prev => ([
-        ...prev,
-        { id: Date.now(), method: paymentMethod, amount, status: 'COMPLETED', reference: ref }
-      ]))
-      setCurrentPaymentAmount('')
-      setPaymentReference('')
-      toast.success(`Payment added and marked verified (${paymentMethod})`)
+      await startPesapalCheckout()
       return
     }
 
     addSplitPayment()
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const url = new URL(window.location.href)
+    const trackingId = url.searchParams.get('pesapalOrderTrackingId')
+
+    if (!trackingId) return
+
+    let saved = null
+    try {
+      const raw = localStorage.getItem(`pos_pesapal_${trackingId}`)
+      saved = raw ? JSON.parse(raw) : null
+    } catch (e) {
+      console.warn('Could not read Pesapal pending payment from localStorage', e)
+    }
+
+    if (saved?.amount && saved?.method) {
+      setSplitPayments(prev => {
+        const exists = prev.some(p => String(p?.reference || p?.orderTrackingId || '') === String(trackingId))
+        if (exists) return prev
+        return ([
+          ...prev,
+          {
+            id: Date.now(),
+            method: saved.method,
+            amount: Number(saved.amount),
+            status: 'PENDING',
+            reference: String(trackingId),
+            orderTrackingId: String(trackingId),
+            gateway: 'pesapal'
+          }
+        ])
+      })
+    }
+
+    setPesapalOrder(prev => ({ ...prev, status: 'pending', orderTrackingId: String(trackingId), message: 'Returned from Pesapal. Verifying...' }))
+    verifyPesapalOrder(String(trackingId))
+  }, [verifyPesapalOrder])
 
   useEffect(() => {
     if (paymentMethod === 'mpesa') {
@@ -1728,6 +1932,9 @@ export default function POSTerminalModern() {
                           <div>
                             <div className='font-semibold text-gray-900 capitalize'>{payment.method}</div>
                             <div className='text-sm text-gray-600'>KSh {payment.amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</div>
+                            {payment?.status && (
+                              <div className='text-xs text-gray-500'>Status: {String(payment.status)}</div>
+                            )}
                             {(payment.reference || payment.phone) && (
                               <div className='text-xs text-gray-500'>
                                 Ref: {String(payment.reference || payment.phone)}
@@ -1735,12 +1942,23 @@ export default function POSTerminalModern() {
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => removeSplitPayment(payment.id)}
-                          className='text-red-600 hover:text-red-700 p-1'
-                        >
-                          <i className='tabler-trash text-lg' />
-                        </button>
+                        <div className='flex items-center gap-2'>
+                          {String(payment?.gateway || '') === 'pesapal' && String(payment?.status || '').toUpperCase() === 'PENDING' && (
+                            <button
+                              onClick={() => verifyPesapalOrder(payment.reference || payment.orderTrackingId)}
+                              disabled={pesapalBusy}
+                              className='text-indigo-700 hover:text-indigo-900 disabled:text-gray-400 px-2 py-1 text-xs font-medium border border-indigo-200 rounded'
+                            >
+                              Verify
+                            </button>
+                          )}
+                          <button
+                            onClick={() => removeSplitPayment(payment.id)}
+                            className='text-red-600 hover:text-red-700 p-1'
+                          >
+                            <i className='tabler-trash text-lg' />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1836,14 +2054,42 @@ export default function POSTerminalModern() {
 
                 {(paymentMethod === 'card' || paymentMethod === 'bank') && (
                   <div className='mt-3 space-y-2'>
-                    <label className='block text-sm font-medium text-gray-700'>Transaction Reference</label>
+                    <label className='block text-sm font-medium text-gray-700'>Transaction Reference (Optional)</label>
                     <input
                       type='text'
                       value={paymentReference}
                       onChange={(e) => setPaymentReference(e.target.value)}
                       className='w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-base'
-                      placeholder='Enter receipt/reference number'
+                      placeholder='Leave blank to use Pesapal checkout'
                     />
+
+                    {pesapalOrder?.message && (
+                      <div className={`text-sm ${pesapalOrder.status === 'success' ? 'text-green-700' : pesapalOrder.status === 'failed' ? 'text-red-700' : 'text-gray-600'}`}>
+                        {pesapalOrder.message}
+                      </div>
+                    )}
+
+                    {pesapalOrder?.orderTrackingId && (
+                      <div className='flex gap-2'>
+                        <button
+                          type='button'
+                          onClick={() => verifyPesapalOrder(pesapalOrder.orderTrackingId)}
+                          disabled={pesapalBusy}
+                          className='flex-1 px-4 py-2 border border-indigo-200 rounded-lg hover:bg-indigo-50 disabled:bg-gray-100 disabled:text-gray-400 text-indigo-700 font-medium transition'
+                        >
+                          {pesapalBusy ? 'Verifying...' : 'Verify Pesapal Payment'}
+                        </button>
+                        {pesapalOrder?.redirectUrl && (
+                          <button
+                            type='button'
+                            onClick={() => typeof window !== 'undefined' && window.open(pesapalOrder.redirectUrl, '_blank', 'noopener,noreferrer')}
+                            className='px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition'
+                          >
+                            Open
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1874,7 +2120,7 @@ export default function POSTerminalModern() {
                 disabled={
                   remainingBalance <= 0 ||
                   (paymentMethod !== 'mpesa' && (!currentPaymentAmount || parseFloat(currentPaymentAmount) <= 0)) ||
-                  ((paymentMethod === 'card' || paymentMethod === 'bank') && !String(paymentReference || '').trim()) ||
+                  ((paymentMethod === 'card' || paymentMethod === 'bank') && pesapalBusy) ||
                   (paymentMethod === 'mpesa' && (mpesaBusy || !mpesaPhone || !currentPaymentAmount || parseFloat(currentPaymentAmount) <= 0))
                 }
                 className='w-full py-3 bg-indigo-100 hover:bg-indigo-200 disabled:bg-gray-100 disabled:text-gray-400 text-indigo-700 font-semibold rounded-lg transition flex items-center justify-center gap-2'
@@ -1882,7 +2128,12 @@ export default function POSTerminalModern() {
                 <i className='tabler-plus text-xl' />
                 {paymentMethod === 'mpesa'
                   ? (mpesaBusy ? 'Sending M-PESA Prompt...' : 'Send M-PESA Prompt')
-                  : `Add ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} Payment`
+                  : ((paymentMethod === 'card' || paymentMethod === 'bank')
+                    ? (String(paymentReference || '').trim()
+                      ? `Add ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} Payment`
+                      : (pesapalBusy ? 'Opening Pesapal Checkout...' : 'Open Pesapal Checkout'))
+                    : `Add ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} Payment`
+                  )
                 }
               </button>
             </div>

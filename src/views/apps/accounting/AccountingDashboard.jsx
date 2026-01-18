@@ -93,7 +93,7 @@ const AccountingDashboard = () => {
         // Format transactions
         const salesTransactions = (salesData.sales || []).map(sale => ({
           id: sale.id,
-          date: new Date(sale.saleDate).toLocaleDateString(),
+          date: new Date(sale.saleDate).toLocaleDateString('en-KE'),
           rawDate: new Date(sale.saleDate),
           description: `Sale #${sale.saleNumber}`,
           amount: sale.totalAmount,
@@ -103,7 +103,7 @@ const AccountingDashboard = () => {
 
         const expenseTransactions = (expensesData.items || []).map(exp => ({
           id: exp.id,
-          date: new Date(exp.date).toLocaleDateString(),
+          date: new Date(exp.date).toLocaleDateString('en-KE'),
           rawDate: new Date(exp.date),
           description: exp.category || 'Expense',
           amount: -exp.amount,
@@ -135,9 +135,9 @@ const AccountingDashboard = () => {
   }, [])
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-KE', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'KES'
     }).format(amount)
   }
 

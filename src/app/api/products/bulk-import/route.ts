@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
           Accept: 'application/json',
           'Content-Length': Buffer.byteLength(reqBody).toString(),
-          'User-Agent': 'Omnishop Admin/1.0',
+          'User-Agent': 'Natural Options Admin/1.0',
           'Cache-Control': 'no-cache',
           Pragma: 'no-cache'
         }

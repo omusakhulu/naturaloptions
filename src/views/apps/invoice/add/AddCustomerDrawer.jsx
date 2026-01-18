@@ -18,10 +18,10 @@ export const initialFormData = {
   company: '',
   email: '',
   address: '',
-  country: 'USA',
+  country: 'Kenya',
   contactNumber: ''
 }
-const countries = ['USA', 'UK', 'Russia', 'Australia', 'Canada']
+const countries = ['Kenya']
 
 const AddCustomerDrawer = ({ open, setOpen, onFormSubmit }) => {
   // States
@@ -97,7 +97,7 @@ const AddCustomerDrawer = ({ open, setOpen, onFormSubmit }) => {
             onChange={e => setData({ ...data, country: e.target.value })}
           >
             {countries.map((item, index) => (
-              <MenuItem key={index} value={item.toLowerCase().replace(/\s+/g, '-')}>
+              <MenuItem key={index} value={item.toLowerCase().replace(/\s+/g, '-')}> 
                 {item}
               </MenuItem>
             ))}

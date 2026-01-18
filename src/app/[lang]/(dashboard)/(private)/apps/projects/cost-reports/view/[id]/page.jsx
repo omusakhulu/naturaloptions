@@ -232,13 +232,13 @@ const CostReportViewPage = () => {
   const formatCurrency = value => {
     const num = parseFloat(value || 0)
 
-    return `KES ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `KES ${num.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const formatDate = dateString => {
     if (!dateString) return 'N/A'
 
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('en-KE', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'

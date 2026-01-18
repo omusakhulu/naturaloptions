@@ -9,7 +9,7 @@ import RegisterV2 from '@views/pages/auth/RegisterV2'
 import { getServerMode } from '@core/utils/serverHelpers'
 
 export const metadata = {
-  title: 'Register - Omnishop Portal',
+  title: 'Register - Natural Options Portal',
   description: 'Create your account to get started'
 }
 
