@@ -190,13 +190,13 @@ return okEmp && okLoc
     })()
 
     const invoiceStatus = inv.status || inv.invoiceStatus || 'draft'
-    const total = Number.parseFloat(inv.amount || 0)
+    const total = Number.parseFloat(String(inv.amount ?? 0).replace(/[^0-9.-]/g, ''))
 
     return {
       id: inv.id,
       issuedDate: safeFormatDate(inv.date),
       dueDate: safeFormatDate(inv.dueDate),
-      total: Number.isFinite(total) ? total.toLocaleString('en-KE', { minimumFractionDigits: 2 }) : '0.00',
+      total: Number.isFinite(total) ? total : 0,
       balance: '',
       status: invoiceStatus,
       invoiceStatus,
@@ -588,7 +588,10 @@ return last6Months
       }
     })
 
-    return Object.values(statusCounts)
+    const knownTotal = Object.values(statusCounts).reduce((a, b) => a + b, 0)
+    const other = Math.max(0, (orders?.length || 0) - knownTotal)
+
+    return [...Object.values(statusCounts), other]
   })()
 
   const orderGrowthData = (() => {
@@ -775,7 +778,7 @@ return d ? (new Date(range.after) <= d && d <= new Date(range.before)) : false
               categorySales={ordersByStatus}
               totalLeads={totalOrders.toLocaleString()}
               growthPercent={orderGrowth}
-              categories={['Completed', 'Processing', 'Pending', 'On Hold']}
+              categories={['Completed', 'Processing', 'Pending', 'On Hold', 'Other']}
             />
           </Grid>
         </Grid>
@@ -855,7 +858,10 @@ return tx.slice(0, 7)
             <ApexLineChart />
           </div>
           <div>
-            <LineAreaDailySalesChart />
+            <LineAreaDailySalesChart
+              totalLabel={`KSh ${netSalesRange.toLocaleString('en-KE', { maximumFractionDigits: 0 })}`}
+              series={[{ data: salesLast30 }]}
+            />
           </div>
         </Masonry>
       </Grid>

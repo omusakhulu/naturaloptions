@@ -320,6 +320,35 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       )
     }
 
+    // Critical validation: prevent NaN/Infinity numeric values from being saved
+    // This is a hard failure because it can break currency rendering (e.g., "KSh NaN")
+    const assertFiniteNumber = (label: string, value: unknown) => {
+      if (value === undefined || value === null || value === '') return
+
+      const n = typeof value === 'number' ? value : Number(value)
+
+      if (!Number.isFinite(n)) {
+        throw new Error(`${label} must be a valid number`)
+      }
+    }
+
+    try {
+      assertFiniteNumber('Regular Price', (updateData as any).regular_price)
+      assertFiniteNumber('Sale Price', (updateData as any).sale_price)
+      assertFiniteNumber('Price', (updateData as any).price)
+      assertFiniteNumber('Stock Quantity', (updateData as any).stock_quantity)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Invalid numeric input'
+
+      return NextResponse.json(
+        {
+          error: msg,
+          details: 'One or more numeric fields are invalid'
+        },
+        { status: 400 }
+      )
+    }
+
     console.log(`🔄 Updating product ${wooId} in WooCommerce...`)
 
     // Prepare product data for WooCommerce

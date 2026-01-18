@@ -1,0 +1,71 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - link "OmniSpace 3D" [ref=e9] [cursor=pointer]:
+          - /url: /en
+          - img "OmniSpace 3D" [ref=e11]
+        - button [ref=e12] [cursor=pointer]
+      - generic [ref=e14]:
+        - navigation [ref=e15]:
+          - list
+        - navigation [ref=e16]:
+          - list [ref=e17]:
+            - listitem [ref=e18]:
+              - list [ref=e19]:
+                - listitem [ref=e20]:
+                  - generic [ref=e21]: Natural Options
+                - listitem [ref=e22]:
+                  - link "Home" [ref=e23] [cursor=pointer]:
+                    - /url: /en/apps/ecommerce/dashboard
+                    - generic [ref=e26]: Home
+                - listitem [ref=e27]:
+                  - generic [ref=e31] [cursor=pointer]: Products
+                - listitem [ref=e35]:
+                  - generic [ref=e39] [cursor=pointer]: User Management
+                - listitem [ref=e43]:
+                  - generic [ref=e47] [cursor=pointer]: Contacts
+                - listitem [ref=e51]:
+                  - generic [ref=e55] [cursor=pointer]: Purchases
+                - listitem [ref=e59]:
+                  - generic [ref=e63] [cursor=pointer]: Business Intelligence
+                - listitem [ref=e67]:
+                  - generic [ref=e71] [cursor=pointer]: Sell
+                - listitem [ref=e75]:
+                  - link "Expenses" [ref=e76] [cursor=pointer]:
+                    - /url: /en/apps/expenses
+                    - generic [ref=e79]: Expenses
+                - listitem [ref=e80]:
+                  - generic [ref=e84] [cursor=pointer]: Payment Accounts
+                - listitem [ref=e88]:
+                  - generic [ref=e92] [cursor=pointer]: Accounting
+                - listitem [ref=e96]:
+                  - generic [ref=e100] [cursor=pointer]: Reports
+                - listitem [ref=e104]:
+                  - link "Settings" [ref=e105] [cursor=pointer]:
+                    - /url: /en/pages/account-settings
+                    - generic [ref=e108]: Settings
+                - listitem [ref=e109]:
+                  - link "WooCommerce" [ref=e110] [cursor=pointer]:
+                    - /url: "#"
+                    - generic [ref=e111]: WooCommerce
+  - generic [ref=e112]:
+    - banner:
+      - generic [ref=e114]:
+        - generic [ref=e116] [cursor=pointer]:
+          - button [ref=e117]
+          - generic [ref=e119]: Search ⌘K
+        - generic [ref=e122] [cursor=pointer]: U
+    - main [ref=e125]:
+      - generic [ref=e126]:
+        - paragraph [ref=e127]: This page provides an overview of your store’s sales, orders, and product performance.
+        - paragraph [ref=e128]: Use the controls and widgets here to spot changes quickly and investigate details.
+    - contentinfo [ref=e281]:
+      - paragraph [ref=e284]:
+        - text: © 2026, Made with ❤️ by
+        - link "M.A.D" [ref=e285] [cursor=pointer]:
+          - /url: https://massappealdesigns.co.ke
+```

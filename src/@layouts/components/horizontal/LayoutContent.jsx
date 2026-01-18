@@ -9,6 +9,9 @@ import themeConfig from '@configs/themeConfig'
 // Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
+// Component Imports
+import PageDescription from '@/components/PageDescription'
+
 // Util Imports
 import { horizontalLayoutClasses } from '@layouts/utils/layoutClasses'
 
@@ -32,6 +35,7 @@ const LayoutContent = ({ children }) => {
       })}
       style={{ padding: themeConfig.layoutPadding }}
     >
+      <PageDescription />
       {children}
     </StyledMain>
   )

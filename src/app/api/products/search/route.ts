@@ -6,7 +6,28 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const query = (searchParams.get('query') || '').trim()
+    const sku = (searchParams.get('sku') || '').trim()
     const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10) || 10, 50)
+
+    if (sku) {
+      const rows = await prisma.product.findMany({
+        where: {
+          sku: { contains: sku, mode: 'insensitive' }
+        },
+        select: { sku: true },
+        take: limit
+      })
+
+      const skus = Array.from(
+        new Set(
+          rows
+            .map(r => (r.sku || '').trim())
+            .filter(Boolean)
+        )
+      )
+
+      return NextResponse.json({ success: true, skus })
+    }
 
     if (!query) {
       return NextResponse.json({ success: true, products: [] })

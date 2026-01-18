@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img "character-illustration" [ref=e6]
+      - img "mask" [ref=e7]
+    - generic [ref=e8]:
+      - link "OmniSpace 3D" [ref=e9] [cursor=pointer]:
+        - /url: /en
+        - img "OmniSpace 3D" [ref=e11]
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - heading "Welcome to Omnishop Dashboard! 👋🏻" [level=4] [ref=e14]
+          - paragraph [ref=e15]: Please sign-in to your account and start the adventure
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: Email or Username
+            - textbox "Email or Username" [active] [ref=e20]:
+              - /placeholder: Enter your email or username
+              - text: admin@naturaloptions.com
+          - generic [ref=e21]:
+            - generic [ref=e22]: Password
+            - generic [ref=e23]:
+              - textbox "Password" [ref=e24]:
+                - /placeholder: ············
+              - button [ref=e26] [cursor=pointer]
+          - generic [ref=e28]:
+            - generic [ref=e29] [cursor=pointer]:
+              - generic [ref=e30]:
+                - checkbox "Remember me" [ref=e31]
+                - img [ref=e32]
+              - generic [ref=e34]: Remember me
+            - link "Forgot password?" [ref=e35] [cursor=pointer]:
+              - /url: /en/pages/auth/forgot-password-v2
+          - button "Login" [ref=e36] [cursor=pointer]
+          - generic [ref=e37]:
+            - paragraph [ref=e38]: New on our platform?
+            - link "Create an account" [ref=e39] [cursor=pointer]:
+              - /url: /en/pages/auth/register-v2
+          - separator [ref=e40]:
+            - generic [ref=e41]: or
+          - generic [ref=e42]:
+            - button [ref=e43] [cursor=pointer]
+            - button [ref=e45] [cursor=pointer]
+            - button [ref=e47] [cursor=pointer]
+            - button [ref=e49] [cursor=pointer]
+  - alert [ref=e51]
+```

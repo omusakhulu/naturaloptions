@@ -46,6 +46,11 @@ import { getLocalizedUrl } from '@/utils/i18n'
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
+const toNumberSafe = v => {
+  const n = typeof v === 'number' ? v : Number.parseFloat(String(v ?? 0).replace(/[^0-9.-]/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
 const fuzzyFilter = (row, columnId, value, addMeta) => {
   // Rank the item
   const itemRank = rankItem(row.getValue(columnId), value)
@@ -140,6 +145,20 @@ const InvoiceListTable = ({ invoiceData }) => {
   // Hooks
   const { lang: locale } = useParams()
 
+  const handleDelete = async invoiceId => {
+    try {
+      const ok = window.confirm('Delete this invoice?')
+      if (!ok) return
+
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete invoice')
+
+      setData(prev => (Array.isArray(prev) ? prev.filter(inv => inv.id !== invoiceId) : prev))
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const columns = useMemo(
     () => [
       {
@@ -211,7 +230,14 @@ const InvoiceListTable = ({ invoiceData }) => {
       }),
       columnHelper.accessor('total', {
         header: 'Total',
-        cell: ({ row }) => <Typography>{`KSh ${Number(row.original.total || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`}</Typography>
+        cell: ({ row }) => {
+          const amount = toNumberSafe(row.original.total)
+          return (
+            <Typography>
+              {`KSh ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </Typography>
+          )
+        }
       }),
       columnHelper.accessor('issuedDate', {
         header: 'Issued Date',
@@ -221,7 +247,7 @@ const InvoiceListTable = ({ invoiceData }) => {
         header: 'Action',
         cell: ({ row }) => (
           <div className='flex items-center'>
-            <IconButton>
+            <IconButton onClick={() => handleDelete(row.original.id)}>
               <i className='tabler-trash text-textSecondary' />
             </IconButton>
             <IconButton>
@@ -259,7 +285,7 @@ const InvoiceListTable = ({ invoiceData }) => {
       })
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [data, locale]
   )
 
   const table = useReactTable({

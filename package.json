@@ -16,6 +16,9 @@
     "build:icons": "tsx src/assets/iconify-icons/bundle-icons-css.mjs",
     "migrate": "cross-env NODE_OPTIONS=--dns-result-order=ipv4first dotenv -e .env -- npx prisma migrate dev",
     "postinstall": "cross-env NODE_OPTIONS=--dns-result-order=ipv4first prisma generate && npm run build:icons",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:report": "playwright show-report",
     "removeI18n": "tsx src/remove-translation-scripts/index.js",
     "seed": "node prisma/seed.js",
     "seed:logistics": "node scripts/seed-logistics.js"
@@ -112,6 +115,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.2",
     "@iconify/json": "2.2.286",
     "@iconify/tools": "4.1.1",
     "@iconify/utils": "2.2.1",

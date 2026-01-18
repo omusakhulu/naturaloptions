@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 
 import { useParams, useRouter } from 'next/navigation'
 
@@ -12,12 +12,15 @@ import {
   Button,
   CircularProgress,
   Chip,
+  Divider,
   FormControl,
   FormHelperText,
   InputLabel,
   MenuItem,
   Paper,
   Select,
+  Tab,
+  Tabs,
   TextField,
   Typography,
   Checkbox,
@@ -131,13 +134,19 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
   const langParam = params?.lang
   const lang = Array.isArray(langParam) ? langParam[0] : langParam || 'en'
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isSearchingProducts, setIsSearchingProducts] = useState<boolean>(false)
+  const [isSearchingSkus, setIsSearchingSkus] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
   const [media, setMedia] = useState<UploadedMedia[]>([])
+  const [activeTab, setActiveTab] = useState<'general' | 'pricing' | 'variations' | 'marketing'>('general')
+  const [submitIntent, setSubmitIntent] = useState<'update' | 'draft' | 'publish'>('update')
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([])
   const [tags, setTags] = useState<Array<{ id: number; name: string }>>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
   const [buyingPrice, setBuyingPrice] = useState<string>('')
+
+  const [skuOptions, setSkuOptions] = useState<string[]>([])
 
   const [upsellOptions, setUpsellOptions] = useState<
     Array<{ id: string; wooId: number | null; name: string; sku: string | null }>
@@ -185,8 +194,11 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
     handleSubmit,
     formState: { errors },
     setValue,
-    watch
+    watch,
+    trigger
   } = useForm<ProductFormData>()
+
+  const hasVariationAttributes = useMemo(() => selectedAttrs.some(a => a.variation), [selectedAttrs])
 
   // Set form values when initialProduct changes
   useEffect(() => {
@@ -311,7 +323,43 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
     if (currentSku && value && !isNaN(parseFloat(value))) {
       setBuyingPriceBySku(currentSku, parseFloat(value))
     }
+
+    // Margin validation depends on buying price
+    trigger('regular_price')
   }
+
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchTokenRef = useRef(0)
+
+  const onSearchProducts = useMemo(
+    () =>
+      async (query: string): Promise<Array<{ id: string; wooId: number | null; name: string; sku: string | null }>> => {
+        if (!query || query.length < 2) return []
+
+        const res = await fetch(`/api/products/search?query=${encodeURIComponent(query)}`)
+        const data = await res.json().catch(() => ({}))
+
+        if (res.ok && Array.isArray(data?.products)) return data.products
+
+        return []
+      },
+    []
+  )
+
+  const onSearchSkus = useMemo(
+    () =>
+      async (sku: string): Promise<string[]> => {
+        if (!sku || sku.length < 2) return []
+
+        const res = await fetch(`/api/products/search?sku=${encodeURIComponent(sku)}`)
+        const data = await res.json().catch(() => ({}))
+
+        if (res.ok && Array.isArray(data?.skus)) return data.skus
+
+        return []
+      },
+    []
+  )
 
   // Build attribute defs for variation generation (groups duplicate attributes)
   const getVariationAttributeDefs = () => {
@@ -401,7 +449,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
         const mapped = json.variations.map((v: any) => {
           const attrs = Array.isArray(v.attributes)
             ? v.attributes
-                .filter((a: any) => a && (a.id || a.name) && a.option)
+                .filter((a: any) => a && (a.id || a.name) && (a.option !== undefined && a.option !== null))
                 .map((a: any) => ({ id: Number(a.id) || 0, name: a.name, option: String(a.option) }))
             : []
 
@@ -414,32 +462,20 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
             sku: v.sku || '',
             regular_price: v.regular_price || '',
             sale_price: v.sale_price || '',
-            manage_stock: typeof v.manage_stock === 'boolean' ? v.manage_stock : true,
-            stock_quantity: typeof v.stock_quantity === 'number' ? v.stock_quantity : Number(v.stock_quantity) || 0,
-            stock_status: (v.stock_status || 'instock') as 'instock' | 'outofstock' | 'onbackorder'
+            manage_stock: Boolean(v.manage_stock),
+            stock_quantity: v.stock_quantity != null ? Number(v.stock_quantity) : 0,
+            stock_status: v.stock_status || 'instock'
           }
         })
 
         setVariations(mapped)
-      } catch {}
+      } catch {
+        // Silently ignore parsing errors
+      }
     }
 
     load()
   }, [initialProduct])
-
-  const onSearchProducts = useMemo(
-    () =>
-      async (query: string): Promise<Array<{ id: string; wooId: number | null; name: string; sku: string | null }>> => {
-        if (!query || query.length < 2) return []
-        const res = await fetch(`/api/products/search?query=${encodeURIComponent(query)}`)
-        const data = await res.json().catch(() => ({}))
-
-        if (res.ok && data?.products) return data.products
-
-        return []
-      },
-    []
-  )
 
   const onSubmit: SubmitHandler<ProductFormData> = async data => {
     setIsLoading(true)
@@ -450,9 +486,11 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
         throw new Error('No product data available')
       }
 
-      // Save buying price to local storage
-      if (data.sku && data.buying_price && !isNaN(Number(data.buying_price))) {
-        setBuyingPriceBySku(data.sku.trim(), Number(data.buying_price))
+      // Margin protection: do not allow regular price < buying price
+      const regularNum = data.regular_price === '' ? NaN : Number(data.regular_price)
+      const buyingNum = data.buying_price === '' ? NaN : Number(data.buying_price)
+      if (Number.isFinite(regularNum) && Number.isFinite(buyingNum) && regularNum < buyingNum) {
+        throw new Error('Regular price cannot be less than buying price')
       }
 
       // Use WooCommerce ID if available, otherwise fall back to internal ID
@@ -462,125 +500,62 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
         throw new Error('No valid product ID found for the update')
       }
 
-      console.log('Using product ID for update:', effectiveProductId)
-
-      // Parse categories if they exist and are a string
-      let categories = []
-
-      if (initialProduct.categories) {
-        if (typeof initialProduct.categories === 'string') {
-          try {
-            categories = JSON.parse(initialProduct.categories)
-          } catch (e) {
-            console.warn('Failed to parse categories:', e)
-            categories = []
-          }
-        } else if (Array.isArray(initialProduct.categories)) {
-          categories = initialProduct.categories
-        }
+      // Basic numeric validation to avoid "KSh NaN" downstream
+      const numericOrError = (label: string, value: unknown) => {
+        if (value === undefined || value === null || value === '') return null
+        const num = typeof value === 'string' ? Number(value) : Number(value)
+        if (!Number.isFinite(num)) throw new Error(`${label} must be a valid number`)
+        return num
       }
 
-      // Prepare the updated product data for WooCommerce
+      numericOrError('Regular Price', data.regular_price)
+      numericOrError('Sale Price', data.sale_price)
+      numericOrError('Buying Price', data.buying_price)
+      numericOrError('Stock Quantity', data.stock_quantity)
+
+      const nextStatus = submitIntent === 'draft' ? 'draft' : submitIntent === 'publish' ? 'publish' : undefined
+
       const updatedProduct: Record<string, unknown> = {
         name: data.name.trim(),
         sku: data.sku.trim(),
-
-        // Ensure regular_price is always set and formatted as a string
         regular_price: data.regular_price ? String(data.regular_price) : '0',
-
-        // Only include sale_price if it has a value and is greater than 0
         sale_price: data.sale_price && parseFloat(String(data.sale_price)) > 0 ? String(data.sale_price) : '',
-
-        // Set the main price to regular_price
         price: data.regular_price ? String(data.regular_price) : '0',
         stock_quantity: parseInt(String(data.stock_quantity || '0')),
         stock_status: data.stock_status || 'instock',
-        status: initialProduct.status || 'publish',
+        status: nextStatus || initialProduct.status || 'publish',
         type: variations.length > 0 ? 'variable' : initialProduct.type || 'simple'
       }
 
-      console.log('📊 Preparing product update:', JSON.stringify(updatedProduct, null, 2))
-
-      // Only include categories if we have them
-      if (categories && categories.length > 0) {
-        updatedProduct.categories = categories
-      }
-
-      // Map optional fields only if provided
-      // General
       if (typeof data.description === 'string') updatedProduct.description = data.description
       if (typeof data.short_description === 'string') updatedProduct.short_description = data.short_description
-      if (data.status) updatedProduct.status = data.status
       if (data.catalog_visibility) updatedProduct.catalog_visibility = data.catalog_visibility
 
-      // Pricing dates (Woo expects ISO8601 or empty)
-      if (data.date_on_sale_from) updatedProduct.date_on_sale_from = data.date_on_sale_from
-      if (data.date_on_sale_to) updatedProduct.date_on_sale_to = data.date_on_sale_to
-
-      // Inventory
       if (typeof data.manage_stock === 'boolean') updatedProduct.manage_stock = data.manage_stock
       if (data.backorders) updatedProduct.backorders = data.backorders
-
-      if (data.low_stock_amount !== undefined && data.low_stock_amount !== '') {
-        updatedProduct.low_stock_amount = Number(data.low_stock_amount)
-      }
-
+      if (data.low_stock_amount !== undefined && data.low_stock_amount !== '') updatedProduct.low_stock_amount = Number(data.low_stock_amount)
       if (typeof data.sold_individually === 'boolean') updatedProduct.sold_individually = data.sold_individually
 
-      // Shipping
       const weightNum = data.weight !== undefined && data.weight !== '' ? String(data.weight) : undefined
-
       if (weightNum !== undefined) updatedProduct.weight = weightNum
       const dims: Record<string, string> = {}
-
       if (data.length !== undefined && data.length !== '') dims.length = String(data.length)
       if (data.width !== undefined && data.width !== '') dims.width = String(data.width)
       if (data.height !== undefined && data.height !== '') dims.height = String(data.height)
       if (Object.keys(dims).length) updatedProduct.dimensions = dims
       if (data.shipping_class) updatedProduct.shipping_class = data.shipping_class
 
-      // Media: images by IDs or URLs
-      const parseCsvToIds = (csv?: string) =>
-        (csv || '')
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean)
-          .map(s => Number(s))
-          .filter(n => !isNaN(n))
-
-      // Legacy image IDs/URLs removed; rely on MediaUploader state `media`
-
       if (media && media.length) {
         updatedProduct.images = media.map(m => (m.id ? { id: m.id } : { src: m.url }))
       }
 
-      // Taxonomy: categories/tags by IDs
-      const categoryIds = parseCsvToIds(data.categories_csv)
+      if (selectedCategoryIds.length) updatedProduct.categories = selectedCategoryIds.map(id => ({ id }))
+      if (selectedTagIds.length) updatedProduct.tags = selectedTagIds.map(id => ({ id }))
 
-      if (categoryIds.length) {
-        updatedProduct.categories = categoryIds.map(id => ({ id }))
-      }
-
-      if (selectedCategoryIds.length) {
-        updatedProduct.categories = selectedCategoryIds.map(id => ({ id }))
-      }
-
-      const tagIds = parseCsvToIds(data.tags_csv)
-
-      if (tagIds.length) {
-        updatedProduct.tags = tagIds.map(id => ({ id }))
-      }
-
-      if (selectedTagIds.length) {
-        updatedProduct.tags = selectedTagIds.map(id => ({ id }))
-      }
-
-      // Attributes
       const attributesPayload = selectedAttrs
         .filter(a => a.attrId && (a.termIds?.length || 0) > 0)
         .map((a, idx) => {
           const attrId = Number(a.attrId)
-
           const names = (termsByAttr[attrId] || []).filter(t => a.termIds.includes(t.id)).map(t => t.name)
 
           return {
@@ -597,192 +572,31 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
       const upsellIds = (selectedUpsells || [])
         .map(p => (p.wooId ? Number(p.wooId) : null))
         .filter((n): n is number => !!n)
-
       if (upsellIds.length) updatedProduct.upsell_ids = upsellIds
 
       const crossSellIds = (selectedCrossSells || [])
         .map(p => (p.wooId ? Number(p.wooId) : null))
         .filter((n): n is number => !!n)
-
       if (crossSellIds.length) updatedProduct.cross_sell_ids = crossSellIds
 
-      // Advanced section removed
-
-      console.log('Sending update request with data:', updatedProduct)
-
-      // Call the API endpoint to update the product
-      let response
-
-      try {
-        response = await fetch(`/api/products/${effectiveProductId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updatedProduct, (key, value) => {
-            // Filter out undefined values to avoid "Converting undefined to null" errors
-            return value === undefined ? undefined : value
-          })
-        })
-      } catch (networkError) {
-        console.error('Network error when updating product:', networkError)
-        throw new Error(
-          'Network error: Could not connect to the server. Please check your internet connection and try again.'
-        )
-      }
+      const response = await fetch(`/api/products/${effectiveProductId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedProduct, (key, value) => (value === undefined ? undefined : value))
+      })
 
       if (!response.ok) {
-        let errorMessage = 'Failed to update product'
-        let errorDetails: unknown = null
-
-        try {
-          // Get the response text first to handle non-JSON responses
-          const responseText = await response.text()
-
-          console.log('Raw error response:', responseText)
-
-          // Try to parse as JSON, but handle cases where it's not valid JSON
-          try {
-            errorDetails = responseText ? JSON.parse(responseText) : {}
-            console.error('Error response from server (JSON):', errorDetails)
-          } catch (jsonError) {
-            console.error('Error response from server (raw text):', responseText)
-            errorDetails = { message: responseText || 'No error details provided' }
-          }
-
-          // Build a more detailed error message from various possible error formats
-          if (errorDetails) {
-            console.log('Full error details:', JSON.stringify(errorDetails, null, 2))
-
-            // Handle Axios error format
-            if ((errorDetails as any).isAxiosError) {
-              errorMessage = (errorDetails as any).message || 'An error occurred while connecting to the server'
-
-              // Try to extract more details from the response
-              if ((errorDetails as any).data) {
-                const { data } = errorDetails as any
-
-                // WooCommerce REST API error format
-                if (data.code && data.message) {
-                  errorMessage = `[${data.code}] ${data.message}`
-
-                  // Add more specific error messages for common WooCommerce errors
-                  if (data.code === 'woocommerce_rest_product_invalid_id') {
-                    errorMessage = 'Invalid product ID. The product may have been deleted.'
-                  } else if (data.code === 'woocommerce_rest_cannot_edit') {
-                    errorMessage = 'You do not have permission to edit this product.'
-                  } else if (data.code === 'woocommerce_rest_product_invalid_stock_quantity') {
-                    errorMessage = 'Invalid stock quantity. Please enter a valid number.'
-                  }
-                }
-
-                // Handle validation errors
-                else if (data.errors) {
-                  const errorMessages = Object.values(data.errors).flat()
-
-                  errorMessage = `Validation error: ${errorMessages.join(', ')}`
-                }
-
-                // Handle other error formats
-                else if (data.error) {
-                  errorMessage = data.error
-                }
-              }
-            }
-
-            // WooCommerce API error format
-            else if ((errorDetails as any).code && (errorDetails as any).message) {
-              errorMessage = `[${(errorDetails as any).code}] ${(errorDetails as any).message}`
-
-              // Add more specific error messages for common WooCommerce errors
-              if ((errorDetails as any).code === 'woocommerce_rest_product_invalid_id') {
-                errorMessage = 'Invalid product ID. The product may have been deleted.'
-              } else if ((errorDetails as any).code === 'woocommerce_rest_cannot_edit') {
-                errorMessage = 'You do not have permission to edit this product.'
-              } else if ((errorDetails as any).code === 'woocommerce_rest_product_invalid_stock_quantity') {
-                errorMessage = 'Invalid stock quantity. Please enter a valid number.'
-              }
-            }
-
-            // Nested details object
-            else if ((errorDetails as any).details) {
-              if (typeof (errorDetails as any).details === 'string') {
-                errorMessage = (errorDetails as any).details
-              } else if ((errorDetails as any).details.message) {
-                errorMessage = (errorDetails as any).details.message
-
-                if ((errorDetails as any).details.code) {
-                  errorMessage = `[${(errorDetails as any).details.code}] ${errorMessage}`
-                }
-              }
-            }
-
-            // Direct message
-            else if ((errorDetails as any).message) {
-              errorMessage = (errorDetails as any).message
-            }
-
-            // Handle validation errors in data.errors
-            else if ((errorDetails as any).errors) {
-              const errorMessages = Object.values((errorDetails as any).errors).flat()
-
-              errorMessage = `Validation error: ${errorMessages.join(', ')}`
-            }
-
-            // Fallback to stringify the entire error object
-            else if (Object.keys(errorDetails).length > 0) {
-              errorMessage = `Error: ${JSON.stringify(errorDetails)}`
-            }
-          }
-
-          // Include status code if available
-          if (response.status) {
-            // Map common HTTP status codes to user-friendly messages
-            const statusMessages: Record<number, string> = {
-              400: 'Bad Request - The request was invalid or cannot be served',
-              401: 'Unauthorized - Please log in again',
-              403: 'Forbidden - You do not have permission to perform this action',
-              404: 'Product not found',
-              409: 'Conflict - The product was modified by another user',
-              422: 'Validation Error - Please check your input',
-              429: 'Too many requests - Please try again later',
-              500: 'Server Error - Please try again later',
-              502: 'Bad Gateway - The server is temporarily unavailable',
-              503: 'Service Unavailable - The server is currently unable to handle the request',
-              504: 'Gateway Timeout - The server took too long to respond'
-            }
-
-            const statusMessage = statusMessages[response.status] || `HTTP ${response.status}`
-
-            errorMessage = `[${statusMessage}] ${errorMessage}`
-          }
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError)
-          errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`
-        }
-
-        // Log the full error for debugging
-        console.error('Product update failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorDetails,
-          productData: updatedProduct
-        })
-
-        throw new Error(errorMessage)
+        const txt = await response.text().catch(() => '')
+        throw new Error(txt || 'Failed to update product')
       }
-
-      const result = await response.json()
-
-      console.log('Product update successful:', result)
 
       toast.success('Product updated successfully!')
 
       // Upsert variations after product update
       try {
-        const effectiveProductId = (initialProduct as any).wooId || initialProduct.id
         const wooIdNum = Number(effectiveProductId)
-
         if (variations.length && !Number.isNaN(wooIdNum)) {
           const upRes = await fetch(`/api/products/${wooIdNum}/variations`, {
             method: 'PUT',
@@ -803,7 +617,6 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
 
           if (!upRes.ok) {
             const txt = await upRes.text()
-
             console.error('Failed to upsert variations:', txt)
             toast.error('Variations update failed')
           } else {
@@ -815,53 +628,13 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
         toast.error('Could not update variations')
       }
 
-      // Add a small delay before redirecting to ensure the toast is visible
       setTimeout(() => {
         router.push(`/${lang}/apps/ecommerce/products/list`)
       }, 1000)
     } catch (err) {
-      console.error('Error updating product:', {
-        name: (err as Error).name,
-        message: (err as Error).message,
-        stack: (err as any).stack,
-        ...((err as any).response
-          ? {
-              status: (err as any).response.status,
-              statusText: (err as any).response.statusText,
-              data: (err as any).response.data,
-              headers: (err as any).response.headers,
-              config: {
-                url: (err as any).response.config?.url,
-                method: (err as any).response.config?.method,
-                data: (err as any).response.config?.data
-              }
-            }
-          : {})
-      })
-
-      // Extract error message from different possible locations
-      let errorMessage = 'Failed to update product'
-
-      if ((err as any).response?.data?.message) {
-        errorMessage = (err as any).response.data.message
-      } else if ((err as any).response?.data?.error) {
-        errorMessage = (err as any).response.data.error
-      } else if ((err as Error).message) {
-        errorMessage = (err as Error).message
-      }
-
-      setError(errorMessage)
-
-      // Show a more detailed error toast
-      toast.error(errorMessage, {
-        duration: 5000, // Show for 5 seconds
-        position: 'top-right',
-        style: {
-          maxWidth: '500px',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word'
-        }
-      })
+      const msg = err instanceof Error ? err.message : 'Failed to update product'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setIsLoading(false)
     }
@@ -877,20 +650,95 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
 
   return (
     <Paper sx={{ p: 5 }}>
-      <ProductAddHeader isEdit={true} product={initialProduct} />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: '1fr 360px' },
-            alignItems: 'start',
-            gap: 3
-          }}
-        >
-          <Box>
-            <Paper sx={{ p: 3, mb: 3 }}>
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 5,
+          bgcolor: 'background.paper',
+          pb: 2,
+          mb: 3,
+          borderBottom: theme => `1px solid ${theme.palette.divider}`
+        }}
+      >
+        <ProductAddHeader isEdit={true} product={initialProduct} />
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 2, alignItems: 'center' }}>
+          <Button
+            variant='tonal'
+            color='secondary'
+            onClick={() => router.push(`/${lang}/apps/ecommerce/products/list`)}
+            disabled={isLoading}
+          >
+            Discard
+          </Button>
+          <Button
+            variant='tonal'
+            onClick={() => {
+              setSubmitIntent('draft')
+            }}
+            type='submit'
+            form='product-edit-form'
+            disabled={isLoading}
+          >
+            Save Draft
+          </Button>
+          <Button
+            variant='contained'
+            onClick={() => {
+              setSubmitIntent('update')
+            }}
+            type='submit'
+            form='product-edit-form'
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={20} /> : <SaveIcon />}
+          >
+            {isLoading ? 'Saving...' : 'Update Product'}
+          </Button>
+          <Button
+            variant='outlined'
+            onClick={() => {
+              setSubmitIntent('publish')
+            }}
+            type='submit'
+            form='product-edit-form'
+            disabled={isLoading}
+          >
+            Publish Product
+          </Button>
+        </Box>
+
+        <Box sx={{ mt: 2 }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_, v) => setActiveTab(v)}
+            variant='scrollable'
+            scrollButtons='auto'
+          >
+            <Tab value='general' label='General' />
+            <Tab value='pricing' label='Pricing / Inventory' />
+            <Tab value='variations' label='Variations' />
+            <Tab value='marketing' label='Marketing' />
+          </Tabs>
+        </Box>
+      </Box>
+      <form id='product-edit-form' onSubmit={handleSubmit(onSubmit)}>
+        {error && (
+          <Box sx={{ mb: 3 }}>
+            <Paper sx={{ p: 2, bgcolor: 'error.light' }}>
+              <Typography variant='body2' color='error.contrastText'>
+                {error}
+              </Typography>
+            </Paper>
+          </Box>
+        )}
+
+        {activeTab === 'general' && (
+          <Box sx={{ display: 'grid', gap: 3 }}>
+            <MediaUploader value={media} onChange={setMedia} />
+
+            <Paper sx={{ p: 3 }}>
               <Typography variant='h6' gutterBottom>
-                Product Information
+                General Information
               </Typography>
 
               <TextField
@@ -918,6 +766,108 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                 disabled={isLoading}
               />
 
+              <Divider sx={{ my: 2 }} />
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                  gap: 2,
+                  alignItems: 'start'
+                }}
+              >
+                <Box sx={{ width: '100%', minWidth: 0 }}>
+                  <Autocomplete
+                    size='small'
+                    multiple
+                    options={categories}
+                    getOptionLabel={o => o.name}
+                    value={categories.filter(c => selectedCategoryIds.includes(c.id))}
+                    onChange={(_, val) => setSelectedCategoryIds(val.map(v => v.id))}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip {...getTagProps({ index })} key={option.id} label={option.name} />
+                      ))
+                    }
+                    renderInput={params => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        label='Categories'
+                        placeholder='Type to search'
+                        size='small'
+                      />
+                    )}
+                    sx={{ width: '100%' }}
+                  />
+                </Box>
+                <Box sx={{ width: '100%', minWidth: 0 }}>
+                  <Autocomplete
+                    size='small'
+                    multiple
+                    options={tags}
+                    getOptionLabel={o => o.name}
+                    value={tags.filter(t => selectedTagIds.includes(t.id))}
+                    onChange={(_, val) => setSelectedTagIds(val.map(v => v.id))}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip {...getTagProps({ index })} key={option.id} label={option.name} />
+                      ))
+                    }
+                    renderInput={params => (
+                      <TextField {...params} fullWidth label='Tags' placeholder='Type to search' size='small' />
+                    )}
+                    sx={{ width: '100%' }}
+                  />
+                </Box>
+              </Box>
+            </Paper>
+
+            <Paper sx={{ p: 3 }}>
+              <Typography variant='h6' gutterBottom>
+                Description
+              </Typography>
+
+              <TextField
+                label='Short Description'
+                fullWidth
+                margin='normal'
+                multiline
+                minRows={2}
+                {...register('short_description')}
+                disabled={isLoading}
+              />
+
+              <TextField
+                label='Description'
+                fullWidth
+                margin='normal'
+                multiline
+                minRows={4}
+                {...register('description')}
+                disabled={isLoading}
+              />
+
+              <FormControl fullWidth margin='normal' disabled={isLoading}>
+                <InputLabel>Catalog Visibility</InputLabel>
+                <Select label='Catalog Visibility' defaultValue={'visible'} {...register('catalog_visibility')}>
+                  <MenuItem value='visible'>Visible</MenuItem>
+                  <MenuItem value='catalog'>Catalog</MenuItem>
+                  <MenuItem value='search'>Search</MenuItem>
+                  <MenuItem value='hidden'>Hidden</MenuItem>
+                </Select>
+              </FormControl>
+            </Paper>
+          </Box>
+        )}
+
+        {activeTab === 'pricing' && (
+          <Box sx={{ display: 'grid', gap: 3 }}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant='h6' gutterBottom>
+                Pricing & Stock
+              </Typography>
+
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <TextField
@@ -925,17 +875,22 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                     fullWidth
                     margin='normal'
                     type='number'
-                    inputProps={{
-                      min: 0,
-                      step: '0.01'
-                    }}
+                    inputProps={{ min: 0, step: '0.01' }}
                     {...register('regular_price', {
                       min: { value: 0, message: 'Price cannot be negative' },
                       validate: value => {
                         if (value === '') return true
                         const num = typeof value === 'string' ? parseFloat(value) : value
 
-                        return !isNaN(num) || 'Must be a valid number'
+                        if (isNaN(num)) return 'Must be a valid number'
+
+                        const buyingNum = buyingPrice !== '' ? parseFloat(String(buyingPrice)) : NaN
+
+                        if (!isNaN(buyingNum) && num < buyingNum) {
+                          return 'Regular price cannot be less than buying price'
+                        }
+
+                        return true
                       }
                     })}
                     error={!!errors.regular_price}
@@ -950,10 +905,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                     margin='normal'
                     type='number'
                     value={buyingPrice}
-                    inputProps={{
-                      min: 0,
-                      step: '0.01'
-                    }}
+                    inputProps={{ min: 0, step: '0.01' }}
                     {...register('buying_price', {
                       min: { value: 0, message: 'Buying price cannot be negative' },
                       validate: value => {
@@ -963,7 +915,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                         return !isNaN(num) || 'Must be a valid number'
                       }
                     })}
-                    onChange={(e) => handleBuyingPriceChange(e.target.value)}
+                    onChange={e => handleBuyingPriceChange(e.target.value)}
                     error={!!errors.buying_price}
                     helperText={errors.buying_price?.message || 'Stored locally for stock calculations'}
                     disabled={isLoading}
@@ -975,10 +927,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                     fullWidth
                     margin='normal'
                     type='number'
-                    inputProps={{
-                      min: 0,
-                      step: '0.01'
-                    }}
+                    inputProps={{ min: 0, step: '0.01' }}
                     {...register('sale_price', {
                       min: { value: 0, message: 'Price cannot be negative' },
                       validate: value => {
@@ -999,12 +948,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                 <Grid size={{ xs: 12, md: 6 }}>
                   <FormControl fullWidth margin='normal' disabled={isLoading}>
                     <InputLabel>Stock Status</InputLabel>
-                    <Select
-                      label='Stock Status'
-                      defaultValue='instock'
-                      {...register('stock_status')}
-                      error={!!errors.stock_status}
-                    >
+                    <Select label='Stock Status' defaultValue='instock' {...register('stock_status')} error={!!errors.stock_status}>
                       <MenuItem value='instock'>In Stock</MenuItem>
                       <MenuItem value='outofstock'>Out of Stock</MenuItem>
                       <MenuItem value='onbackorder'>On Backorder</MenuItem>
@@ -1038,7 +982,93 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
               </Grid>
             </Paper>
 
-            <Paper sx={{ p: 3, mb: 3 }}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant='h6' gutterBottom>
+                Inventory
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Backorders</InputLabel>
+                    <Select label='Backorders' defaultValue={'no'} {...register('backorders')} disabled={isLoading}>
+                      <MenuItem value='no'>Do not allow</MenuItem>
+                      <MenuItem value='notify'>Allow, but notify customer</MenuItem>
+                      <MenuItem value='yes'>Allow</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    label='Low stock threshold'
+                    fullWidth
+                    margin='normal'
+                    type='number'
+                    inputProps={{ min: 0 }}
+                    {...register('low_stock_amount')}
+                    disabled={isLoading}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <FormControl fullWidth margin='normal'>
+                    <InputLabel>Manage Stock</InputLabel>
+                    <Select
+                      label='Manage Stock'
+                      defaultValue={false as any}
+                      {...register('manage_stock')}
+                      disabled={isLoading}
+                    >
+                      <MenuItem value='true'>Yes</MenuItem>
+                      <MenuItem value='false'>No</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+              <FormControl fullWidth margin='normal'>
+                <InputLabel>Sold Individually</InputLabel>
+                <Select
+                  label='Sold Individually'
+                  defaultValue={false as any}
+                  {...register('sold_individually')}
+                  disabled={isLoading}
+                >
+                  <MenuItem value='true'>Yes</MenuItem>
+                  <MenuItem value='false'>No</MenuItem>
+                </Select>
+              </FormControl>
+            </Paper>
+
+            <Paper sx={{ p: 3 }}>
+              <Typography variant='h6' gutterBottom>
+                Shipping
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <TextField label='Weight' fullWidth margin='normal' {...register('weight')} disabled={isLoading} />
+                </Grid>
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <TextField label='Length' fullWidth margin='normal' {...register('length')} disabled={isLoading} />
+                </Grid>
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <TextField label='Width' fullWidth margin='normal' {...register('width')} disabled={isLoading} />
+                </Grid>
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <TextField label='Height' fullWidth margin='normal' {...register('height')} disabled={isLoading} />
+                </Grid>
+              </Grid>
+              <TextField
+                label='Shipping Class'
+                fullWidth
+                margin='normal'
+                {...register('shipping_class')}
+                disabled={isLoading}
+              />
+            </Paper>
+          </Box>
+        )}
+
+        {activeTab === 'variations' && (
+          <Box sx={{ display: 'grid', gap: 3 }}>
+            <Paper sx={{ p: 3 }}>
               <Typography variant='h6' gutterBottom>
                 Attributes
               </Typography>
@@ -1150,287 +1180,179 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
               </Box>
             </Paper>
 
-            {/* Variations */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant='h6'>Variations</Typography>
-                <Button
-                  size='small'
-                  variant='outlined'
-                  startIcon={<i className='tabler-wand' />}
-                  onClick={generateVariations}
-                >
-                  Generate Variations
-                </Button>
-              </Box>
-              {variations.length === 0 ? (
-                <Typography variant='body2' color='text.secondary'>
-                  No variations loaded/generated.
-                </Typography>
-              ) : (
-                <Box sx={{ display: 'grid', gap: 2 }}>
-                  {variations.map((v, idx) => (
-                    <Box
-                      key={v.key || v.id || idx}
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', md: '2fr repeat(5, 1fr)' },
-                        gap: 2,
-                        alignItems: 'center'
-                      }}
-                    >
-                      <Typography variant='body2'>
-                        {v.attributes.map(a => `${a.name}: ${a.option}`).join(' • ')}
-                      </Typography>
-                      <TextField
-                        label='SKU'
-                        size='small'
-                        value={v.sku || ''}
-                        onChange={e => {
-                          const arr = [...variations]
-
-                          arr[idx] = { ...v, sku: e.target.value }
-                          setVariations(arr)
+            {hasVariationAttributes ? (
+              <Paper sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant='h6'>Variations</Typography>
+                  <Button
+                    size='small'
+                    variant='outlined'
+                    startIcon={<i className='tabler-wand' />}
+                    onClick={generateVariations}
+                  >
+                    Generate Variations
+                  </Button>
+                </Box>
+                {variations.length === 0 ? (
+                  <Typography variant='body2' color='text.secondary'>
+                    Variations will appear after you mark at least one attribute as "Used for variations" and generate.
+                  </Typography>
+                ) : (
+                  <Box sx={{ display: 'grid', gap: 2 }}>
+                    {variations.map((v, idx) => (
+                      <Box
+                        key={v.key || v.id || idx}
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr', md: '2fr repeat(5, 1fr)' },
+                          gap: 2,
+                          alignItems: 'center'
                         }}
-                      />
-                      <TextField
-                        label='Regular Price'
-                        size='small'
-                        type='number'
-                        inputProps={{ min: 0, step: '0.01' }}
-                        value={v.regular_price || ''}
-                        onChange={e => {
-                          const arr = [...variations]
+                      >
+                        <Typography variant='body2'>
+                          {v.attributes.map(a => `${a.name}: ${a.option}`).join(' • ')}
+                        </Typography>
+                        <Autocomplete
+                          freeSolo
+                          options={skuOptions}
+                          value={v.sku || ''}
+                          onInputChange={(_, input) => {
+                            const arr = [...variations]
 
-                          arr[idx] = { ...v, regular_price: e.target.value }
-                          setVariations(arr)
-                        }}
-                      />
-                      <TextField
-                        label='Sale Price'
-                        size='small'
-                        type='number'
-                        inputProps={{ min: 0, step: '0.01' }}
-                        value={v.sale_price || ''}
-                        onChange={e => {
-                          const arr = [...variations]
+                            arr[idx] = { ...v, sku: input }
+                            setVariations(arr)
+                          }}
+                          onChange={(_, val) => {
+                            const next = typeof val === 'string' ? val : ''
+                            const arr = [...variations]
 
-                          arr[idx] = { ...v, sale_price: e.target.value }
-                          setVariations(arr)
-                        }}
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={!!v.manage_stock}
-                            onChange={e => {
-                              const arr = [...variations]
+                            arr[idx] = { ...v, sku: next }
+                            setVariations(arr)
+                          }}
+                          onOpen={async () => {
+                            const seed = (v.sku || '').trim()
+                            if (seed.length < 2) return
 
-                              arr[idx] = { ...v, manage_stock: e.target.checked }
-                              setVariations(arr)
-                            }}
-                          />
-                        }
-                        label='Manage Stock'
-                      />
-                      <TextField
-                        label='Quantity'
-                        size='small'
-                        type='number'
-                        inputProps={{ min: 0 }}
-                        value={v.stock_quantity ?? 0}
-                        onChange={e => {
-                          const arr = [...variations]
+                            setIsSearchingSkus(true)
+                            try {
+                              const results = await onSearchSkus(seed)
 
-                          arr[idx] = { ...v, stock_quantity: Number(e.target.value) || 0 }
-                          setVariations(arr)
-                        }}
-                      />
-                      <FormControl size='small'>
-                        <InputLabel>Stock Status</InputLabel>
-                        <Select
-                          label='Stock Status'
-                          value={v.stock_status || 'instock'}
+                              setSkuOptions(results)
+                            } finally {
+                              setIsSearchingSkus(false)
+                            }
+                          }}
+                          renderInput={params => (
+                            <TextField
+                              {...params}
+                              label='SKU'
+                              size='small'
+                              InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                  <>
+                                    {isSearchingSkus ? <CircularProgress color='inherit' size={16} /> : null}
+                                    {params.InputProps.endAdornment}
+                                  </>
+                                )
+                              }}
+                            />
+                          )}
+                        />
+                        <TextField
+                          label='Regular Price'
+                          size='small'
+                          type='number'
+                          inputProps={{ min: 0, step: '0.01' }}
+                          value={v.regular_price || ''}
                           onChange={e => {
                             const arr = [...variations]
 
-                            arr[idx] = { ...v, stock_status: e.target.value as any }
+                            arr[idx] = { ...v, regular_price: e.target.value }
                             setVariations(arr)
                           }}
-                        >
-                          <MenuItem value='instock'>In Stock</MenuItem>
-                          <MenuItem value='outofstock'>Out of Stock</MenuItem>
-                          <MenuItem value='onbackorder'>On Backorder</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Paper>
+                        />
+                        <TextField
+                          label='Sale Price'
+                          size='small'
+                          type='number'
+                          inputProps={{ min: 0, step: '0.01' }}
+                          value={v.sale_price || ''}
+                          onChange={e => {
+                            const arr = [...variations]
 
-            <MediaUploader value={media} onChange={setMedia} />
+                            arr[idx] = { ...v, sale_price: e.target.value }
+                            setVariations(arr)
+                          }}
+                        />
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={!!v.manage_stock}
+                              onChange={e => {
+                                const arr = [...variations]
 
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant='h6' gutterBottom>
-                General
-              </Typography>
+                                arr[idx] = { ...v, manage_stock: e.target.checked }
+                                setVariations(arr)
+                              }}
+                            />
+                          }
+                          label='Manage Stock'
+                        />
+                        <TextField
+                          label='Quantity'
+                          size='small'
+                          type='number'
+                          inputProps={{ min: 0 }}
+                          value={v.stock_quantity ?? 0}
+                          onChange={e => {
+                            const arr = [...variations]
 
-              <TextField
-                label='Short Description'
-                fullWidth
-                margin='normal'
-                multiline
-                minRows={2}
-                {...register('short_description')}
-                disabled={isLoading}
-              />
+                            arr[idx] = { ...v, stock_quantity: Number(e.target.value) || 0 }
+                            setVariations(arr)
+                          }}
+                        />
+                        <FormControl size='small'>
+                          <InputLabel>Stock Status</InputLabel>
+                          <Select
+                            label='Stock Status'
+                            value={v.stock_status || 'instock'}
+                            onChange={e => {
+                              const arr = [...variations]
 
-              <TextField
-                label='Description'
-                fullWidth
-                margin='normal'
-                multiline
-                minRows={4}
-                {...register('description')}
-                disabled={isLoading}
-              />
-
-              <FormControl fullWidth margin='normal' disabled={isLoading}>
-                <InputLabel>Catalog Visibility</InputLabel>
-                <Select label='Catalog Visibility' defaultValue={'visible'} {...register('catalog_visibility')}>
-                  <MenuItem value='visible'>Visible</MenuItem>
-                  <MenuItem value='catalog'>Catalog</MenuItem>
-                  <MenuItem value='search'>Search</MenuItem>
-                  <MenuItem value='hidden'>Hidden</MenuItem>
-                </Select>
-              </FormControl>
-            </Paper>
-
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant='h6' gutterBottom>
-                Pricing
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    label='Sale Start (YYYY-MM-DD)'
-                    fullWidth
-                    margin='normal'
-                    placeholder='2025-01-01'
-                    {...register('date_on_sale_from')}
-                    disabled={isLoading}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    label='Sale End (YYYY-MM-DD)'
-                    fullWidth
-                    margin='normal'
-                    placeholder='2025-01-31'
-                    {...register('date_on_sale_to')}
-                    disabled={isLoading}
-                  />
-                </Grid>
-              </Grid>
-            </Paper>
-
-            {/* Inventory moved to right column */}
-
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant='h6' gutterBottom>
-                Shipping
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <TextField label='Weight' fullWidth margin='normal' {...register('weight')} disabled={isLoading} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <TextField label='Length' fullWidth margin='normal' {...register('length')} disabled={isLoading} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <TextField label='Width' fullWidth margin='normal' {...register('width')} disabled={isLoading} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <TextField label='Height' fullWidth margin='normal' {...register('height')} disabled={isLoading} />
-                </Grid>
-              </Grid>
-              <TextField
-                label='Shipping Class'
-                fullWidth
-                margin='normal'
-                {...register('shipping_class')}
-                disabled={isLoading}
-              />
-            </Paper>
-
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant='h6' gutterBottom>
-                Categories & Tags
-              </Typography>
-              <Box
-                sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, alignItems: 'start' }}
-              >
-                <Box sx={{ width: '100%', minWidth: 0 }}>
-                  <Autocomplete
-                    size='small'
-                    multiple
-                    options={categories}
-                    getOptionLabel={o => o.name}
-                    value={categories.filter(c => selectedCategoryIds.includes(c.id))}
-                    onChange={(_, val) => setSelectedCategoryIds(val.map(v => v.id))}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip {...getTagProps({ index })} key={option.id} label={option.name} />
-                      ))
-                    }
-                    renderInput={params => (
-                      <TextField
-                        {...params}
-                        fullWidth
-                        label='Categories'
-                        placeholder='Search categories'
-                        size='small'
-                      />
-                    )}
-                    sx={{ width: '100%' }}
-                  />
-                </Box>
-                <Box sx={{ width: '100%', minWidth: 0 }}>
-                  <Autocomplete
-                    size='small'
-                    multiple
-                    options={tags}
-                    getOptionLabel={o => o.name}
-                    value={tags.filter(t => selectedTagIds.includes(t.id))}
-                    onChange={(_, val) => setSelectedTagIds(val.map(v => v.id))}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip {...getTagProps({ index })} key={option.id} label={option.name} />
-                      ))
-                    }
-                    renderInput={params => (
-                      <TextField {...params} fullWidth label='Tags' placeholder='Search tags' size='small' />
-                    )}
-                    sx={{ width: '100%' }}
-                  />
-                </Box>
-              </Box>
-            </Paper>
+                              arr[idx] = { ...v, stock_status: e.target.value as any }
+                              setVariations(arr)
+                            }}
+                          >
+                            <MenuItem value='instock'>In Stock</MenuItem>
+                            <MenuItem value='outofstock'>Out of Stock</MenuItem>
+                            <MenuItem value='onbackorder'>On Backorder</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Paper>
+            ) : (
+              <Paper sx={{ p: 3 }}>
+                <Typography variant='body2' color='text.secondary'>
+                  Variations are hidden until you check "Used for variations" on at least one Attribute.
+                </Typography>
+              </Paper>
+            )}
           </Box>
+        )}
 
-          <Box>
-            <Paper sx={{ p: 3, mb: 3, position: 'sticky', top: 16 }}>
-              <Button
-                type='submit'
-                variant='contained'
-                color='primary'
-                disabled={isLoading}
-                startIcon={isLoading ? <CircularProgress size={20} /> : <SaveIcon />}
-                sx={{ mb: 2 }}
-              >
-                {isLoading ? 'Saving...' : 'Update Product'}
-              </Button>
+        {activeTab === 'marketing' && (
+          <Box sx={{ display: 'grid', gap: 3 }}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant='h6' gutterBottom>
+                Upsells & Cross-sells
+              </Typography>
+              <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                Start typing (2+ characters) to search products.
+              </Typography>
 
               <Autocomplete
                 multiple
@@ -1439,13 +1361,44 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                 getOptionLabel={o => `${o.name}${o.sku ? ` (${o.sku})` : ''}`}
                 value={selectedUpsells}
                 onChange={(_, val) => setSelectedUpsells(val)}
-                onInputChange={async (_, input) => {
-                  const results = await onSearchProducts(input)
+                onInputChange={(_, input) => {
+                  if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current)
+                  const token = ++searchTokenRef.current
 
-                  setUpsellOptions(results)
+                  if (!input || input.length < 2) {
+                    setUpsellOptions([])
+                    setIsSearchingProducts(false)
+                    return
+                  }
+
+                  setIsSearchingProducts(true)
+                  debounceTimeoutRef.current = setTimeout(async () => {
+                    try {
+                      const results = await onSearchProducts(input)
+                      if (token !== searchTokenRef.current) return
+
+                      setUpsellOptions(results)
+                    } finally {
+                      if (token === searchTokenRef.current) setIsSearchingProducts(false)
+                    }
+                  }, 300)
                 }}
                 renderInput={params => (
-                  <TextField {...params} label='Upsells' placeholder='Search products' margin='normal' />
+                  <TextField
+                    {...params}
+                    label='Upsells'
+                    placeholder='Search products'
+                    margin='normal'
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isSearchingProducts ? <CircularProgress color='inherit' size={16} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      )
+                    }}
+                  />
                 )}
               />
 
@@ -1456,91 +1409,49 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
                 getOptionLabel={o => `${o.name}${o.sku ? ` (${o.sku})` : ''}`}
                 value={selectedCrossSells}
                 onChange={(_, val) => setSelectedCrossSells(val)}
-                onInputChange={async (_, input) => {
-                  const results = await onSearchProducts(input)
+                onInputChange={(_, input) => {
+                  if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current)
+                  const token = ++searchTokenRef.current
 
-                  setCrossSellOptions(results)
+                  if (!input || input.length < 2) {
+                    setCrossSellOptions([])
+                    setIsSearchingProducts(false)
+                    return
+                  }
+
+                  setIsSearchingProducts(true)
+                  debounceTimeoutRef.current = setTimeout(async () => {
+                    try {
+                      const results = await onSearchProducts(input)
+                      if (token !== searchTokenRef.current) return
+
+                      setCrossSellOptions(results)
+                    } finally {
+                      if (token === searchTokenRef.current) setIsSearchingProducts(false)
+                    }
+                  }, 300)
                 }}
                 renderInput={params => (
-                  <TextField {...params} label='Cross-sells' placeholder='Search products' margin='normal' />
+                  <TextField
+                    {...params}
+                    label='Cross-sells'
+                    placeholder='Search products'
+                    margin='normal'
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isSearchingProducts ? <CircularProgress color='inherit' size={16} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      )
+                    }}
+                  />
                 )}
               />
-
-              <Button
-                variant='outlined'
-                color='secondary'
-                onClick={() => router.push(`/${lang}/apps/ecommerce/products/list`)}
-                disabled={isLoading}
-                sx={{ ml: 2 }}
-              >
-                Cancel
-              </Button>
-
-              {error && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'error.light', borderRadius: 1 }}>
-                  <Typography variant='body2' color='error.contrastText'>
-                    {error}
-                  </Typography>
-                </Box>
-              )}
-            </Paper>
-
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant='h6' gutterBottom>
-                Inventory
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth>
-                    <InputLabel>Backorders</InputLabel>
-                    <Select label='Backorders' defaultValue={'no'} {...register('backorders')} disabled={isLoading}>
-                      <MenuItem value='no'>Do not allow</MenuItem>
-                      <MenuItem value='notify'>Allow, but notify customer</MenuItem>
-                      <MenuItem value='yes'>Allow</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    label='Low stock threshold'
-                    fullWidth
-                    margin='normal'
-                    type='number'
-                    inputProps={{ min: 0 }}
-                    {...register('low_stock_amount')}
-                    disabled={isLoading}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth margin='normal'>
-                    <InputLabel>Manage Stock</InputLabel>
-                    <Select
-                      label='Manage Stock'
-                      defaultValue={false as any}
-                      {...register('manage_stock')}
-                      disabled={isLoading}
-                    >
-                      <MenuItem value='true'>Yes</MenuItem>
-                      <MenuItem value='false'>No</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-              <FormControl fullWidth margin='normal'>
-                <InputLabel>Sold Individually</InputLabel>
-                <Select
-                  label='Sold Individually'
-                  defaultValue={false as any}
-                  {...register('sold_individually')}
-                  disabled={isLoading}
-                >
-                  <MenuItem value='true'>Yes</MenuItem>
-                  <MenuItem value='false'>No</MenuItem>
-                </Select>
-              </FormControl>
             </Paper>
           </Box>
-        </Box>
+        )}
       </form>
     </Paper>
   )

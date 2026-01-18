@@ -3,7 +3,7 @@ import { wooClient } from '@/lib/woocommerce'
 
 export async function GET() {
   try {
-    const coupons = await wooClient.get('coupons', {
+    const couponsRes = await wooClient.get('coupons', {
       params: {
         per_page: 100,
         orderby: 'date',
@@ -11,7 +11,18 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(coupons || [])
+    if (couponsRes?.status >= 400) {
+      return NextResponse.json(
+        {
+          error: 'Failed to fetch coupons',
+          details: couponsRes?.data?.message || `WooCommerce request failed with status ${couponsRes.status}`,
+          woo: couponsRes?.data
+        },
+        { status: couponsRes.status }
+      )
+    }
+
+    return NextResponse.json(couponsRes?.data || [])
   } catch (error) {
     console.error('Error fetching coupons:', error)
     return NextResponse.json(
@@ -25,9 +36,30 @@ export async function POST(request) {
   try {
     const data = await request.json()
     
+    const discountType = data.discount_type || 'percent'
+    const amountNum = Number(data.amount)
+
+    if (discountType === 'percent' && Number.isFinite(amountNum)) {
+      if (amountNum <= 0 || amountNum > 100) {
+        return NextResponse.json(
+          { error: 'Invalid discount amount', details: 'Percent discount must be between 0 and 100.' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const minAmountNum = data.minimum_amount !== undefined && data.minimum_amount !== null ? Number(data.minimum_amount) : undefined
+    const maxAmountNum = data.maximum_amount !== undefined && data.maximum_amount !== null ? Number(data.maximum_amount) : undefined
+    if (Number.isFinite(minAmountNum) && Number.isFinite(maxAmountNum) && minAmountNum > maxAmountNum) {
+      return NextResponse.json(
+        { error: 'Invalid minimum/maximum amounts', details: 'Minimum amount cannot be greater than maximum amount.' },
+        { status: 400 }
+      )
+    }
+
     const couponData = {
       code: data.code,
-      discount_type: data.discount_type || 'percent',
+      discount_type: discountType,
       amount: data.amount?.toString() || '0',
       description: data.description || '',
       date_expires: data.date_expires || null,
@@ -46,9 +78,20 @@ export async function POST(request) {
       email_restrictions: data.email_restrictions || []
     }
 
-    const newCoupon = await wooClient.post('coupons', couponData)
+    const newCouponRes = await wooClient.post('coupons', couponData)
+
+    if (newCouponRes?.status >= 400) {
+      return NextResponse.json(
+        {
+          error: 'Failed to create coupon',
+          details: newCouponRes?.data?.message || `WooCommerce request failed with status ${newCouponRes.status}`,
+          woo: newCouponRes?.data
+        },
+        { status: newCouponRes.status }
+      )
+    }
     
-    return NextResponse.json(newCoupon)
+    return NextResponse.json(newCouponRes?.data || {})
   } catch (error) {
     console.error('Error creating coupon:', error)
     return NextResponse.json(
@@ -88,9 +131,20 @@ export async function PUT(request) {
       email_restrictions: updateData.email_restrictions
     }
 
-    const updatedCoupon = await wooClient.put(`coupons/${id}`, couponData)
+    const updatedCouponRes = await wooClient.put(`coupons/${id}`, couponData)
+
+    if (updatedCouponRes?.status >= 400) {
+      return NextResponse.json(
+        {
+          error: 'Failed to update coupon',
+          details: updatedCouponRes?.data?.message || `WooCommerce request failed with status ${updatedCouponRes.status}`,
+          woo: updatedCouponRes?.data
+        },
+        { status: updatedCouponRes.status }
+      )
+    }
     
-    return NextResponse.json(updatedCoupon)
+    return NextResponse.json(updatedCouponRes?.data || {})
   } catch (error) {
     console.error('Error updating coupon:', error)
     return NextResponse.json(
@@ -109,7 +163,18 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Coupon ID is required' }, { status: 400 })
     }
 
-    await wooClient.delete(`coupons/${id}`, { params: { force: true } })
+    const deleteRes = await wooClient.delete(`coupons/${id}`, { params: { force: true } })
+
+    if (deleteRes?.status >= 400) {
+      return NextResponse.json(
+        {
+          error: 'Failed to delete coupon',
+          details: deleteRes?.data?.message || `WooCommerce request failed with status ${deleteRes.status}`,
+          woo: deleteRes?.data
+        },
+        { status: deleteRes.status }
+      )
+    }
     
     return NextResponse.json({ success: true, message: 'Coupon deleted successfully' })
   } catch (error) {

@@ -6,6 +6,9 @@ import classnames from 'classnames'
 // Hook Imports
 import { useSettings } from '@core/hooks/useSettings'
 
+// Component Imports
+import PageDescription from '@/components/PageDescription'
+
 // Util Imports
 import { verticalLayoutClasses } from '@layouts/utils/layoutClasses'
 
@@ -29,6 +32,7 @@ const LayoutContent = ({ children }) => {
       })}
       suppressHydrationWarning
     >
+      <PageDescription />
       {children}
     </StyledMain>
   )

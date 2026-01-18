@@ -1,0 +1,418 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - link "OmniSpace 3D" [ref=e9] [cursor=pointer]:
+          - /url: /en
+          - img "OmniSpace 3D" [ref=e11]
+        - button [ref=e12] [cursor=pointer]
+      - generic [ref=e14]:
+        - navigation [ref=e15]:
+          - list
+        - navigation [ref=e16]:
+          - list [ref=e17]:
+            - listitem [ref=e18]:
+              - list [ref=e19]:
+                - listitem [ref=e20]:
+                  - generic [ref=e21]: Natural Options
+                - listitem [ref=e22]:
+                  - link "Home" [ref=e23] [cursor=pointer]:
+                    - /url: /en/apps/ecommerce/dashboard
+                    - generic [ref=e26]: Home
+                - listitem [ref=e27]:
+                  - generic [ref=e31] [cursor=pointer]: Products
+                - listitem [ref=e35]:
+                  - generic [ref=e39] [cursor=pointer]: User Management
+                - listitem [ref=e43]:
+                  - generic [ref=e47] [cursor=pointer]: Contacts
+                - listitem [ref=e51]:
+                  - generic [ref=e55] [cursor=pointer]: Purchases
+                - listitem [ref=e59]:
+                  - generic [ref=e63] [cursor=pointer]: Business Intelligence
+                - listitem [ref=e67]:
+                  - generic [ref=e71] [cursor=pointer]: Sell
+                - listitem [ref=e75]:
+                  - link "Expenses" [ref=e76] [cursor=pointer]:
+                    - /url: /en/apps/expenses
+                    - generic [ref=e79]: Expenses
+                - listitem [ref=e80]:
+                  - generic [ref=e84] [cursor=pointer]: Payment Accounts
+                - listitem [ref=e88]:
+                  - generic [ref=e92] [cursor=pointer]: Accounting
+                - listitem [ref=e96]:
+                  - generic [ref=e100] [cursor=pointer]: Reports
+                - listitem [ref=e104]:
+                  - link "Settings" [ref=e105] [cursor=pointer]:
+                    - /url: /en/pages/account-settings
+                    - generic [ref=e108]: Settings
+                - listitem [ref=e109]:
+                  - link "WooCommerce" [ref=e110] [cursor=pointer]:
+                    - /url: "#"
+                    - generic [ref=e111]: WooCommerce
+  - generic [ref=e112]:
+    - banner:
+      - generic [ref=e114]:
+        - generic [ref=e116] [cursor=pointer]:
+          - button [ref=e117]
+          - generic [ref=e119]: Search ⌘K
+        - generic [ref=e122] [cursor=pointer]: U
+    - main [ref=e125]:
+      - generic [ref=e126]:
+        - paragraph [ref=e127]: This page provides an overview of your store’s sales, orders, and product performance.
+        - paragraph [ref=e128]: Use the controls and widgets here to spot changes quickly and investigate details.
+      - generic [ref=e129]:
+        - generic [ref=e131]:
+          - link "Orders" [ref=e132] [cursor=pointer]:
+            - /url: /en/apps/ecommerce/orders/list
+          - link "Products" [ref=e133] [cursor=pointer]:
+            - /url: /en/apps/ecommerce/products/list
+          - link "Customers" [ref=e134] [cursor=pointer]:
+            - /url: /en/apps/ecommerce/customers/list
+          - link "Brands" [ref=e135] [cursor=pointer]:
+            - /url: /en/apps/ecommerce/brands
+          - link "Promotions" [ref=e136] [cursor=pointer]:
+            - /url: /en/apps/ecommerce/promotions
+          - link "POS Terminal" [ref=e137] [cursor=pointer]:
+            - /url: /en/apps/pos/terminal
+        - generic [ref=e139]:
+          - button "Refresh dashboard data" [ref=e140] [cursor=pointer]: Refresh
+          - generic [ref=e143]:
+            - link "Week" [ref=e144] [cursor=pointer]:
+              - /url: /en/apps/ecommerce/dashboard?period=week
+            - link "Month" [ref=e145] [cursor=pointer]:
+              - /url: /en/apps/ecommerce/dashboard?period=month
+            - link "Year" [ref=e146] [cursor=pointer]:
+              - /url: /en/apps/ecommerce/dashboard?period=year
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - generic: Store Location
+              - generic [ref=e149]:
+                - textbox "Store Location" [ref=e150]
+                - group:
+                  - generic: Store Location
+            - generic [ref=e151]:
+              - generic: Employee
+              - generic [ref=e152]:
+                - textbox "Employee" [ref=e153]
+                - group:
+                  - generic: Employee
+            - button "Apply" [ref=e154] [cursor=pointer]
+        - generic [ref=e156]:
+          - generic [ref=e157]:
+            - generic [ref=e159]: Statistics
+            - generic [ref=e161]:
+              - link "Orders" [ref=e162] [cursor=pointer]:
+                - /url: /en/apps/ecommerce/orders/list
+              - link "Products" [ref=e163] [cursor=pointer]:
+                - /url: /en/apps/ecommerce/products/list
+              - link "Invoices" [ref=e164] [cursor=pointer]:
+                - /url: /en/apps/invoice/list
+          - generic [ref=e166]:
+            - generic [ref=e170]:
+              - heading "383" [level=5] [ref=e171]
+              - paragraph [ref=e172]: Orders
+            - generic [ref=e176]:
+              - heading "12" [level=5] [ref=e177]
+              - paragraph [ref=e178]: Customers
+            - generic [ref=e182]:
+              - heading "695" [level=5] [ref=e183]
+              - paragraph [ref=e184]: Products
+            - generic [ref=e188]:
+              - heading "KSh 850,645.19" [level=5] [ref=e189]
+              - paragraph [ref=e190]: Revenue
+        - generic [ref=e192]:
+          - generic [ref=e197]:
+            - heading "KSh 850,645" [level=5] [ref=e198]
+            - paragraph [ref=e199]: Net Sales
+          - generic [ref=e204]:
+            - heading "KSh 170,129" [level=5] [ref=e205]
+            - paragraph [ref=e206]: Net Profit
+          - generic [ref=e211]:
+            - heading "KSh 0" [level=5] [ref=e212]
+            - paragraph [ref=e213]: Sales Returns
+          - generic [ref=e218]:
+            - heading "KSh 0" [level=5] [ref=e219]
+            - paragraph [ref=e220]: Purchase Returns
+          - generic [ref=e225]:
+            - heading "KSh 0" [level=5] [ref=e226]
+            - paragraph [ref=e227]: Expenses
+        - generic [ref=e229]:
+          - generic [ref=e231]:
+            - generic [ref=e233]:
+              - generic [ref=e234]: Profit
+              - generic [ref=e235]: Last Month
+            - generic [ref=e237]:
+              - heading "KSh 170.1k" [level=4] [ref=e238]
+              - paragraph [ref=e239]: +0.0%
+          - generic [ref=e241]:
+            - generic [ref=e243]:
+              - generic [ref=e244]: KSh 0.0k
+              - generic [ref=e245]: Expenses
+            - paragraph [ref=e247]: No change from last week
+          - generic [ref=e251]:
+            - generic [ref=e252]:
+              - heading "Order Status" [level=5] [ref=e253]
+              - paragraph [ref=e254]: Distribution
+            - generic [ref=e255]:
+              - heading "383" [level=3] [ref=e256]
+              - generic [ref=e259]: +0.0%
+        - generic [ref=e262]:
+          - generic [ref=e264]:
+            - generic [ref=e266]: Revenue Report
+            - button "Export CSV" [ref=e268] [cursor=pointer]
+          - generic [ref=e271]:
+            - button "2026" [ref=e272] [cursor=pointer]: "2026"
+            - generic [ref=e275]:
+              - heading "KSh 850,645.19" [level=3] [ref=e276]
+              - paragraph [ref=e277]: "Budget: —"
+            - button "Increase Budget" [ref=e278] [cursor=pointer]
+        - generic [ref=e281]:
+          - generic [ref=e283]: Sales last 30 days
+          - button "Export CSV" [ref=e285] [cursor=pointer]
+        - heading "Financial Performance" [level=5] [ref=e288]
+        - generic [ref=e290]:
+          - generic [ref=e292]:
+            - generic [ref=e293]:
+              - generic [ref=e294]:
+                - generic [ref=e295]: Earning Reports
+                - generic [ref=e296]: Weekly Earnings Overview
+              - button [ref=e298] [cursor=pointer]
+            - generic [ref=e300]:
+              - generic [ref=e304]:
+                - generic [ref=e305]:
+                  - paragraph [ref=e306]: Net Profit
+                  - paragraph [ref=e307]: 383 Sales
+                - generic [ref=e308]:
+                  - paragraph [ref=e309]: KSh 170,129.04
+                  - paragraph [ref=e312]: 0%
+              - generic [ref=e316]:
+                - generic [ref=e317]:
+                  - paragraph [ref=e318]: Total Income
+                  - paragraph [ref=e319]: Sales, Affiliation
+                - generic [ref=e320]:
+                  - paragraph [ref=e321]: KSh 850,645.19
+                  - paragraph [ref=e324]: 0%
+              - generic [ref=e328]:
+                - generic [ref=e329]:
+                  - paragraph [ref=e330]: Total Expenses
+                  - paragraph [ref=e331]: ADVT, Marketing
+                - generic [ref=e332]:
+                  - paragraph [ref=e333]: KSh 0.00
+                  - paragraph [ref=e336]: 0%
+          - generic [ref=e341]:
+            - generic [ref=e342]: Taxes Collected
+            - generic [ref=e343]: By month and top tax rates
+          - generic [ref=e346]:
+            - generic [ref=e347]:
+              - generic [ref=e348]:
+                - generic [ref=e349]: Transactions
+                - generic [ref=e350]: 5 recent entries
+              - button [ref=e352] [cursor=pointer]
+            - generic [ref=e354]:
+              - generic [ref=e358]:
+                - generic [ref=e359]:
+                  - 'heading "Order #cmk2ehxzp00ae4pvt8yjo8uev" [level=6] [ref=e360]'
+                  - paragraph [ref=e361]: completed
+                - heading "+KSh 288.52" [level=6] [ref=e362]
+              - generic [ref=e366]:
+                - generic [ref=e367]:
+                  - 'heading "Order #cmk2ehxzn00ad4pvtz1g6bsg0" [level=6] [ref=e368]'
+                  - paragraph [ref=e369]: completed
+                - heading "+KSh 432.84" [level=6] [ref=e370]
+              - generic [ref=e374]:
+                - generic [ref=e375]:
+                  - 'heading "Order #cmk2ehxzl00ac4pvt1kwis8n6" [level=6] [ref=e376]'
+                  - paragraph [ref=e377]: completed
+                - heading "+KSh 389.75" [level=6] [ref=e378]
+              - generic [ref=e382]:
+                - generic [ref=e383]:
+                  - 'heading "Order #cmk2ehxzk00ab4pvtvizko1qr" [level=6] [ref=e384]'
+                  - paragraph [ref=e385]: completed
+                - heading "+KSh 230.12" [level=6] [ref=e386]
+              - generic [ref=e390]:
+                - generic [ref=e391]:
+                  - 'heading "Order #cmk2ehxzh00aa4pvt8szg1hfm" [level=6] [ref=e392]'
+                  - paragraph [ref=e393]: completed
+                - heading "+KSh 337.63" [level=6] [ref=e394]
+        - heading "Order Management" [level=5] [ref=e396]
+        - generic [ref=e398]:
+          - generic [ref=e399]:
+            - generic [ref=e400]:
+              - generic [ref=e401]: Recent Orders
+              - generic [ref=e402]: 5 shown
+            - button [ref=e404] [cursor=pointer]
+          - tablist "full width tabs example" [ref=e408]:
+            - tab "All Orders" [selected] [ref=e409] [cursor=pointer]: All Orders
+            - tab "Pending Payment" [ref=e411] [cursor=pointer]
+            - tab "New" [ref=e412] [cursor=pointer]
+            - tab "Preparing" [ref=e413] [cursor=pointer]
+            - tab "Completed" [ref=e414] [cursor=pointer]
+            - tab "Shipping" [ref=e415] [cursor=pointer]
+          - tabpanel [ref=e416]:
+            - generic [ref=e417]:
+              - generic [ref=e418]:
+                - generic [ref=e419]: Order & Documents
+                - generic [ref=e420]: Status
+              - generic [ref=e421]:
+                - generic [ref=e422]:
+                  - paragraph [ref=e423]: Order WC-6024
+                  - generic [ref=e424]:
+                    - generic [ref=e426]: No Invoice
+                    - generic [ref=e428]: No Packing Slip
+                - generic [ref=e431]: completed
+              - separator [ref=e432]
+              - generic [ref=e433]:
+                - generic [ref=e434]:
+                  - paragraph [ref=e435]: Order WC-6023
+                  - generic [ref=e436]:
+                    - generic [ref=e438]: No Invoice
+                    - generic [ref=e440]: No Packing Slip
+                - generic [ref=e443]: completed
+              - separator [ref=e444]
+              - generic [ref=e445]:
+                - generic [ref=e446]:
+                  - paragraph [ref=e447]: Order WC-6022
+                  - generic [ref=e448]:
+                    - generic [ref=e450]: No Invoice
+                    - generic [ref=e452]: No Packing Slip
+                - generic [ref=e455]: completed
+              - separator [ref=e456]
+              - generic [ref=e457]:
+                - generic [ref=e458]:
+                  - paragraph [ref=e459]: Order WC-6021
+                  - generic [ref=e460]:
+                    - generic [ref=e462]: No Invoice
+                    - generic [ref=e464]: No Packing Slip
+                - generic [ref=e467]: completed
+              - separator [ref=e468]
+              - generic [ref=e469]:
+                - generic [ref=e470]:
+                  - paragraph [ref=e471]: Order WC-6020
+                  - generic [ref=e472]:
+                    - generic [ref=e474]: No Invoice
+                    - generic [ref=e476]: No Packing Slip
+                - generic [ref=e479]: completed
+        - generic [ref=e481]:
+          - generic [ref=e485]:
+            - generic [ref=e486]: Balance
+            - generic [ref=e487]: Commercial networks & enterprises
+          - generic [ref=e490]:
+            - generic [ref=e493]: Average Daily Sales
+            - generic [ref=e494]:
+              - paragraph [ref=e495]: Total Sales This Month
+              - heading "KSh 850,645" [level=4] [ref=e496]
+        - heading "Popular Products" [level=5] [ref=e498]
+        - generic [ref=e501]:
+          - generic [ref=e502]:
+            - generic [ref=e503]: Popular Products
+            - generic [ref=e504]: Top 0 by sales
+          - button [ref=e506] [cursor=pointer]
+        - heading "Invoices" [level=5] [ref=e510]
+        - generic [ref=e511]:
+          - generic [ref=e512]:
+            - generic [ref=e513]:
+              - generic [ref=e514]:
+                - generic [ref=e515]:
+                  - paragraph [ref=e516]: Show
+                  - generic [ref=e518]:
+                    - combobox "6" [ref=e519] [cursor=pointer]
+                    - textbox: "6"
+                - link "Create Invoice" [ref=e520] [cursor=pointer]:
+                  - /url: /en/apps/invoice/add
+                  - text: Create Invoice
+              - generic [ref=e523]:
+                - textbox "Search Invoice" [ref=e526]
+                - generic [ref=e528]:
+                  - combobox "Invoice Status" [ref=e529] [cursor=pointer]
+                  - textbox
+            - table [ref=e531]:
+              - rowgroup [ref=e532]:
+                - row "# Status Total Issued Date Action" [ref=e533]:
+                  - columnheader [ref=e534]:
+                    - generic [ref=e536] [cursor=pointer]:
+                      - checkbox [ref=e537]
+                      - img [ref=e538]
+                  - columnheader "#" [ref=e540]:
+                    - generic [ref=e541] [cursor=pointer]: "#"
+                  - columnheader "Status" [ref=e542]:
+                    - generic [ref=e543] [cursor=pointer]: Status
+                  - columnheader "Total" [ref=e544]:
+                    - generic [ref=e545] [cursor=pointer]: Total
+                  - columnheader "Issued Date" [ref=e546]:
+                    - generic [ref=e547] [cursor=pointer]: Issued Date
+                  - columnheader "Action" [ref=e548]:
+                    - generic [ref=e549]: Action
+              - rowgroup [ref=e550]:
+                - row "#cmk22p2rt0011aywm4jw7vtt9 KSh 650.00 1/6/2026" [ref=e551]:
+                  - cell [ref=e552]:
+                    - generic [ref=e553] [cursor=pointer]:
+                      - checkbox [ref=e554]
+                      - img [ref=e555]
+                  - cell "#cmk22p2rt0011aywm4jw7vtt9" [ref=e557]:
+                    - link "#cmk22p2rt0011aywm4jw7vtt9" [ref=e558] [cursor=pointer]:
+                      - /url: /en/apps/invoice/preview/cmk22p2rt0011aywm4jw7vtt9
+                  - cell [ref=e559]
+                  - cell "KSh 650.00" [ref=e562]:
+                    - paragraph [ref=e563]: KSh 650.00
+                  - cell "1/6/2026" [ref=e564]:
+                    - paragraph [ref=e565]: 1/6/2026
+                  - cell [ref=e566]:
+                    - generic [ref=e567]:
+                      - button [ref=e568] [cursor=pointer]
+                      - button [ref=e570] [cursor=pointer]:
+                        - link [ref=e571]:
+                          - /url: /en/apps/invoice/preview/cmk22p2rt0011aywm4jw7vtt9
+                      - button [ref=e573] [cursor=pointer]
+                - row "#cmk22p2rf0010aywmjipmdb8l KSh 2,200.00 1/6/2026" [ref=e575]:
+                  - cell [ref=e576]:
+                    - generic [ref=e577] [cursor=pointer]:
+                      - checkbox [ref=e578]
+                      - img [ref=e579]
+                  - cell "#cmk22p2rf0010aywmjipmdb8l" [ref=e581]:
+                    - link "#cmk22p2rf0010aywmjipmdb8l" [ref=e582] [cursor=pointer]:
+                      - /url: /en/apps/invoice/preview/cmk22p2rf0010aywmjipmdb8l
+                  - cell [ref=e583]
+                  - cell "KSh 2,200.00" [ref=e586]:
+                    - paragraph [ref=e587]: KSh 2,200.00
+                  - cell "1/6/2026" [ref=e588]:
+                    - paragraph [ref=e589]: 1/6/2026
+                  - cell [ref=e590]:
+                    - generic [ref=e591]:
+                      - button [ref=e592] [cursor=pointer]
+                      - button [ref=e594] [cursor=pointer]:
+                        - link [ref=e595]:
+                          - /url: /en/apps/invoice/preview/cmk22p2rf0010aywmjipmdb8l
+                      - button [ref=e597] [cursor=pointer]
+            - generic [ref=e599]:
+              - paragraph [ref=e600]: Showing 1 to 2 of 2 entries
+              - navigation "pagination navigation" [ref=e601]:
+                - list [ref=e602]:
+                  - listitem [ref=e603]:
+                    - button "Go to first page" [disabled]:
+                      - img
+                  - listitem [ref=e604]:
+                    - button "Go to previous page" [disabled]:
+                      - img
+                  - listitem [ref=e605]:
+                    - button "page 1" [ref=e606] [cursor=pointer]: "1"
+                  - listitem [ref=e607]:
+                    - button "Go to next page" [disabled]:
+                      - img
+                  - listitem [ref=e608]:
+                    - button "Go to last page" [disabled]:
+                      - img
+          - generic [ref=e609]:
+            - generic [ref=e610]: "Invoices: 2"
+            - link "draft • 2" [ref=e611] [cursor=pointer]:
+              - /url: /en/apps/invoice/list?status=draft
+              - button "draft • 2" [ref=e612]:
+                - generic [ref=e613]: draft • 2
+    - contentinfo [ref=e614]:
+      - paragraph [ref=e617]:
+        - text: © 2026, Made with ❤️ by
+        - link "M.A.D" [ref=e618] [cursor=pointer]:
+          - /url: https://massappealdesigns.co.ke
+```

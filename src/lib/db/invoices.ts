@@ -148,10 +148,20 @@ export async function getAllInvoices() {
 
   try {
     const invoices = await prisma.invoice.findMany({
+      where: { deletedAt: null },
       orderBy: { date: 'desc' }
     })
 
-    return invoices
+    return invoices.map(inv => {
+      const raw = inv?.amount
+      const cleaned = String(raw ?? '0').replace(/[^0-9.-]/g, '')
+      const n = Number.parseFloat(cleaned)
+
+      return {
+        ...inv,
+        amount: Number.isFinite(n) ? String(n) : '0'
+      }
+    })
   } catch (error) {
     console.error('Error fetching invoices:', error instanceof Error ? error.message : 'Unknown error')
 
@@ -171,7 +181,7 @@ export async function getInvoicesByCustomerId(customerId: number) {
 
   try {
     const invoices = await prisma.invoice.findMany({
-      where: { customerId },
+      where: { customerId, deletedAt: null },
       orderBy: { date: 'desc' }
     })
 
@@ -195,12 +205,33 @@ export async function getInvoiceByOrderId(orderId: number) {
 
   try {
     const invoice = await prisma.invoice.findFirst({
-      where: { wooOrderId: orderId }
+      where: { wooOrderId: orderId, deletedAt: null }
     })
 
     return invoice
   } catch (error) {
     console.error('Error fetching invoice:', error instanceof Error ? error.message : 'Unknown error')
+
+    return null
+  }
+}
+
+export async function softDeleteInvoice(invoiceId: string) {
+  if (!process.env.DATABASE_URL) {
+    console.warn('⚠️ Skipping invoice delete: DATABASE_URL not configured')
+
+    return null
+  }
+
+  try {
+    const invoice = await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { deletedAt: new Date() }
+    })
+
+    return invoice
+  } catch (error) {
+    console.error('Error soft-deleting invoice:', error instanceof Error ? error.message : 'Unknown error')
 
     return null
   }

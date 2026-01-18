@@ -334,6 +334,7 @@ model Invoice {
   customerEmail  String?
   billingAddress String        @default("{}")
   lineItems      String        @default("[]")
+  deletedAt      DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -343,6 +344,7 @@ model Invoice {
   @@index([orderStatus])
   @@index([invoiceStatus])
   @@index([date])
+  @@index([deletedAt])
 }
 
 enum InvoiceStatus {

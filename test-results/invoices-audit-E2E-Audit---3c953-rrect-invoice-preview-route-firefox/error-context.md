@@ -1,0 +1,90 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - complementary [ref=e5]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - link "OmniSpace 3D" [ref=e9] [cursor=pointer]:
+            - /url: /en
+            - img "OmniSpace 3D" [ref=e11]
+          - button [ref=e12] [cursor=pointer]
+        - generic [ref=e14]:
+          - navigation [ref=e15]:
+            - list
+          - navigation [ref=e16]:
+            - list [ref=e17]:
+              - listitem [ref=e18]:
+                - list [ref=e19]:
+                  - listitem [ref=e20]:
+                    - generic [ref=e21]: Natural Options
+                  - listitem [ref=e22]:
+                    - link "Home" [ref=e23] [cursor=pointer]:
+                      - /url: /en/apps/ecommerce/dashboard
+                      - generic [ref=e26]: Home
+                  - listitem [ref=e27]:
+                    - generic [ref=e31] [cursor=pointer]: Products
+                    - list [ref=e36]:
+                      - listitem [ref=e37]:
+                        - link "Dashboard" [ref=e38] [cursor=pointer]:
+                          - /url: /en/apps/ecommerce/dashboard
+                          - generic [ref=e41]: Dashboard
+                      - listitem [ref=e42]:
+                        - generic [ref=e46] [cursor=pointer]: Products
+                      - listitem [ref=e50]:
+                        - generic [ref=e54] [cursor=pointer]: Orders
+                      - listitem [ref=e58]:
+                        - generic [ref=e62] [cursor=pointer]: Brands
+                      - listitem [ref=e66]:
+                        - generic [ref=e70] [cursor=pointer]: Promotions
+                  - listitem [ref=e74]:
+                    - generic [ref=e78] [cursor=pointer]: User Management
+                  - listitem [ref=e82]:
+                    - generic [ref=e86] [cursor=pointer]: Contacts
+                  - listitem [ref=e90]:
+                    - generic [ref=e94] [cursor=pointer]: Purchases
+                  - listitem [ref=e98]:
+                    - generic [ref=e102] [cursor=pointer]: Business Intelligence
+                  - listitem [ref=e106]:
+                    - generic [ref=e110] [cursor=pointer]: Sell
+                  - listitem [ref=e114]:
+                    - link "Expenses" [ref=e115] [cursor=pointer]:
+                      - /url: /en/apps/expenses
+                      - generic [ref=e118]: Expenses
+                  - listitem [ref=e119]:
+                    - generic [ref=e123] [cursor=pointer]: Payment Accounts
+                  - listitem [ref=e127]:
+                    - generic [ref=e131] [cursor=pointer]: Accounting
+                  - listitem [ref=e135]:
+                    - generic [ref=e139] [cursor=pointer]: Reports
+                  - listitem [ref=e143]:
+                    - link "Settings" [ref=e144] [cursor=pointer]:
+                      - /url: /en/pages/account-settings
+                      - generic [ref=e147]: Settings
+                  - listitem [ref=e148]:
+                    - link "WooCommerce" [ref=e149] [cursor=pointer]:
+                      - /url: "#"
+                      - generic [ref=e150]: WooCommerce
+    - generic [ref=e153]:
+      - banner:
+        - generic [ref=e155]:
+          - generic [ref=e157] [cursor=pointer]:
+            - button [ref=e158]
+            - generic [ref=e160]: Search ⌘K
+          - generic [ref=e163] [cursor=pointer]: U
+      - main [ref=e166]:
+        - generic [ref=e167]:
+          - paragraph [ref=e168]: This page provides an overview of your store’s sales, orders, and product performance.
+          - paragraph [ref=e169]: Use the controls and widgets here to spot changes quickly and investigate details.
+        - generic [ref=e172]:
+          - heading "Dashboard Error" [level=4] [ref=e174]
+          - paragraph [ref=e175]: Error in input stream
+          - button "Try Again" [ref=e176] [cursor=pointer]
+      - contentinfo [ref=e177]:
+        - paragraph [ref=e180]:
+          - text: © 2026, Made with ❤️ by
+          - link "M.A.D" [ref=e181] [cursor=pointer]:
+            - /url: https://massappealdesigns.co.ke
+  - alert [ref=e182]
+```
