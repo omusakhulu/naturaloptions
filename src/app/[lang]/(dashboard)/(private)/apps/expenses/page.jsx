@@ -16,7 +16,7 @@ export default function Page() {
   const [showColMenu, setShowColMenu] = useState(false)
   const [open, setOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState(-1)
-  const [form, setForm] = useState({ reference: '', category: '', amount: '', account: '', date: new Date().toISOString().slice(0,10) })
+  const [form, setForm] = useState({ reference: '', category: '', amount: '', account: '', date: '' })
   // Add Expense detailed fields
   const [location, setLocation] = useState('NATURAL OPTIONS (M.0001)')
   const [subCategory, setSubCategory] = useState('')
@@ -30,7 +30,7 @@ export default function Page() {
   const [recUnit, setRecUnit] = useState('Days')
   const [recRepetitions, setRecRepetitions] = useState('')
   const [payAmount, setPayAmount] = useState('')
-  const [paidOn, setPaidOn] = useState(() => new Date().toISOString().slice(0,16))
+  const [paidOn, setPaidOn] = useState('')
   const [payMethod, setPayMethod] = useState('Cash')
   const [payNote, setPayNote] = useState('')
 
@@ -104,11 +104,11 @@ export default function Page() {
     setRecUnit('Days')
     setRecRepetitions('')
     setPayAmount('')
-    setPaidOn(new Date().toISOString().slice(0,16))
+    setPaidOn('')
     setPayMethod('Cash')
     setPayNote('')
   }
-  const onNew = () => { setEditingIndex(-1); setForm({ reference: '', category: '', amount: '', account: '', date: new Date().toISOString().slice(0,10) }); resetDetailed(); setOpen(true) }
+  const onNew = () => { setEditingIndex(-1); setForm({ reference: '', category: '', amount: '', account: '', date: '' }); resetDetailed(); setOpen(true) }
   const onEdit = i => { setEditingIndex(i); const r = rows[i]; setForm({ reference: r.note || '', category: r.category || '', amount: String(r.amount || ''), account: r.accountId || '', date: (r.date || '').slice(0,10) }); resetDetailed(); setOpen(true) }
   const onDelete = async i => { const r = rows[i]; await fetch(`/api/expenses/${r.id}`, { method: 'DELETE' }); await fetchAll() }
 

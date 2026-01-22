@@ -1,0 +1,255 @@
+// MUI Imports
+import Grid from '@mui/material/Grid'
+import Typography from '@mui/material/Typography'
+
+// Component Imports
+import { mapWooCommerceProducts } from '@/utils/woocommerce'
+import cache from '@/utils/cache'
+import { saveProducts, getAllProducts } from '@/lib/db/products'
+import FetchAllButton from '@/components/products/FetchAllButton'
+import ProductListTable from '@views/apps/ecommerce/products/list/ProductListTable'
+import ProductCard from '@views/apps/ecommerce/products/list/ProductCard'
+import { getValidCategory } from '@/utils/categories'
+
+import { wooClient } from '@/lib/woocommerce'
+
+// Cache key for products
+const PRODUCTS_CACHE_KEY = 'woocommerce_products'
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+/**
+ * Fetches products from database and transforms them for display
+ * @returns {Promise<Array>} Array of transformed products from database
+ */
+async function getProductsFromDatabase() {
+  try {
+    const dbProducts = await getAllProducts({ take: 500 })
+
+    if (!Array.isArray(dbProducts) || dbProducts.length === 0) return []
+
+    // Transform database products for display
+    const transformedProducts = dbProducts.map(product => {
+      // Parse categories from JSON string
+
+      let parsedCategories = []
+
+      try {
+        parsedCategories =
+          typeof product.categories === 'string' ? JSON.parse(product.categories) : product.categories || []
+      } catch (e) {
+        console.warn('Failed to parse categories for product', product.wooId, e)
+        parsedCategories = []
+      }
+
+      // Ensure category is always a string
+      const categoryName = getValidCategory(parsedCategories)
+
+      return {
+        id: product.wooId,
+        productName: product.name,
+        productBrand: product.name,
+        image: product.image || 'https://via.placeholder.com/38',
+        category: categoryName, // This is a string from getValidCategory()
+        stock: product.stockStatus === 'instock',
+        sku: product.sku || '',
+        price: product.price ? `KSh ${parseFloat(product.price).toLocaleString('en-KE', { minimumFractionDigits: 2 })}` : 'KSh 0.00',
+        qty: product.stockQuantity || 0,
+        status: product.status === 'publish' ? 'Published' : 'Inactive',
+        rating: product.rating || 4.0,
+        images: product.images || [{ src: product.image || 'https://via.placeholder.com/38' }],
+        stock_status: product.stockStatus || 'instock',
+        stock_quantity: product.stockQuantity || 0,
+        categories: parsedCategories,
+        _cachedAt: Date.now()
+      }
+    })
+
+    return transformedProducts
+  } catch (error) {
+    console.error('Failed to fetch products from database:', error instanceof Error ? error.message : 'Unknown error')
+
+    return []
+  }
+}
+
+/**
+ * Fetches products from WooCommerce API or returns cached data
+ * @returns {Promise<Array>} Array of products
+ */
+async function getWooCommerceProducts() {
+  // Validate environment variables
+  const requiredEnvVars = ['WOO_STORE_URL', 'WOO_CONSUMER_KEY', 'WOO_CONSUMER_SECRET']
+  const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
+
+  if (missingVars.length > 0) {
+    console.error('Missing required environment variables:', missingVars.join(', '))
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`)
+  }
+
+  // Check cache first
+  const cachedProducts = cache.get(PRODUCTS_CACHE_KEY)
+
+  if (cachedProducts) return cachedProducts
+
+  try {
+    const productsRes = await wooClient.get('products', { status: 'publish', per_page: 20, orderby: 'modified', order: 'desc' })
+    const products = productsRes.data || []
+
+    if (!Array.isArray(products)) {
+      console.error('Invalid products data received:', products)
+      throw new Error('Invalid products data format received from API')
+    }
+
+    // Fetch categories first to create mapping
+    let categories = []
+
+    try {
+      categories = (await wooClient.get('products/categories', { per_page: 100, orderby: 'count', order: 'desc' })).data || []
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch categories:', error)
+    }
+
+    // Create category mapping (ID -> Name)
+    const categoryMap = new Map()
+
+    categories.forEach(category => {
+      categoryMap.set(category.id, {
+        id: category.id,
+        name: category.name,
+        slug: category.slug
+      })
+    })
+
+    // Map categories to products
+    const productsWithCategories = products.map(product => {
+      const mappedCategories =
+        product.categories?.map(catId => {
+          const category = categoryMap.get(catId)
+
+          return category || { id: catId, name: `Category ${catId}` }
+        }) || []
+
+      return {
+        ...product,
+        categories: mappedCategories
+      }
+    })
+
+    // Save products to database
+    try {
+      await saveProducts(productsWithCategories)
+    } catch (dbError) {
+      console.warn(
+        '⚠️ Failed to save products to database:',
+        dbError instanceof Error ? dbError.message : 'Unknown error'
+      )
+    }
+
+    // Transform WooCommerce products using our utility function
+    const transformedProducts = mapWooCommerceProducts(productsWithCategories).map(product => ({
+      ...product,
+      qty: product.stock_quantity || 0,
+
+      // Keep status from Woo mapping; normalize to Published/Inactive
+      status: product.status === 'Published' ? 'Published' : 'Inactive',
+      price: product.price ? `KSh ${parseFloat(product.price).toLocaleString('en-KE', { minimumFractionDigits: 2 })}` : 'KSh 0.00',
+      rating: product.rating || 4.0,
+      _cachedAt: Date.now()
+    }))
+
+    // Cache the transformed products
+    cache.set(PRODUCTS_CACHE_KEY, transformedProducts, CACHE_TTL)
+    return transformedProducts
+  } catch (error) {
+    console.error('Failed to fetch WooCommerce products:', {
+      name: error.name,
+      message: error.message,
+      status: error.response?.status,
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    })
+
+    // Return empty array instead of mock data
+    return []
+  }
+}
+
+// ** MODIFY: Your main page component **
+// Ensure it's an async function
+const ProductListPage = async ({ searchParams }) => {
+  // Await searchParams before accessing properties (Next.js 15 requirement)
+  const params = await searchParams
+  
+  // Get category filter from query params
+  const categoryId = params?.category ? parseInt(params.category) : null
+
+  // Try to fetch products from database first
+  let productsData = await getProductsFromDatabase()
+
+  // If no products in database, fetch from WooCommerce API
+  if (!productsData || productsData.length === 0) {
+    productsData = await getWooCommerceProducts()
+  }
+
+  // Filter by category if specified
+  if (categoryId && Array.isArray(productsData)) {
+    productsData = productsData.filter(product => {
+      if (Array.isArray(product.categories)) {
+        // Check if any category matches the ID
+        const hasCategory = product.categories.some(cat => {
+          // Handle both number and string IDs
+          const catId = typeof cat.id === 'string' ? parseInt(cat.id) : cat.id
+          return catId === categoryId
+        })
+        
+        return hasCategory
+      }
+      return false
+    })
+  }
+
+  // ** Keep original structure, but pass the new data **
+
+  const totalProducts = Array.isArray(productsData) ? productsData.length : 0
+
+  const publishedCount = Array.isArray(productsData)
+    ? productsData.filter(p => String(p.status || '').toLowerCase() === 'published').length
+    : 0
+
+  const inStockCount = Array.isArray(productsData)
+    ? productsData.filter(p => p.stock === true || String(p.stock_status).toLowerCase() === 'instock').length
+    : 0
+
+  const outOfStockCount = totalProducts > 0 ? totalProducts - inStockCount : 0
+
+  const metrics = { totalProducts, publishedCount, inStockCount, outOfStockCount }
+
+  return (
+    <Grid size={12}>
+      <Grid item xs={12} sx={{ mb: 5 }}>
+        <ProductCard style='margin-bottom:30 px !Important;' metrics={metrics} />
+      </Grid>
+      <Grid item xs={12} sx={{ mb: 5 }}>
+        <FetchAllButton />
+      </Grid>
+      <Grid item xs={12}>
+        {Array.isArray(productsData) && productsData.length > 0 ? (
+          <ProductListTable productData={productsData} />
+        ) : (
+          <div className='flex items-center justify-center p-8'>
+            <Typography variant='h6'>
+              {categoryId ? 'No products found in this category.' : 'No products found or failed to load products.'}
+            </Typography>
+          </div>
+        )}
+      </Grid>
+    </Grid>
+  )
+}
+
+// ** UPDATE: Ensure this is the default export **
+
+export default ProductListPage
+
+// ** REMOVE or COMMENT OUT: Any conflicting duplicate component definitions **
+// const eCommerceProductsList = async () => { ... }
+// export default eCommerceProductsList

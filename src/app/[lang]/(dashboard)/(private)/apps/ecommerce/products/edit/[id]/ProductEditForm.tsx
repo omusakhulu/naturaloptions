@@ -669,12 +669,22 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
         }}
       >
         <ProductAddHeader isEdit={true} product={initialProduct} />
-        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 2, alignItems: 'center' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 1.5 }, 
+          flexWrap: 'wrap', 
+          mt: 2, 
+          alignItems: 'center',
+          '& .MuiButton-root': {
+            minWidth: { xs: 'auto', sm: 120 }
+          }
+        }}>
           <Button
             variant='outlined'
             color='secondary'
             onClick={() => router.push(`/${lang}/apps/ecommerce/products/list`)}
             disabled={isLoading}
+            size='medium'
           >
             Discard
           </Button>
@@ -686,6 +696,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
             type='submit'
             form='product-edit-form'
             disabled={isLoading}
+            size='medium'
           >
             Save Draft
           </Button>
@@ -698,6 +709,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
             form='product-edit-form'
             disabled={isLoading}
             startIcon={isLoading ? <CircularProgress size={20} /> : <SaveIcon />}
+            size='medium'
           >
             {isLoading ? 'Saving...' : 'Update Product'}
           </Button>
@@ -709,6 +721,7 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
             type='submit'
             form='product-edit-form'
             disabled={isLoading}
+            size='medium'
           >
             Publish Product
           </Button>

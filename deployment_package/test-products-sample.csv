@@ -1,0 +1,4 @@
+product_name,brand,unit,category,sub_category,sku,barcode_type,manage_stock,alert_quantity,expiration_period_days,selling_price,tax_percent,product_type,variation_attributes,opening_stock,location,image_url
+Organic Honey 500g,Natural Options,pcs,Food,Honey,HONEY-500G,EAN13,Yes,10,365,850,8,simple,,50,Main Store,
+Coconut Oil 250ml,Natural Options,pcs,Food,Oils,COCO-OIL-250,EAN13,Yes,15,730,450,8,simple,,75,Main Store,
+Herbal Tea Blend,Natural Options,pcs,Beverages,Tea,TEA-HERBAL-001,EAN13,Yes,20,180,320,8,simple,,100,Main Store,

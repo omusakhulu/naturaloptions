@@ -29,7 +29,8 @@ const OrderLineItems = ({ lineItems = [], onUpdate }) => {
   const ensureItemId = (item, idx = 0) => {
     const candidate = item?.id || item?.item_id || item?.product_id || item?.variation_id
     if (candidate) return String(candidate)
-    return `${item?.name || 'item'}-${item?.price || item?.total || 0}-${idx}-${Math.random().toString(36).slice(2, 8)}`
+    // Use deterministic ID based on item properties and index
+    return `${item?.name || 'item'}-${item?.price || item?.total || 0}-${idx}`
   }
 
   const [items, setItems] = useState(() =>

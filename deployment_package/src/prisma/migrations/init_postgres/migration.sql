@@ -1,0 +1,1 @@
+-- placeholder for init_postgres already applied in DB

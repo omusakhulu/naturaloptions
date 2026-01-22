@@ -113,3 +113,9 @@ axios-test.js
 network-test.js
 ipv4-test.js
 undici-test.js
+deployment_package/deployment.tar.gz
+deployment-full.tar.gz
+deployment_package/next-build.tar.gz
+deployment.tar.gz
+*.tar.gz
+deployment_package/*.tar.gz

@@ -21,27 +21,19 @@ import tableStyles from '@core/styles/table.module.css'
 // Vars
 const tableData = [
   {
-    app: true,
     email: true,
-    browser: true,
     type: 'New for you'
   },
   {
-    app: true,
     email: true,
-    browser: true,
     type: 'Account activity'
   },
   {
-    app: false,
     email: true,
-    browser: true,
     type: 'A new browser used to sign in'
   },
   {
-    app: false,
     email: true,
-    browser: false,
     type: 'A new device is linked'
   }
 ]
@@ -65,8 +57,6 @@ const Notifications = () => {
               <tr>
                 <th>Type</th>
                 <th>Email</th>
-                <th>Browser</th>
-                <th>App</th>
               </tr>
             </thead>
             <tbody className='border-be'>
@@ -77,12 +67,6 @@ const Notifications = () => {
                   </td>
                   <td>
                     <Checkbox defaultChecked={data.email} />
-                  </td>
-                  <td>
-                    <Checkbox defaultChecked={data.browser} />
-                  </td>
-                  <td>
-                    <Checkbox defaultChecked={data.app} />
                   </td>
                 </tr>
               ))}

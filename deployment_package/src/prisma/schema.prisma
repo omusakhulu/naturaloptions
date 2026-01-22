@@ -1,0 +1,1895 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// SIMPLE STOCK TRANSFER & ADJUSTMENT (DB-backed UI)
+// ==========================================
+
+model StockTransferRecord {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  from      String?
+  to        String?
+  status    String   @default("Draft")
+  date      DateTime
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([status])
+}
+
+model StockAdjustmentRecord {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  location  String?
+  reason    String?
+  items     String   @default("[]") // JSON array of items adjusted
+  date      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id             String        @id @default(cuid())
+  name           String?
+  email          String?       @unique
+  emailVerified  DateTime?
+  password       String? // Hashed password for credential login
+  image          String?
+  role           UserRole      @default(USER)
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  accounts       Account[]
+  sessions       Session[]
+  packingSlips   PackingSlip[]
+  activityLogs   ActivityLog[] // Activities performed by this user
+  userActivities ActivityLog[] @relation("UserActivities") // Activities related to this user
+
+  // POS & Accounting Relations
+  posSales          POSSale[]          @relation("POSSales")
+  parkedSales       ParkedSale[]       @relation("ParkedSales")
+  cashDrawers       CashDrawer[]       @relation("CashDrawers")
+  journalEntries    JournalEntry[]     @relation("CreatedJournalEntries")
+  refundsProcessed  Refund[]           @relation("ProcessedRefunds")
+  employeeLocations EmployeeLocation[] @relation("EmployeeLocations")
+  timeClockEntries  TimeClockEntry[]   @relation("TimeClockEntries")
+  posShifts         POSShift[]         @relation("POSShifts")
+  notifications     Notification[]
+}
+
+enum UserRole {
+  SUPER_ADMIN // Full system access
+  ADMIN // Admin access to most features
+  MANAGER // Can manage projects, orders, inventory
+  ACCOUNTANT // Can access accounting features
+  CASHIER // Can operate POS terminals
+  SALES // Can create quotes, view reports
+  USER // Basic access
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Product {
+  id               String  @id @default(cuid())
+  wooId            Int     @unique
+  name             String
+  slug             String  @unique
+  description      String?
+  shortDescription String?
+  price            String?
+  regularPrice     String?
+  salePrice        String?
+  stockStatus      String  @default("instock")
+  stockQuantity    Int     @default(0) // Legacy field - synced from WooCommerce
+
+  // Dual Stock System
+  actualStock   Int       @default(0) // Physical inventory (POS/warehouse)
+  websiteStock  Int       @default(0) // What's displayed on WooCommerce
+  reservedStock Int       @default(0) // Stock reserved for pending orders
+  lowStockAlert Int       @default(10) // Alert threshold
+  autoSyncStock Boolean   @default(false) // Auto-sync actual to website
+  lastStockSync DateTime? // Last time stock was synced to WooCommerce
+
+  sku           String?
+  image         String?
+  images        String?  @default("[]")
+  categories    String?  @default("[]")
+  tags          String?  @default("[]")
+  attributes    String?  @default("[]")
+  shippingClass String?
+  rating        Float    @default(0)
+  ratingCount   Int      @default(0)
+  status        String   @default("publish")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  syncedAt      DateTime @default(now())
+
+  // POS Relations
+  posSaleItems       POSSaleItem[]          @relation("POSSaleItems")
+  inventoryLocations InventoryLocation[]    @relation("InventoryLocations")
+  stockMovements     ProductStockMovement[] @relation("ProductStockMovements")
+
+  @@index([wooId])
+  @@index([status])
+  @@index([syncedAt])
+  @@index([actualStock])
+  @@index([websiteStock])
+}
+
+model Coupon {
+  id                String    @id @default(cuid())
+  wooId             Int       @unique
+  code              String    @unique
+  amount            String
+  dateCreated       DateTime
+  dateModified      DateTime
+  discountType      String
+  description       String?
+  expiryDate        DateTime?
+  usageLimit        Int?
+  usageCount        Int       @default(0)
+  individualUse     Boolean   @default(false)
+  productIds        String?   @default("[]") // JSON array of allowed product IDs
+  excludeProductIds String?   @default("[]")
+  syncedAt          DateTime  @default(now())
+
+  @@index([wooId])
+  @@index([code])
+}
+
+model TaxRate {
+  id       String   @id @default(cuid())
+  wooId    Int      @unique
+  country  String?
+  state    String?
+  postcode String?
+  city     String?
+  rate     String
+  name     String
+  priority Int      @default(0)
+  compound Boolean  @default(false)
+  shipping Boolean  @default(true)
+  class    String   @default("standard")
+  syncedAt DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model ProductAttribute {
+  id          String   @id @default(cuid())
+  wooId       Int      @unique
+  name        String
+  slug        String   @unique
+  type        String   @default("select")
+  orderBy     String   @default("menu_order")
+  hasArchives Boolean  @default(false)
+  syncedAt    DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model ProductTag {
+  id          String   @id @default(cuid())
+  wooId       Int      @unique
+  name        String
+  slug        String   @unique
+  description String?
+  count       Int      @default(0)
+  syncedAt    DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model ShippingClass {
+  id          String   @id @default(cuid())
+  wooId       Int      @unique
+  name        String
+  slug        String   @unique
+  description String?
+  count       Int      @default(0)
+  syncedAt    DateTime @default(now())
+
+  @@index([wooId])
+}
+
+model OrderNote {
+  id           String   @id @default(cuid())
+  wooId        Int      @unique
+  orderId      Int
+  author       String   @default("system")
+  dateCreated  DateTime
+  note         String
+  customerNote Boolean  @default(false)
+  syncedAt     DateTime @default(now())
+
+  @@index([wooId])
+  @@index([orderId])
+}
+
+model StoreSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String // JSON stringified value
+  group String @default("general")
+
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id                 String    @id @default(cuid())
+  wooId              Int       @unique
+  orderNumber        String    @unique
+  customerId         Int?
+  status             String
+  total              String?
+  subtotal           String?
+  shippingTotal      String?
+  taxTotal           String?
+  discountTotal      String?
+  paymentMethod      String?
+  paymentMethodTitle String?
+  customerNote       String?
+  dateCreated        DateTime?
+  datePaid           DateTime?
+  dateCompleted      DateTime?
+  shippingAddress    String?   @default("{}")
+  billingAddress     String?   @default("{}")
+  lineItems          String?   @default("[]")
+  customer           String?   @default("{}")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  syncedAt           DateTime  @default(now())
+
+  deliveries  DeliveryAssignment[]
+  SalesReturn SalesReturn[]
+
+  @@index([wooId])
+  @@index([customerId])
+  @@index([status])
+  @@index([syncedAt])
+  @@index([dateCreated])
+}
+
+model Customer {
+  id              String   @id @default(cuid())
+  wooId           Int      @unique
+  email           String   @unique
+  firstName       String?
+  lastName        String?
+  username        String?
+  role            String?
+  avatarUrl       String?
+  billingAddress  String?  @default("{}")
+  shippingAddress String?  @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  syncedAt        DateTime @default(now())
+
+  @@index([wooId])
+  @@index([email])
+  @@index([syncedAt])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  wooOrderId     Int           @unique
+  invoiceNumber  String        @unique
+  customerId     Int?
+  status         String        @default("draft")
+  // Mirrors Woo order.status (e.g., pending, processing, completed)
+  orderStatus    String?
+  // Independent invoice lifecycle
+  invoiceStatus  InvoiceStatus @default(draft)
+  amount         String?
+  date           DateTime      @default(now())
+  dueDate        DateTime?
+  customerName   String?
+  customerEmail  String?
+  billingAddress String        @default("{}")
+  lineItems      String        @default("[]")
+  deletedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([wooOrderId])
+  @@index([customerId])
+  @@index([status])
+  @@index([orderStatus])
+  @@index([invoiceStatus])
+  @@index([date])
+  @@index([deletedAt])
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  partially_paid
+  paid
+}
+
+model PackingSlip {
+  id                String            @id @default(cuid())
+  wooOrderId        Int               @unique
+  packingSlipNumber String            @unique
+  status            PackingSlipStatus @default(awaiting_collection)
+  boothNumber       String?
+  assignedUserId    String?
+  assignedUser      User?             @relation(fields: [assignedUserId], references: [id])
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([wooOrderId])
+  @@index([status])
+  @@index([assignedUserId])
+  @@index([createdAt])
+}
+
+enum PackingSlipStatus {
+  awaiting_collection
+  en_route
+  delivered
+  collected
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  orderId     Int?          @unique
+  status      ProjectStatus @default(draft)
+  crewDetails CrewDetail[]
+  transport   Transport[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ProjectStatus {
+  draft
+  submitted
+  approved
+  in_progress
+  completed
+  cancelled
+}
+
+model CrewDetail {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workType      WorkType
+  numberOfCrew  Int
+  shiftsNeeded  Int
+  fare          Float
+  accommodation String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([workType])
+}
+
+enum WorkType {
+  loading_offloading
+  buttoning_up_during_event
+  standby
+  build
+  takedown_return
+  roof_floor_walls
+  carpeting_general_cleaning
+}
+
+model Transport {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vehicleType   String
+  numberOfTrips Int
+  pricePerTrip  Float
+  contingency   Float?   @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+model EventTentQuote {
+  id          String @id @default(cuid())
+  quoteNumber String @unique
+
+  // Contact Information
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+
+  // Event Details
+  eventType      String
+  eventStartDate DateTime?
+  eventEndDate   DateTime?
+  eventVenue     String?
+  numberOfGuests Int
+  duration       Int       @default(1)
+
+  // Structure Details
+  tentType         String
+  structureSummary String?
+
+  // Pricing
+  lineItems String @default("[]") // JSON array of line items
+  subtotal  Float
+  vat       Float
+  total     Float
+
+  // Status
+  status QuoteStatus @default(draft)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quoteNumber])
+  @@index([status])
+  @@index([contactEmail])
+  @@index([createdAt])
+}
+
+enum QuoteStatus {
+  draft
+  sent
+  accepted
+  rejected
+  expired
+}
+
+// Warehousing Models
+model Warehouse {
+  id          String          @id @default(cuid())
+  name        String
+  code        String          @unique
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+  phone       String?
+  email       String?
+  managerName String?
+  capacity    Float? // Total capacity in cubic meters
+  status      WarehouseStatus @default(active)
+
+  // Optional mapping to POS Location (store/branch)
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+
+  // Relations
+  locations WarehouseLocation[]
+  inventory InventoryItem[]
+  movements StockMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([status])
+  @@index([locationId])
+}
+
+// ==========================================
+// KPI SUPPORT MODELS (Expenses, Accounts, Returns)
+// ==========================================
+
+model PaymentAccount {
+  id      String  @id @default(cuid())
+  name    String
+  type    String
+  balance Decimal @default(0) @db.Decimal(15, 2)
+  status  String  @default("Active")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  expenses Expense[]
+
+  @@index([name])
+  @@index([type])
+}
+
+model Expense {
+  id       String   @id @default(cuid())
+  amount   Decimal  @db.Decimal(15, 2)
+  category String
+  date     DateTime
+  note     String?
+
+  accountId String
+  account   PaymentAccount @relation(fields: [accountId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([category])
+  @@index([accountId])
+}
+
+model SalesReturn {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  amount Decimal  @db.Decimal(15, 2)
+  date   DateTime
+  reason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([date])
+}
+
+model PurchaseReturn {
+  id       String @id @default(cuid())
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+  amount Decimal  @db.Decimal(15, 2)
+  date   DateTime
+  reason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([vendorId])
+  @@index([date])
+}
+
+model WarehouseLocation {
+  id          String    @id @default(cuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  zone  String // e.g., "A", "B", "C"
+  aisle String? // e.g., "1", "2", "3"
+  rack  String? // e.g., "R1", "R2"
+  shelf String? // e.g., "S1", "S2"
+  bin   String? // e.g., "B1", "B2"
+
+  locationCode String @unique // e.g., "A-1-R1-S1-B1"
+  capacity     Float? // Capacity in cubic meters
+  occupied     Float? @default(0)
+
+  // Relations
+  inventory InventoryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([warehouseId])
+  @@index([locationCode])
+}
+
+model InventoryItem {
+  id          String    @id @default(cuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  locationId String?
+  location   WarehouseLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  sku         String
+  productName String
+  description String?
+  category    String?
+
+  quantity     Int     @default(0)
+  reorderLevel Int?    @default(10)
+  unit         String? @default("pcs")
+
+  costPrice    Float?
+  sellingPrice Float?
+
+  // Batch/Lot Tracking
+  batchNumber String? // Batch identifier for grouping inventory
+  lotNumber   String? // Lot number for traceability
+  expiryDate  DateTime? // Expiration date for perishable items
+
+  // Relations
+  movements StockMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([warehouseId, sku, locationId])
+  @@index([batchNumber])
+  @@index([lotNumber])
+  @@index([expiryDate])
+  @@index([warehouseId])
+  @@index([locationId])
+  @@index([sku])
+}
+
+model StockMovement {
+  id          String    @id @default(cuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  inventoryId String
+  inventory   InventoryItem @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  type     MovementType
+  quantity Int
+
+  fromLocation String?
+  toLocation   String?
+
+  referenceNumber String?
+  notes           String?
+  performedBy     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([warehouseId])
+  @@index([inventoryId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum WarehouseStatus {
+  active
+  inactive
+  maintenance
+}
+
+enum MovementType {
+  inbound
+  outbound
+  transfer
+  adjustment
+  return
+}
+
+model BOQ {
+  id        Int     @id @default(autoincrement())
+  boqNumber String  @unique
+  quoteId   String?
+  projectId String? // Link to project if generated from project (Project.id is cuid)
+
+  projectName     String
+  projectLocation String?
+
+  clientName  String
+  clientEmail String?
+  clientPhone String?
+
+  eventDate DateTime?
+  duration  Int       @default(1)
+
+  sections String // JSON array of BOQ sections with items (includes cost & rate)
+
+  subtotal String // Client-facing subtotal (selling price)
+  vat      String
+  total    String // Client-facing total
+
+  internalCost String? // Total internal cost (for profit calculation)
+  profitAmount String? // Calculated profit (total - internalCost)
+  profitMargin String? // Profit percentage ((profit/total) * 100)
+
+  discount     String? // Discount amount or percentage
+  paymentTerms String? // e.g., "Net 30", "50% upfront"
+  validityDays Int     @default(30)
+
+  status  String  @default("draft") // draft, approved, sent, completed
+  remarks String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quoteId])
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ProjectCostReport {
+  id           Int    @id @default(autoincrement())
+  reportNumber String @unique
+  projectId    String // Link to Project (Project.id is cuid)
+  projectName  String
+
+  // Estimated vs Actual
+  estimatedCost   String
+  actualCost      String
+  variance        String // Actual - Estimated
+  variancePercent String // ((Actual - Estimated) / Estimated) * 100
+
+  // Revenue & Profit
+  revenue      String // Total project revenue
+  profit       String // Revenue - Actual Cost
+  profitMargin String // (Profit / Revenue) * 100
+
+  // Cost Breakdown (JSON)
+  laborCosts     String? // JSON: { estimated, actual, variance }
+  materialCosts  String? // JSON: { estimated, actual, variance }
+  equipmentCosts String? // JSON: { estimated, actual, variance }
+  transportCosts String? // JSON: { estimated, actual, variance }
+  overheadCosts  String? // JSON: { estimated, actual, variance }
+  otherCosts     String? // JSON: { estimated, actual, variance }
+
+  // Metadata
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String    @default("draft") // draft, in_progress, completed
+  remarks     String?
+  generatedBy String? // User who generated the report
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id            String @id @default(cuid())
+  performedById String // User who performed the action
+  performedBy   User   @relation(fields: [performedById], references: [id], onDelete: Cascade)
+
+  relatedUserId String? // User this activity is about (optional)
+  relatedUser   User?   @relation("UserActivities", fields: [relatedUserId], references: [id], onDelete: Cascade)
+
+  entityType  EntityType // Type of entity (Invoice, Order, etc.)
+  entityId    String // ID of the related entity
+  action      String // Action performed (created, updated, deleted, etc.)
+  description String // Human-readable description
+
+  icon  String? // Tabler icon name
+  color String? // Color for the timeline (primary, success, warning, error, info)
+
+  metadata String? @default("{}") // JSON metadata for additional context
+
+  createdAt DateTime @default(now())
+
+  @@index([performedById])
+  @@index([relatedUserId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+enum EntityType {
+  USER
+  INVOICE
+  ORDER
+  PRODUCT
+  CUSTOMER
+  PACKING_SLIP
+  WAREHOUSE
+  INVENTORY
+  PROJECT
+  BOQ
+  QUOTE
+}
+
+// ============================================
+// LOGISTICS & FLEET MANAGEMENT
+// ============================================
+
+model Driver {
+  id            String       @id @default(cuid())
+  userId        String?      @unique // Link to User model if driver is also a system user
+  name          String
+  email         String?      @unique
+  phone         String?
+  licenseNumber String?      @unique
+  licenseExpiry DateTime?
+  status        DriverStatus @default(AVAILABLE)
+  vehicleId     String? // Currently assigned vehicle
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  vehicle    Vehicle?             @relation(fields: [vehicleId], references: [id])
+  deliveries DeliveryAssignment[]
+
+  @@index([status])
+  @@index([vehicleId])
+}
+
+model Vehicle {
+  id              String        @id @default(cuid())
+  registrationNo  String        @unique
+  make            String // e.g., Toyota, Isuzu
+  model           String // e.g., Hilux, Forward
+  year            Int?
+  type            VehicleType   @default(TRUCK)
+  capacity        Float? // Weight capacity in kg or volume in m³
+  status          VehicleStatus @default(AVAILABLE)
+  mileage         Float?        @default(0)
+  lastService     DateTime?
+  nextService     DateTime?
+  fuelType        String? // Diesel, Petrol, Electric
+  engineCapacity  Float? // Engine size in liters (e.g., 2.5, 3.0)
+  fuelConsumption Float? // Fuel consumption in km/l
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  drivers    Driver[]
+  deliveries DeliveryAssignment[]
+
+  @@index([status])
+  @@index([type])
+}
+
+model DeliveryAssignment {
+  id            String           @id @default(cuid())
+  orderId       String
+  driverId      String
+  vehicleId     String
+  scheduledDate DateTime // Date scheduled for delivery
+  scheduledTime String? // Time slot (e.g., "09:00-12:00")
+  status        DeliveryStatus   @default(SCHEDULED)
+  priority      DeliveryPriority @default(NORMAL)
+  route         String? // Route details or map link
+  notes         String? // Special instructions
+  startTime     DateTime? // Actual start time
+  completedTime DateTime? // Actual completion time
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver  Driver  @relation(fields: [driverId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([orderId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_DELIVERY
+  OFF_DUTY
+  ON_LEAVE
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum VehicleType {
+  TRUCK
+  VAN
+  PICKUP
+  MOTORCYCLE
+  OTHER
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DELAYED
+}
+
+enum DeliveryPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ==========================================
+// POS SYSTEM MODELS
+// ==========================================
+
+model POSTerminal {
+  id         String    @id @default(cuid())
+  name       String // "Main Register", "Mobile POS 1"
+  locationId String
+  location   Location  @relation(fields: [locationId], references: [id])
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  posSales    POSSale[]
+  parkedSales ParkedSale[]
+  cashDrawers CashDrawer[]
+  posShifts   POSShift[]
+
+  @@index([locationId])
+}
+
+model ParkedSale {
+  id         String       @id @default(cuid())
+  saleNumber String       @unique
+  terminalId String
+  terminal   POSTerminal  @relation(fields: [terminalId], references: [id])
+  employeeId String
+  employee   User         @relation("ParkedSales", fields: [employeeId], references: [id])
+  customerId String?
+  customer   POSCustomer? @relation(fields: [customerId], references: [id])
+
+  // Sale Details
+  subtotal       Decimal @db.Decimal(10, 2)
+  taxAmount      Decimal @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount    Decimal @db.Decimal(10, 2)
+
+  cartItems String  @default("[]") // JSON stringified cart items
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([terminalId])
+  @@index([employeeId])
+  @@index([createdAt])
+}
+
+model POSSale {
+  id         String       @id @default(cuid())
+  saleNumber String       @unique
+  terminalId String
+  terminal   POSTerminal  @relation(fields: [terminalId], references: [id])
+  employeeId String
+  employee   User         @relation("POSSales", fields: [employeeId], references: [id])
+  customerId String?
+  customer   POSCustomer? @relation(fields: [customerId], references: [id])
+
+  // Sale Details
+  subtotal       Decimal @db.Decimal(10, 2)
+  taxAmount      Decimal @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount    Decimal @db.Decimal(10, 2)
+
+  // Payment Info
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+
+  status         SaleStatus @default(COMPLETED)
+  receiptPrinted Boolean    @default(false)
+  notes          String?
+
+  saleDate  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  saleItems POSSaleItem[]
+  payments  Payment[]
+  refunds   Refund[]
+
+  @@index([terminalId])
+  @@index([employeeId])
+  @@index([saleDate])
+}
+
+model POSSaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  sale      POSSale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation("POSSaleItems", fields: [productId], references: [id])
+
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  discount  Decimal @default(0) @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model CashDrawer {
+  id         String      @id @default(cuid())
+  terminalId String
+  terminal   POSTerminal @relation(fields: [terminalId], references: [id])
+  employeeId String
+  employee   User        @relation("CashDrawers", fields: [employeeId], references: [id])
+
+  openingAmount  Decimal  @db.Decimal(10, 2)
+  closingAmount  Decimal? @db.Decimal(10, 2)
+  expectedAmount Decimal? @db.Decimal(10, 2)
+  discrepancy    Decimal? @db.Decimal(10, 2)
+
+  openedAt DateTime     @default(now())
+  closedAt DateTime?
+  status   DrawerStatus @default(OPEN)
+
+  notes String?
+
+  @@index([terminalId])
+  @@index([employeeId])
+  @@index([openedAt])
+}
+
+// ==========================================
+// ACCOUNTING MODELS
+// ==========================================
+
+model ChartOfAccounts {
+  id              String            @id @default(cuid())
+  accountCode     String            @unique
+  accountName     String
+  accountType     AccountType
+  accountCategory String? // Flexible category label, e.g. 'COGS'
+  parentId        String?
+  parent          ChartOfAccounts?  @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children        ChartOfAccounts[] @relation("AccountHierarchy")
+
+  isActive    Boolean @default(true)
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  journalEntries  JournalEntry[]
+  JournalLineItem JournalLineItem[]
+
+  @@index([accountType])
+  @@index([accountCategory])
+  @@index([parentId])
+}
+
+model JournalEntry {
+  id          String   @id @default(cuid())
+  entryNumber String   @unique
+  reference   String? // Invoice #, Receipt #, etc.
+  description String
+  entryDate   DateTime
+
+  totalDebit  Decimal @db.Decimal(15, 2)
+  totalCredit Decimal @db.Decimal(15, 2)
+
+  status    JournalStatus @default(POSTED)
+  createdBy String
+  creator   User          @relation("CreatedJournalEntries", fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  lineItems         JournalLineItem[]
+  ChartOfAccounts   ChartOfAccounts?  @relation(fields: [chartOfAccountsId], references: [id])
+  chartOfAccountsId String?
+
+  @@index([entryDate])
+  @@index([createdBy])
+  @@index([status])
+}
+
+model JournalLineItem {
+  id        String          @id @default(cuid())
+  journalId String
+  journal   JournalEntry    @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  accountId String
+  account   ChartOfAccounts @relation(fields: [accountId], references: [id])
+
+  description  String?
+  debitAmount  Decimal @default(0) @db.Decimal(15, 2)
+  creditAmount Decimal @default(0) @db.Decimal(15, 2)
+
+  @@index([journalId])
+  @@index([accountId])
+}
+
+model PaymentTerm {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  days        Int // Net 30, Net 15, etc.
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  vendors          Vendor[]
+  customerProfiles POSCustomer[]
+}
+
+model Vendor {
+  id      String  @id @default(cuid())
+  name    String
+  email   String? @unique
+  phone   String?
+  address String?
+
+  paymentTermId String?
+  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id])
+
+  isActive Boolean @default(true)
+
+  // Extra profile fields captured from supplier form (JSON string)
+  profile         String? @default("{}")
+  shippingAddress String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bills           Bill[]
+  purchaseReturns PurchaseReturn[]
+  purchaseOrders  PurchaseOrder[]
+
+  @@index([email])
+}
+
+model Bill {
+  id         String @id @default(cuid())
+  billNumber String @unique
+  vendorId   String
+  vendor     Vendor @relation(fields: [vendorId], references: [id])
+
+  billDate   DateTime
+  dueDate    DateTime?
+  amount     Decimal   @db.Decimal(15, 2)
+  paidAmount Decimal   @default(0) @db.Decimal(15, 2)
+
+  status    BillStatus @default(UNPAID)
+  reference String? // Vendor's invoice number
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([billDate])
+  @@index([dueDate])
+  @@index([status])
+}
+
+// ==========================================
+// ENHANCED CUSTOMER MODEL FOR POS
+// ==========================================
+
+model POSCustomer {
+  id             String  @id @default(cuid())
+  customerNumber String  @unique
+  firstName      String?
+  lastName       String?
+  email          String? @unique
+  phone          String?
+
+  // Address
+  address String?
+  city    String?
+  state   String?
+  zipCode String?
+  country String?
+
+  // Business Info
+  dateOfBirth   DateTime?
+  loyaltyPoints Int       @default(0)
+  totalSpent    Decimal   @default(0) @db.Decimal(15, 2)
+
+  paymentTermId String?
+  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id])
+
+  isActive Boolean @default(true)
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  posSales    POSSale[]
+  parkedSales ParkedSale[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([customerNumber])
+}
+
+// ==========================================
+// LOCATION AND INVENTORY MODELS
+// ==========================================
+
+model Location {
+  id      String  @id @default(cuid())
+  name    String
+  address String?
+  city    String?
+  state   String?
+  zipCode String?
+  phone   String?
+
+  isActive       Boolean @default(true)
+  isMainLocation Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  posTerminals   POSTerminal[]
+  inventoryItems InventoryLocation[]
+  employees      EmployeeLocation[]
+  warehouses     Warehouse[] // NEW: opposite side of Warehouse.location
+
+  @@index([isActive])
+}
+
+model InventoryLocation {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation("InventoryLocations", fields: [productId], references: [id])
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+
+  quantity    Int  @default(0) // Actual physical stock at this location
+  minQuantity Int  @default(0)
+  maxQuantity Int?
+
+  lastUpdated DateTime @default(now())
+
+  @@unique([productId, locationId])
+  @@index([productId])
+  @@index([locationId])
+}
+
+// Product Stock Movement Tracking (for dual stock system)
+model ProductStockMovement {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation("ProductStockMovements", fields: [productId], references: [id])
+
+  type     ProductStockMovementType // SALE, PURCHASE, ADJUSTMENT, TRANSFER, SYNC, RETURN
+  quantity Int // Positive for increase, negative for decrease
+
+  // Stock levels before and after
+  beforeActual  Int
+  afterActual   Int
+  beforeWebsite Int?
+  afterWebsite  Int?
+
+  // Context
+  reference  String? // Order ID, Transfer ID, etc.
+  locationId String?
+  reason     String?
+  notes      String?
+
+  // User tracking
+  userId   String?
+  userName String?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([reference])
+}
+
+// ==========================================
+// EMPLOYEE MANAGEMENT
+// ==========================================
+
+model EmployeeLocation {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   User     @relation("EmployeeLocations", fields: [employeeId], references: [id])
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+
+  isPrimary Boolean   @default(false)
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+
+  @@unique([employeeId, locationId])
+  @@index([employeeId])
+  @@index([locationId])
+}
+
+model TimeClockEntry {
+  id         String @id @default(cuid())
+  employeeId String
+  employee   User   @relation("TimeClockEntries", fields: [employeeId], references: [id])
+
+  clockIn      DateTime
+  clockOut     DateTime?
+  breakMinutes Int       @default(0)
+  hoursWorked  Decimal?  @db.Decimal(5, 2)
+
+  status     TimeClockStatus @default(CLOCKED_IN)
+  locationId String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([clockIn])
+  @@index([status])
+}
+
+// ==========================================
+// PAYMENT PROCESSING
+// ==========================================
+
+model Payment {
+  id     String   @id @default(cuid())
+  saleId String?
+  sale   POSSale? @relation(fields: [saleId], references: [id])
+
+  amount        Decimal       @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  paymentDate   DateTime      @default(now())
+
+  // Card Payment Details
+  cardLast4 String?
+  cardType  String? // Visa, Mastercard, etc.
+  cardToken String? // For recurring payments
+
+  // Check Details
+  checkNumber String?
+
+  // Cash Details
+  cashTendered Decimal? @db.Decimal(10, 2)
+  changeGiven  Decimal? @db.Decimal(10, 2)
+
+  status    PaymentStatus @default(COMPLETED)
+  reference String? // External payment reference
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([paymentDate])
+  @@index([paymentMethod])
+}
+
+model Refund {
+  id     String  @id @default(cuid())
+  saleId String
+  sale   POSSale @relation(fields: [saleId], references: [id])
+
+  amount       Decimal       @db.Decimal(10, 2)
+  reason       String
+  refundMethod PaymentMethod
+
+  processedBy String
+  processor   User   @relation("ProcessedRefunds", fields: [processedBy], references: [id])
+
+  refundDate DateTime     @default(now())
+  status     RefundStatus @default(COMPLETED)
+
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([refundDate])
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  CHECK
+  GIFT_CARD
+  STORE_CREDIT
+  DIGITAL_WALLET
+}
+
+model ProductReview {
+  id           String   @id @default(cuid())
+  wooId        Int      @unique
+  productId    Int
+  productName  String
+  productImage String?
+  reviewer     String
+  email        String
+  avatar       String?
+  rating       Int
+  status       String   @default("approved") // approved, hold, spam, trash
+  content      String
+  dateCreated  DateTime
+  syncedAt     DateTime @default(now())
+
+  @@index([productId])
+  @@index([status])
+}
+
+model Referral {
+  id           String   @id @default(cuid())
+  user         String
+  email        String
+  avatar       String?
+  referredUser String
+  status       String   @default("Pending") // Pending, Completed, Cancelled
+  value        Decimal  @db.Decimal(10, 2)
+  date         DateTime @default(now())
+  syncedAt     DateTime @default(now())
+
+  @@index([email])
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  VOIDED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum DrawerStatus {
+  OPEN
+  CLOSED
+  RECONCILED
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  REVERSED
+}
+
+enum BillStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOIDED
+}
+
+enum TimeClockStatus {
+  CLOCKED_IN
+  CLOCKED_OUT
+  ON_BREAK
+}
+
+enum RefundStatus {
+  PENDING
+  COMPLETED
+}
+
+enum ProductStockMovementType {
+  SALE // Stock sold via POS or online
+  PURCHASE // Stock received from supplier
+  ADJUSTMENT // Manual stock adjustment
+  TRANSFER // Transfer between locations
+  SYNC // Synced to/from WooCommerce
+  RETURN // Customer return
+  DAMAGE // Damaged/lost stock
+  RECOUNT // Physical stock count correction
+}
+
+// ==========================================
+// CUSTOM FIELDS SYSTEM
+// ==========================================
+
+model CustomFieldDefinition {
+  id           String            @id @default(cuid())
+  entityType   CustomFieldEntity // VENDOR, CUSTOMER, PRODUCT, etc.
+  fieldName    String // Internal field name (snake_case)
+  fieldLabel   String // Display label
+  fieldType    CustomFieldType   @default(TEXT)
+  isRequired   Boolean           @default(false)
+  isActive     Boolean           @default(true)
+  sortOrder    Int               @default(0)
+  options      String? // JSON array for SELECT/MULTISELECT options
+  placeholder  String?
+  helpText     String?
+  defaultValue String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  values CustomFieldValue[]
+
+  @@unique([entityType, fieldName])
+  @@index([entityType])
+  @@index([isActive])
+}
+
+model CustomFieldValue {
+  id       String                @id @default(cuid())
+  fieldId  String
+  field    CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  entityId String // ID of the Vendor/Customer/etc.
+  value    String? // Stored value (JSON for complex types)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fieldId, entityId])
+  @@index([fieldId])
+  @@index([entityId])
+}
+
+enum CustomFieldEntity {
+  VENDOR
+  CUSTOMER
+  POS_CUSTOMER
+  PRODUCT
+  ORDER
+}
+
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DECIMAL
+  DATE
+  DATETIME
+  BOOLEAN
+  SELECT
+  MULTISELECT
+  EMAIL
+  PHONE
+  URL
+  FILE
+}
+
+// ==========================================
+// POS SHIFT MANAGEMENT
+// ==========================================
+
+model POSShift {
+  id          String      @id @default(cuid())
+  shiftNumber String      @unique
+  terminalId  String
+  terminal    POSTerminal @relation(fields: [terminalId], references: [id])
+  employeeId  String
+  employee    User        @relation("POSShifts", fields: [employeeId], references: [id])
+
+  // Shift Timing
+  startTime DateTime    @default(now())
+  endTime   DateTime?
+  status    ShiftStatus @default(OPEN)
+
+  // Cash Drawer State
+  openingCash     Decimal  @db.Decimal(10, 2)
+  closingCash     Decimal? @db.Decimal(10, 2)
+  expectedCash    Decimal? @db.Decimal(10, 2)
+  cashDiscrepancy Decimal? @db.Decimal(10, 2)
+
+  // Transaction Summary
+  totalSales       Decimal @default(0) @db.Decimal(15, 2)
+  totalRefunds     Decimal @default(0) @db.Decimal(15, 2)
+  totalVoids       Decimal @default(0) @db.Decimal(15, 2)
+  transactionCount Int     @default(0)
+
+  // Payment Method Breakdown (JSON)
+  paymentBreakdown String @default("{}") // { "CASH": 1000, "CARD": 500 }
+
+  // Cash Movements
+  cashIn  Decimal @default(0) @db.Decimal(10, 2) // Pay-ins
+  cashOut Decimal @default(0) @db.Decimal(10, 2) // Pay-outs
+
+  notes    String?
+  closedBy String? // User ID who closed the shift
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  cashMovements CashMovement[]
+
+  @@index([terminalId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([startTime])
+}
+
+model CashMovement {
+  id      String   @id @default(cuid())
+  shiftId String
+  shift   POSShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  type      CashMovementType
+  amount    Decimal          @db.Decimal(10, 2)
+  reason    String
+  reference String? // Related sale/refund ID
+
+  performedBy String // User ID
+  performedAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([type])
+  @@index([performedAt])
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSING // Being closed, awaiting reconciliation
+  CLOSED // Fully closed and reconciled
+  SUSPENDED // Temporarily suspended
+}
+
+enum CashMovementType {
+  SALE // Cash from sale
+  REFUND // Cash refund given
+  PAY_IN // Cash added to drawer
+  PAY_OUT // Cash removed from drawer
+  FLOAT // Opening float
+  DROP // Cash drop to safe
+}
+
+// ==========================================
+// PURCHASE MANAGEMENT
+// ==========================================
+
+model PurchaseOrder {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+  vendorId    String
+  vendor      Vendor @relation(fields: [vendorId], references: [id])
+
+  // Order Details
+  orderDate    DateTime  @default(now())
+  expectedDate DateTime?
+  receivedDate DateTime?
+
+  status PurchaseOrderStatus @default(DRAFT)
+
+  // Financials
+  subtotal     Decimal @db.Decimal(15, 2)
+  taxAmount    Decimal @default(0) @db.Decimal(15, 2)
+  shippingCost Decimal @default(0) @db.Decimal(15, 2)
+  discount     Decimal @default(0) @db.Decimal(15, 2)
+  totalAmount  Decimal @db.Decimal(15, 2)
+
+  // Warehouse destination
+  warehouseId String?
+
+  // Payment
+  paymentStatus PaymentStatus @default(PENDING)
+  paidAmount    Decimal       @default(0) @db.Decimal(15, 2)
+
+  notes String?
+  terms String? // Payment terms
+
+  createdBy  String?
+  approvedBy String?
+  approvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  items         PurchaseOrderItem[]
+  requisitionId String?
+  requisition   PurchaseRequisition? @relation(fields: [requisitionId], references: [id])
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([requisitionId])
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  sku         String
+  productName String
+  description String?
+  quantity    Int
+  receivedQty Int     @default(0)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  taxRate     Decimal @default(0) @db.Decimal(5, 2)
+  discount    Decimal @default(0) @db.Decimal(10, 2)
+  totalPrice  Decimal @db.Decimal(15, 2)
+
+  // Batch tracking for received items
+  batchNumber String?
+  lotNumber   String?
+  expiryDate  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([sku])
+}
+
+model PurchaseRequisition {
+  id                String @id @default(cuid())
+  requisitionNumber String @unique
+
+  requestedBy  String // User ID
+  requestedFor String? // Department or location
+
+  requestDate  DateTime  @default(now())
+  requiredDate DateTime?
+
+  status   RequisitionStatus   @default(PENDING)
+  priority RequisitionPriority @default(NORMAL)
+
+  reason String? // Justification for purchase
+  notes  String?
+
+  // Approval workflow
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  items          PurchaseRequisitionItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([status])
+  @@index([requestedBy])
+  @@index([requestDate])
+}
+
+model PurchaseRequisitionItem {
+  id            String              @id @default(cuid())
+  requisitionId String
+  requisition   PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  sku             String?
+  productName     String
+  description     String?
+  quantity        Int
+  alertQuantity   Int                 @default(0)
+  estimatedPrice  Decimal? @db.Decimal(10, 2)
+  preferredVendor String? // Suggested vendor
+
+  createdAt DateTime @default(now())
+
+  @@index([requisitionId])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+  CLOSED
+}
+
+enum RequisitionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CANCELLED
+}
+
+enum RequisitionPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ==========================================
+// NOTIFICATION SYSTEM
+// ==========================================
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String
+  subtitle    String?
+  message     String?
+  type        NotificationType @default(INFO)
+  
+  // Display customization
+  avatarImage String?
+  avatarIcon  String?  @default("tabler-bell")
+  avatarText  String?
+  avatarColor String?  @default("primary")
+  
+  link        String?  // URL to navigate when clicked
+  metadata    String?  @default("{}") // JSON for additional data
+
+  read        Boolean  @default(false)
+  readAt      DateTime?
+  
+  // Email notification status
+  emailSent   Boolean  @default(false)
+  emailSentAt DateTime?
+
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime? // Optional expiration
+
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  ORDER        // New order received
+  LOW_STOCK    // Low stock alert
+  PAYMENT      // Payment received
+  SHIPMENT     // Shipment update
+  SYSTEM       // System notification
+}

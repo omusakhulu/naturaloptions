@@ -1,0 +1,33 @@
+# WooCommerce Configuration
+WOO_STORE_URL=https://naturaloptions.co.ke/staging
+WOO_CONSUMER_KEY=ck_cc9e29bbd3fe4ad72947c6ce0d60101e6210939c
+WOO_CONSUMER_SECRET=cs_4a6e6954a0b1241ca6cd6e82cbd3dd61a0ec1461
+
+# WooCommerce API Configuration
+WOO_STORE_URL=naturaloptions.co.ke/staging
+WOO_CONSUMER_KEY=ck_cc9e29bbd3fe4ad72947c6ce0d60101e6210939c
+WOO_CONSUMER_SECRET=cs_4a6e6954a0b1241ca6cd6e82cbd3dd61a0ec1461
+
+# Database Configuration (PostgreSQL)
+DATABASE_URL=postgresql://postgres:Jomusakhulu1!@localhost:5432/naturaloptions?schema=public
+NEXT_PUBLIC_DATABASE_URL=postgresql://postgres:Jomusakhulu1!@localhost:5432/naturaloptions?schema=public
+
+# NextAuth Configuration (if needed)
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_secret_here
+
+
+# Environment
+NODE_ENV=development
+
+# WordPress Media Upload Configuration
+WP_BASE_URL=https://naturaloptions.co.ke/staging
+WP_USERNAME=admin
+WP_APP_PASSWORD=0TQ1 UNdu m8kf txUp oRHX STcO
+
+MPESA_BASE_URL = https://sandbox.safaricom.co.ke
+MPESA_CONSUMER_KEY=cG8677RcRqNRlBbshj4QcpDNZO2rMOAurw9QJkpGOdgDkZ3M
+MPESA_CONSUMER_SECRET=gOtHPxGIG0AHERUqqeffBUkQjsAnqCKtHUHGCDviglYzt888TLT9qXvDq6VzUvC1
+MPESA_SHORTCODE=
+MPESA_PASSKEY=gOtHPxGIG0AHERUqqeffBUkQjsAnqCKtHUHGCDviglYzt888TLT9qXvDq6VzUvC1
+MPESA_CALLBACK_URL=

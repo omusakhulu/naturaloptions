@@ -1,0 +1,61 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "downlevelIteration": true,
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@views/*": [
+        "./src/views/*"
+      ],
+      "@core/*": [
+        "./src/@core/*"
+      ],
+      "@configs/*": [
+        "./src/configs/*"
+      ],
+      "@layouts/*": [
+        "./src/@layouts/*"
+      ],
+      "@store/*": [
+        "./src/redux-store/*"
+      ],
+      "@menu/*": [
+        "./src/@menu/*"
+      ],
+      "@assets/*": [
+        "./src/assets/*"
+      ],
+      "@components/*": [
+        "./src/components/*"
+      ]
+    },
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve"
+  },
+  "include": [
+    "next.config.mjs",
+    "tailwind.config.js",
+    "**/*.js",
+    "**/*.jsx"
+, "src/app/[lang]/(dashboard)/(private)/apps/ecommerce/products/edit/[id]/ProductEditForm.tsx"  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

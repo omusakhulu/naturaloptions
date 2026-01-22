@@ -1,0 +1,483 @@
+// Additional schema additions for POS and Accounting System
+// Add these models to your existing schema.prisma file
+
+// ==========================================
+// POS SYSTEM MODELS
+// ==========================================
+
+model POSTerminal {
+  id           String   @id @default(cuid())
+  name         String   // "Main Register", "Mobile POS 1"
+  locationId   String
+  location     Location @relation(fields: [locationId], references: [id])
+  isActive     Boolean  @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  posSales     POSSale[]
+  cashDrawers  CashDrawer[]
+  
+  @@index([locationId])
+}
+
+model POSSale {
+  id                String         @id @default(cuid())
+  saleNumber        String         @unique
+  terminalId        String
+  terminal          POSTerminal    @relation(fields: [terminalId], references: [id])
+  employeeId        String
+  employee          User           @relation("POSSales", fields: [employeeId], references: [id])
+  customerId        String?
+  customer          POSCustomer?   @relation(fields: [customerId], references: [id])
+  
+  // Sale Details
+  subtotal          Decimal        @db.Decimal(10, 2)
+  taxAmount         Decimal        @db.Decimal(10, 2)
+  discountAmount    Decimal        @db.Decimal(10, 2) @default(0)
+  totalAmount       Decimal        @db.Decimal(10, 2)
+  
+  // Payment Info
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus  @default(PENDING)
+  
+  status            SaleStatus     @default(COMPLETED)
+  receiptPrinted    Boolean        @default(false)
+  notes             String?
+  
+  saleDate          DateTime       @default(now())
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relations
+  saleItems         POSSaleItem[]
+  payments          Payment[]
+  refunds           Refund[]
+  
+  @@index([terminalId])
+  @@index([employeeId])
+  @@index([saleDate])
+}
+
+model POSSaleItem {
+  id            String    @id @default(cuid())
+  saleId        String
+  sale          POSSale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product   @relation("POSSaleItems", fields: [productId], references: [id])
+  
+  quantity      Int
+  unitPrice     Decimal   @db.Decimal(10, 2)
+  discount      Decimal   @db.Decimal(10, 2) @default(0)
+  total         Decimal   @db.Decimal(10, 2)
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([saleId])
+  @@index([productId])
+}
+
+model CashDrawer {
+  id              String      @id @default(cuid())
+  terminalId      String
+  terminal        POSTerminal @relation(fields: [terminalId], references: [id])
+  employeeId      String
+  employee        User        @relation("CashDrawers", fields: [employeeId], references: [id])
+  
+  openingAmount   Decimal     @db.Decimal(10, 2)
+  closingAmount   Decimal?    @db.Decimal(10, 2)
+  expectedAmount  Decimal?    @db.Decimal(10, 2)
+  discrepancy     Decimal?    @db.Decimal(10, 2)
+  
+  openedAt        DateTime    @default(now())
+  closedAt        DateTime?
+  status          DrawerStatus @default(OPEN)
+  
+  notes           String?
+  
+  @@index([terminalId])
+  @@index([employeeId])
+  @@index([openedAt])
+}
+
+// ==========================================
+// ACCOUNTING MODELS
+// ==========================================
+
+model ChartOfAccounts {
+  id              String      @id @default(cuid())
+  accountCode     String      @unique
+  accountName     String
+  accountType     AccountType
+  parentId        String?
+  parent          ChartOfAccounts? @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children        ChartOfAccounts[] @relation("AccountHierarchy")
+  
+  isActive        Boolean     @default(true)
+  description     String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  journalEntries  JournalEntry[]
+  
+  @@index([accountType])
+  @@index([parentId])
+}
+
+model JournalEntry {
+  id              String            @id @default(cuid())
+  entryNumber     String            @unique
+  reference       String?           // Invoice #, Receipt #, etc.
+  description     String
+  entryDate       DateTime
+  
+  totalDebit      Decimal           @db.Decimal(15, 2)
+  totalCredit     Decimal           @db.Decimal(15, 2)
+  
+  status          JournalStatus     @default(POSTED)
+  createdBy       String
+  creator         User              @relation("CreatedJournalEntries", fields: [createdBy], references: [id])
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  // Relations
+  lineItems       JournalLineItem[]
+  
+  @@index([entryDate])
+  @@index([createdBy])
+  @@index([status])
+}
+
+model JournalLineItem {
+  id              String          @id @default(cuid())
+  journalId       String
+  journal         JournalEntry    @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  accountId       String
+  account         ChartOfAccounts @relation(fields: [accountId], references: [id])
+  
+  description     String?
+  debitAmount     Decimal         @db.Decimal(15, 2) @default(0)
+  creditAmount    Decimal         @db.Decimal(15, 2) @default(0)
+  
+  @@index([journalId])
+  @@index([accountId])
+}
+
+model PaymentTerm {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  days            Int       // Net 30, Net 15, etc.
+  description     String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  vendors         Vendor[]
+  customerProfiles POSCustomer[]
+}
+
+model Vendor {
+  id              String      @id @default(cuid())
+  name            String
+  email           String?     @unique
+  phone           String?
+  address         String?
+  
+  paymentTermId   String?
+  paymentTerm     PaymentTerm? @relation(fields: [paymentTermId], references: [id])
+  
+  isActive        Boolean     @default(true)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  bills           Bill[]
+  
+  @@index([email])
+}
+
+model Bill {
+  id              String      @id @default(cuid())
+  billNumber      String      @unique
+  vendorId        String
+  vendor          Vendor      @relation(fields: [vendorId], references: [id])
+  
+  billDate        DateTime
+  dueDate         DateTime?
+  amount          Decimal     @db.Decimal(15, 2)
+  paidAmount      Decimal     @db.Decimal(15, 2) @default(0)
+  
+  status          BillStatus  @default(UNPAID)
+  reference       String?     // Vendor's invoice number
+  notes           String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([vendorId])
+  @@index([billDate])
+  @@index([dueDate])
+  @@index([status])
+}
+
+// ==========================================
+// ENHANCED CUSTOMER MODEL FOR POS
+// ==========================================
+
+model POSCustomer {
+  id              String      @id @default(cuid())
+  customerNumber  String      @unique
+  firstName       String?
+  lastName        String?
+  email           String?     @unique
+  phone           String?
+  
+  // Address
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  country         String?
+  
+  // Business Info
+  dateOfBirth     DateTime?
+  loyaltyPoints   Int         @default(0)
+  totalSpent      Decimal     @db.Decimal(15, 2) @default(0)
+  
+  paymentTermId   String?
+  paymentTerm     PaymentTerm? @relation(fields: [paymentTermId], references: [id])
+  
+  isActive        Boolean     @default(true)
+  notes           String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  posSales        POSSale[]
+  
+  @@index([email])
+  @@index([phone])
+  @@index([customerNumber])
+}
+
+// ==========================================
+// LOCATION AND INVENTORY MODELS
+// ==========================================
+
+model Location {
+  id              String        @id @default(cuid())
+  name            String
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  phone           String?
+  
+  isActive        Boolean       @default(true)
+  isMainLocation  Boolean       @default(false)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  posTerminals    POSTerminal[]
+  inventoryItems  InventoryLocation[]
+  employees       EmployeeLocation[]
+  
+  @@index([isActive])
+}
+
+model InventoryLocation {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation("InventoryLocations", fields: [productId], references: [id])
+  locationId    String
+  location      Location  @relation(fields: [locationId], references: [id])
+  
+  quantity      Int       @default(0)
+  minQuantity   Int       @default(0)
+  maxQuantity   Int?
+  
+  lastUpdated   DateTime  @default(now())
+  
+  @@unique([productId, locationId])
+  @@index([productId])
+  @@index([locationId])
+}
+
+// ==========================================
+// EMPLOYEE MANAGEMENT
+// ==========================================
+
+model EmployeeLocation {
+  id            String    @id @default(cuid())
+  employeeId    String
+  employee      User      @relation("EmployeeLocations", fields: [employeeId], references: [id])
+  locationId    String
+  location      Location  @relation(fields: [locationId], references: [id])
+  
+  isPrimary     Boolean   @default(false)
+  startDate     DateTime  @default(now())
+  endDate       DateTime?
+  
+  @@unique([employeeId, locationId])
+  @@index([employeeId])
+  @@index([locationId])
+}
+
+model TimeClockEntry {
+  id            String          @id @default(cuid())
+  employeeId    String
+  employee      User            @relation("TimeClockEntries", fields: [employeeId], references: [id])
+  
+  clockIn       DateTime
+  clockOut      DateTime?
+  breakMinutes  Int             @default(0)
+  hoursWorked   Decimal?        @db.Decimal(5, 2)
+  
+  status        TimeClockStatus @default(CLOCKED_IN)
+  locationId    String?
+  
+  notes         String?
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([employeeId])
+  @@index([clockIn])
+  @@index([status])
+}
+
+// ==========================================
+// PAYMENT PROCESSING
+// ==========================================
+
+model Payment {
+  id              String        @id @default(cuid())
+  saleId          String?
+  sale            POSSale?      @relation(fields: [saleId], references: [id])
+  
+  amount          Decimal       @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod
+  paymentDate     DateTime      @default(now())
+  
+  // Card Payment Details
+  cardLast4       String?
+  cardType        String?       // Visa, Mastercard, etc.
+  cardToken       String?       // For recurring payments
+  
+  // Check Details
+  checkNumber     String?
+  
+  // Cash Details
+  cashTendered    Decimal?      @db.Decimal(10, 2)
+  changeGiven     Decimal?      @db.Decimal(10, 2)
+  
+  status          PaymentStatus @default(COMPLETED)
+  reference       String?       // External payment reference
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([saleId])
+  @@index([paymentDate])
+  @@index([paymentMethod])
+}
+
+model Refund {
+  id              String      @id @default(cuid())
+  saleId          String
+  sale            POSSale     @relation(fields: [saleId], references: [id])
+  
+  amount          Decimal     @db.Decimal(10, 2)
+  reason          String
+  refundMethod    PaymentMethod
+  
+  processedBy     String
+  processor       User        @relation("ProcessedRefunds", fields: [processedBy], references: [id])
+  
+  refundDate      DateTime    @default(now())
+  status          RefundStatus @default(COMPLETED)
+  
+  createdAt       DateTime    @default(now())
+  
+  @@index([saleId])
+  @@index([refundDate])
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  CHECK
+  GIFT_CARD
+  STORE_CREDIT
+  DIGITAL_WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  VOIDED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum DrawerStatus {
+  OPEN
+  CLOSED
+  RECONCILED
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  REVERSED
+}
+
+enum BillStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOIDED
+}
+
+enum TimeClockStatus {
+  CLOCKED_IN
+  CLOCKED_OUT
+  ON_BREAK
+}
+
+enum RefundStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}

@@ -38,6 +38,7 @@ export default async function middleware(request: NextRequest) {
                      pathnameWithoutBase.startsWith('/en/pages/auth/login-v2/')
   
   const isAuthApi = pathnameWithoutBase.startsWith('/api/auth')
+  const isSearchApi = pathnameWithoutBase.startsWith('/api/global-search')
   
   // Check both pathname and pathnameWithoutBase for static assets
   // This handles cases where basePath may or may not be set at build time
@@ -71,8 +72,8 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
-  // Allow public assets and auth API
-  if (isPublicAsset || isAuthApi) {
+  // Allow public assets, auth API, and search API
+  if (isPublicAsset || isAuthApi || isSearchApi) {
     //console.log('🟢 Allowing public asset or auth API')
     return NextResponse.next()
   }
