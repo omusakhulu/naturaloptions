@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
           icon: item.icon || 'tabler-file',
           metadata: {
             section: item.section,
-            excludeLang: item.excludeLang
+            excludeLang: (item as any).excludeLang
           }
         }))
       
