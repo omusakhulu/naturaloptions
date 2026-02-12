@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { rateLimit } from '@/lib/rate-limiter'
 
 interface OrderLineItem {
   id: number
@@ -42,6 +43,14 @@ export async function POST(request: Request) {
   const headers = Object.fromEntries(request.headers.entries())
 
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { limited } = rateLimit('webhook-orders', ip, { maxRequests: 30, windowMs: 60_000 })
+
+    if (limited) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
     // Verify webhook signature
     const signature = headers['x-wc-webhook-signature']
     const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET

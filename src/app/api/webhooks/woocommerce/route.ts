@@ -3,11 +3,18 @@ import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { rateLimit } from '@/lib/rate-limiter'
 
-export async function POST(
-  request: NextRequest
-): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { limited } = rateLimit('webhook-woocommerce', ip, { maxRequests: 30, windowMs: 60_000 })
+
+    if (limited) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
     // 1. Get webhook headers
     const signature = request.headers.get('x-wc-webhook-signature')
     const topic = request.headers.get('x-wc-webhook-topic')
@@ -64,19 +71,13 @@ export async function POST(
     if (!webhookSecret) {
       console.error('WOOCOMMERCE_WEBHOOK_SECRET is not set')
 
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
     // Read and verify the payload
     const payload = await request.text()
 
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(payload)
-      .digest('base64')
+    const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(payload).digest('base64')
 
     if (signature !== expectedSignature) {
       console.error('Invalid webhook signature', {
@@ -84,10 +85,7 @@ export async function POST(
         expected: expectedSignature
       })
 
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
     const data = JSON.parse(payload)
@@ -145,15 +143,12 @@ export async function POST(
         console.log(`Unhandled webhook event: ${topic}`, { event, data })
     }
 
-    return NextResponse.json(
-      { received: true, event, topic },
-      { status: 200 }
-    )
+    return NextResponse.json({ received: true, event, topic }, { status: 200 })
   } catch (error) {
     console.error('Error processing webhook:', error)
 
     return NextResponse.json(
-      { 
+      {
         error: 'Error processing webhook',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

@@ -2,8 +2,18 @@ import crypto from 'crypto'
 
 import { NextResponse } from 'next/server'
 
+import { rateLimit } from '@/lib/rate-limiter'
+
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { limited } = rateLimit('webhook-order-created', ip, { maxRequests: 30, windowMs: 60_000 })
+
+    if (limited) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
     // Get the signature from headers
     const signature = request.headers.get('x-wc-webhook-signature')
     const topic = request.headers.get('x-wc-webhook-topic')
