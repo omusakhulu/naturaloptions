@@ -7,6 +7,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcrypt'
 
 import prisma from '@/lib/prisma'
+import { env } from '@/lib/env'
 
 const basePath = process.env.BASEPATH || ''
 const withBasePath = (path: string) => (basePath ? `${basePath}${path}`.replace(/\/{2,}/g, '/') : path)
@@ -95,11 +96,11 @@ const authOptions = {
         }
       }
     }),
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? [
           GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET
           })
         ]
       : [])
@@ -146,11 +147,7 @@ const authOptions = {
     signIn: withBasePath('/en/pages/auth/login-v2'),
     error: withBasePath('/en/error')
   },
-  secret: process.env.NEXTAUTH_SECRET
-}
-
-if (!process.env.NEXTAUTH_SECRET) {
-  console.error('NEXTAUTH_SECRET environment variable is not set. Authentication will fail.')
+  secret: env.NEXTAUTH_SECRET
 }
 
 export { authOptions }

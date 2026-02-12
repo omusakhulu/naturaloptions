@@ -1,24 +1,18 @@
 import { PrismaClient, Prisma } from '@prisma/client'
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
+import { env } from '@/lib/env'
 
-if (!process.env.DATABASE_URL) {
-  console.error('FATAL: DATABASE_URL environment variable is not set. Database operations will fail.')
-}
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 // Configure Prisma with optimized connection pooling
 const prismaClientConfig: Prisma.PrismaClientOptions = {
   log:
     process.env.NODE_ENV === 'development' ? ['query' as const, 'error' as const, 'warn' as const] : ['error' as const],
-  ...(process.env.DATABASE_URL
-    ? {
-        datasources: {
-          db: {
-            url: process.env.DATABASE_URL
-          }
-        }
-      }
-    : {})
+  datasources: {
+    db: {
+      url: env.DATABASE_URL
+    }
+  }
 }
 
 // Add connection pool configuration via DATABASE_URL query parameters
