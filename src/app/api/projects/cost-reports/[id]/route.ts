@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const reportId = parseInt(id)
+    const reportId = parseInt(id, 10)
 
     if (isNaN(reportId)) {
       return NextResponse.json({ success: false, error: 'Invalid Report ID' }, { status: 400 })
@@ -19,15 +19,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: 'Cost report not found' }, { status: 404 })
     }
 
-    // Parse JSON fields
+    // Parse JSON fields safely
+    const safeParse = (val: string | null) => {
+      if (!val) return null
+
+      try {
+        return JSON.parse(val)
+      } catch {
+        return null
+      }
+    }
+
     const report = {
       ...costReport,
-      laborCosts: costReport.laborCosts ? JSON.parse(costReport.laborCosts) : null,
-      materialCosts: costReport.materialCosts ? JSON.parse(costReport.materialCosts) : null,
-      equipmentCosts: costReport.equipmentCosts ? JSON.parse(costReport.equipmentCosts) : null,
-      transportCosts: costReport.transportCosts ? JSON.parse(costReport.transportCosts) : null,
-      overheadCosts: costReport.overheadCosts ? JSON.parse(costReport.overheadCosts) : null,
-      otherCosts: costReport.otherCosts ? JSON.parse(costReport.otherCosts) : null
+      laborCosts: safeParse(costReport.laborCosts),
+      materialCosts: safeParse(costReport.materialCosts),
+      equipmentCosts: safeParse(costReport.equipmentCosts),
+      transportCosts: safeParse(costReport.transportCosts),
+      overheadCosts: safeParse(costReport.overheadCosts),
+      otherCosts: safeParse(costReport.otherCosts)
     }
 
     return NextResponse.json({
@@ -50,7 +60,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const reportId = parseInt(id)
+    const reportId = parseInt(id, 10)
     const data = await request.json()
 
     if (isNaN(reportId)) {

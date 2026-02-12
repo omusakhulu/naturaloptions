@@ -26,9 +26,12 @@ class MemoryCache {
    */
   private startCleanup() {
     // Clean up expired entries every 5 minutes
-    this.checkInterval = setInterval(() => {
-      this.cleanExpired()
-    }, 5 * 60 * 1000)
+    this.checkInterval = setInterval(
+      () => {
+        this.cleanExpired()
+      },
+      5 * 60 * 1000
+    )
   }
 
   /**
@@ -36,6 +39,7 @@ class MemoryCache {
    */
   private cleanExpired() {
     const now = Date.now()
+
     for (const [key, entry] of this.cache.entries()) {
       if (now - entry.timestamp > entry.ttl) {
         this.cache.delete(key)
@@ -48,11 +52,14 @@ class MemoryCache {
    */
   get(key: string): any | null {
     const entry = this.cache.get(key)
+
     if (!entry) return null
 
     const now = Date.now()
+
     if (now - entry.timestamp > entry.ttl) {
       this.cache.delete(key)
+
       return null
     }
 
@@ -66,6 +73,7 @@ class MemoryCache {
     // If cache is full, remove oldest entry
     if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value
+
       if (firstKey) {
         this.cache.delete(firstKey)
       }
@@ -107,12 +115,18 @@ class MemoryCache {
       clearInterval(this.checkInterval)
       this.checkInterval = null
     }
+
     this.cache.clear()
   }
 }
 
-// Create singleton instance
-const cache = new MemoryCache()
+// Use global to prevent multiple instances during hot reload
+const globalForCache = global as unknown as { cacheInstance?: MemoryCache }
+const cache = globalForCache.cacheInstance || new MemoryCache()
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForCache.cacheInstance = cache
+}
 
 // Handle graceful shutdown
 if (typeof process !== 'undefined') {
@@ -123,28 +137,27 @@ if (typeof process !== 'undefined') {
 export default cache
 
 // Helper functions for common cache patterns
-export const cacheWrapper = async <T>(
-  key: string,
-  fetchFn: () => Promise<T>,
-  ttl: number = 60000
-): Promise<T> => {
+export const cacheWrapper = async <T>(key: string, fetchFn: () => Promise<T>, ttl: number = 60000): Promise<T> => {
   // Check cache first
   const cached = cache.get(key)
+
   if (cached !== null) {
     return cached as T
   }
 
   // Fetch and cache
   const data = await fetchFn()
+
   cache.set(key, data, ttl)
+
   return data
 }
 
 // Cache TTL presets (in milliseconds)
 export const CacheTTL = {
-  SHORT: 30 * 1000,      // 30 seconds
+  SHORT: 30 * 1000, // 30 seconds
   MEDIUM: 5 * 60 * 1000, // 5 minutes
-  LONG: 30 * 60 * 1000,  // 30 minutes
-  HOUR: 60 * 60 * 1000,  // 1 hour
+  LONG: 30 * 60 * 1000, // 30 minutes
+  HOUR: 60 * 60 * 1000, // 1 hour
   DAY: 24 * 60 * 60 * 1000 // 1 day
 }

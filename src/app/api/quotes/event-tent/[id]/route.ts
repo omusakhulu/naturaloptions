@@ -23,7 +23,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Parse JSON fields
-    const lineItems = JSON.parse(quote.lineItems)
+    let lineItems = []
+
+    try {
+      lineItems = JSON.parse(quote.lineItems)
+    } catch {
+      lineItems = []
+    }
 
     return NextResponse.json({
       success: true,

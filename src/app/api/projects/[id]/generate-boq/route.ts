@@ -69,7 +69,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     let nextNumber = 1
 
     if (existingBOQs.length > 0) {
-      const lastNumber = parseInt(existingBOQs[0].boqNumber.split('-')[2])
+      const lastNumber = parseInt(existingBOQs[0].boqNumber.split('-')[2], 10)
 
       nextNumber = lastNumber + 1
     }
@@ -144,7 +144,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // 3. MATERIALS & EQUIPMENT SECTION (if from order)
     if (order && order.lineItems) {
-      const orderItems = typeof order.lineItems === 'string' ? JSON.parse(order.lineItems) : order.lineItems
+      let orderItems: any[] = []
+
+      try {
+        orderItems = typeof order.lineItems === 'string' ? JSON.parse(order.lineItems) : order.lineItems
+      } catch {
+        orderItems = []
+      }
 
       if (orderItems && orderItems.length > 0) {
         const items: BOQItem[] = orderItems.map((item: any) => {

@@ -61,14 +61,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   console.log('Request URL:', request.url)
   console.log('Request method:', request.method)
 
-  // Set a timeout for the entire operation
-  const controller = new AbortController()
-
-  const timeout = setTimeout(() => {
-    console.error('Request timed out after 45 seconds')
-    controller.abort()
-  }, 45000) // 45 second timeout
-
   // Declare variables outside try block for scope accessibility
   let id: string = ''
   let wooId: number | null = null
@@ -225,7 +217,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     )
   } finally {
-    clearTimeout(timeout)
     console.log('=== PRODUCT API REQUEST COMPLETED ===\n')
   }
 }

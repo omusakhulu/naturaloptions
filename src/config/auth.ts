@@ -95,10 +95,14 @@ const authOptions = {
         }
       }
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || ''
-    })
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET
+          })
+        ]
+      : [])
   ],
   session: {
     strategy: 'jwt' as const,
@@ -131,8 +135,8 @@ const authOptions = {
     },
     async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id
+        ;(session.user as any).role = token.role
+        ;(session.user as any).id = token.id
       }
 
       return session
@@ -143,6 +147,10 @@ const authOptions = {
     error: withBasePath('/en/error')
   },
   secret: process.env.NEXTAUTH_SECRET
+}
+
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error('NEXTAUTH_SECRET environment variable is not set. Authentication will fail.')
 }
 
 export { authOptions }

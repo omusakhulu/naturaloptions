@@ -24,7 +24,15 @@ export async function POST(request: Request) {
     const payload = await request.text()
 
     // Verify the webhook signature
-    const hmac = crypto.createHmac('sha256', process.env.WOOCOMMERCE_WEBHOOK_SECRET || '')
+    const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
+
+    if (!webhookSecret) {
+      console.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
+
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+
+    const hmac = crypto.createHmac('sha256', webhookSecret)
     const digest = hmac.update(payload).digest('base64')
 
     if (signature !== digest) {
@@ -36,7 +44,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const data = JSON.parse(payload)
+    let data
+
+    try {
+      data = JSON.parse(payload)
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+    }
 
     // Handle order updated webhook
     if (topic === 'order.updated') {
@@ -90,12 +104,8 @@ async function handleOrderUpdated(order: any) {
 
         if (lineItems.length > 0) {
           console.log(`📦 Processing warehouse stock for order ${orderNumber} with ${lineItems.length} items`)
-          
-          const stockResult = await processOrderCompletion(
-            Number(order.id),
-            orderNumber,
-            lineItems
-          )
+
+          const stockResult = await processOrderCompletion(Number(order.id), orderNumber, lineItems)
 
           if (stockResult.success && stockResult.processedItems > 0) {
             console.log(`✅ Warehouse stock reduced for order ${orderNumber}:`, {
@@ -122,9 +132,9 @@ async function handleOrderUpdated(order: any) {
     if (order.status === 'cancelled' || order.status === 'refunded') {
       try {
         const orderNumber = order.number || order.id.toString()
-        
+
         console.log(`🔄 Reversing warehouse stock for ${order.status} order ${orderNumber}`)
-        
+
         const reverseResult = await reverseOrderStockMovements(orderNumber)
 
         if (reverseResult.success && reverseResult.processedItems > 0) {

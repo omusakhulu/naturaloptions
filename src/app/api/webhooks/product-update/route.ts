@@ -24,7 +24,15 @@ export async function POST(request: Request) {
     const payload = await request.text()
 
     // Verify the webhook signature
-    const hmac = crypto.createHmac('sha256', process.env.WOOCOMMERCE_WEBHOOK_SECRET || '')
+    const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
+
+    if (!webhookSecret) {
+      logger.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
+
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+
+    const hmac = crypto.createHmac('sha256', webhookSecret)
     const digest = hmac.update(payload).digest('base64')
 
     if (signature !== digest) {
@@ -36,7 +44,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const data = JSON.parse(payload)
+    let data
+
+    try {
+      data = JSON.parse(payload)
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+    }
 
     // Handle different webhook events
     switch (topic) {

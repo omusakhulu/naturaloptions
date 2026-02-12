@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { prisma } from '@/lib/db/prisma'
 import searchData from '@/data/naturalOptionsSearchData'
 
@@ -30,10 +31,12 @@ export async function GET(req: NextRequest) {
     // Pages/Navigation Search
     if (types.length === 0 || types.includes('pages')) {
       const lowerQuery = query.toLowerCase()
+
       const pageResults = searchData
         .filter(item => {
           const nameMatch = item.name.toLowerCase().includes(lowerQuery)
           const sectionMatch = item.section.toLowerCase().includes(lowerQuery)
+
           return nameMatch || sectionMatch
         })
         .slice(0, limit)
@@ -50,7 +53,7 @@ export async function GET(req: NextRequest) {
             excludeLang: (item as any).excludeLang
           }
         }))
-      
+
       results.push(...pageResults)
     }
 
@@ -123,6 +126,7 @@ export async function GET(req: NextRequest) {
           .then(customers => {
             customers.forEach(customer => {
               const name = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Unknown'
+
               results.push({
                 type: 'customer',
                 id: customer.id,
@@ -163,14 +167,18 @@ export async function GET(req: NextRequest) {
           .then(orders => {
             orders.forEach(order => {
               let customerName = 'Guest'
+
               try {
                 const customerData = order.customer ? JSON.parse(order.customer) : null
+
                 if (customerData) {
-                  customerName = [customerData.firstName, customerData.lastName].filter(Boolean).join(' ') || 
-                                customerData.email || 'Guest'
+                  customerName =
+                    [customerData.firstName, customerData.lastName].filter(Boolean).join(' ') ||
+                    customerData.email ||
+                    'Guest'
                 }
               } catch {}
-              
+
               results.push({
                 type: 'order',
                 id: order.id,
@@ -598,14 +606,22 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Execute all search promises in parallel
-    await Promise.all(searchPromises)
+    // Execute all search promises in parallel (use allSettled so partial results survive)
+    const searchResults = await Promise.allSettled(searchPromises)
+
+    searchResults.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`Global search query ${index} failed:`, result.reason)
+      }
+    })
 
     // Sort results by relevance (exact matches first)
     const lowerQuery = query.toLowerCase()
+
     results.sort((a, b) => {
       const aExact = a.title.toLowerCase().includes(lowerQuery) ? 1 : 0
       const bExact = b.title.toLowerCase().includes(lowerQuery) ? 1 : 0
+
       return bExact - aExact
     })
 
@@ -620,9 +636,7 @@ export async function GET(req: NextRequest) {
     })
   } catch (error: any) {
     console.error('Global search error:', error)
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Search failed' },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ success: false, error: error?.message || 'Search failed' }, { status: 500 })
   }
 }

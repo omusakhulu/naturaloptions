@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=4096'
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm check-types
+
+      - name: Unit tests
+        run: pnpm test
+        env:
+          DATABASE_URL: 'postgresql://fake:fake@localhost:5432/fake'
+
+      - name: Build
+        run: pnpm build
+        env:
+          DATABASE_URL: 'postgresql://fake:fake@localhost:5432/fake'
+          NEXTAUTH_SECRET: 'ci-secret-not-real'
+          NEXTAUTH_URL: 'http://localhost:3000'
+
+      - name: Security audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true

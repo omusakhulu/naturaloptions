@@ -36,7 +36,7 @@ async function handleProductUpdate(product: ProductData): Promise<void> {
 
     // Prepare product data for create (includes all required fields)
     const createData = {
-      wooId: product.id,  // Use number type
+      wooId: product.id, // Use number type
       name: product.name,
       slug: product.slug || product.name.toLowerCase().replace(/\s+/g, '-'),
       price: String(parseFloat(product.price) || 0),
@@ -45,7 +45,7 @@ async function handleProductUpdate(product: ProductData): Promise<void> {
 
     // Upsert product in database
     await prisma.product.upsert({
-      where: { wooId: product.id },  // Use number type
+      where: { wooId: product.id }, // Use number type
       update: updateData,
       create: createData
     })
@@ -62,7 +62,13 @@ export async function POST(request: Request) {
   try {
     const signature = request.headers.get('x-wc-webhook-signature')
     const eventType = request.headers.get('x-wc-webhook-topic')
-    const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET || ''
+    const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
+
+    if (!secret) {
+      console.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
+
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
 
     if (!signature) {
       return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 })

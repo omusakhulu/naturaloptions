@@ -40,28 +40,42 @@ interface OrderWebhookPayload {
 
 export async function POST(request: Request) {
   const headers = Object.fromEntries(request.headers.entries())
-  
+
   try {
     // Verify webhook signature
     const signature = headers['x-wc-webhook-signature']
-    const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET || ''
+    const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET
+
+    if (!secret) {
+      console.error('Webhook secret not configured (WOOCOMMERCE_WEBHOOK_SECRET or WOOCOMMERCE_CONSUMER_SECRET)')
+
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
 
     if (!signature) {
       return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 })
     }
 
     const payload = await request.text()
-    
+
     // Verify signature
     const hmac = crypto.createHmac('sha256', secret)
     const digest = 'sha256=' + hmac.update(payload).digest('hex')
 
     if (signature !== digest) {
       console.warn('Invalid webhook signature')
+
       return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 })
     }
 
-    const data: OrderWebhookPayload = JSON.parse(payload)
+    let data: OrderWebhookPayload
+
+    try {
+      data = JSON.parse(payload)
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+    }
+
     const eventType = headers['x-wc-webhook-topic']
 
     console.log(`Order webhook received: ${eventType} for order #${data.number}`)
@@ -83,6 +97,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Order webhook error:', error)
+
     return NextResponse.json({ error: 'Error processing webhook' }, { status: 500 })
   }
 }
@@ -222,11 +237,7 @@ async function handleOrderDeleted(order: OrderWebhookPayload): Promise<void> {
   }
 }
 
-async function handleStatusTransition(
-  order: OrderWebhookPayload,
-  fromStatus: string,
-  toStatus: string
-): Promise<void> {
+async function handleStatusTransition(order: OrderWebhookPayload, fromStatus: string, toStatus: string): Promise<void> {
   console.log(`Order #${order.number} status: ${fromStatus} -> ${toStatus}`)
 
   // Status groups for inventory handling
@@ -299,7 +310,7 @@ async function reconcileInventoryForOrder(
         case 'complete':
           // Deduct from actual stock when order is completed
           const newActual = Math.max(0, product.actualStock - quantity)
-          
+
           await prisma.product.update({
             where: { id: product.id },
             data: {
@@ -321,8 +332,10 @@ async function reconcileInventoryForOrder(
           // Check for low stock alert
           if (newActual <= product.lowStockAlert) {
             console.log(`LOW STOCK ALERT: ${product.name} is at ${newActual} units`)
+
             // TODO: Trigger notification
           }
+
           break
 
         case 'release':
@@ -348,7 +361,7 @@ async function reconcileInventoryForOrder(
         case 'refund':
           // Add stock back for refunded orders
           const refundedActual = product.actualStock + quantity
-          
+
           await prisma.product.update({
             where: { id: product.id },
             data: {

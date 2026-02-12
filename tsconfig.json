@@ -46,6 +46,7 @@
   "exclude": [
     "node_modules",
     "**/*.disabled/**",
-    "**/*.disabled"
+    "**/*.disabled",
+    "vitest.config.ts"
   ]
 }

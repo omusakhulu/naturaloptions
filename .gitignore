@@ -22,6 +22,7 @@
 .env.development
 .env.production
 .env.test
+.env copy*
 
 # WooCommerce Bridge specific
 woo-rental-bridge/.env
