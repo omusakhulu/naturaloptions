@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm check-types:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm e2e:*)",
+      "Bash(pnpm validate:*)",
+      "Bash(pnpm format:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(npx prisma:*)"
     ],
     "deny": [],
     "ask": []
