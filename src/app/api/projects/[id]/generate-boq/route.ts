@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { apiLogger } from '@/lib/logger'
 
 interface BOQItem {
   itemNo: string
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const { id: projectId } = await params
 
-    console.log('Project BOQ Generation Request:', { projectId })
+    apiLogger.info('Project BOQ Generation Request:', { projectId })
 
     if (!projectId) {
       return NextResponse.json({ success: false, error: 'Project ID is required' }, { status: 400 })
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       message: `BOQ ${boqNumber} generated successfully`
     })
   } catch (error: any) {
-    console.error('Error generating project BOQ:', error)
+    apiLogger.error('Error generating project BOQ:', error)
 
     return NextResponse.json(
       {

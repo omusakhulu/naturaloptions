@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { webhookLogger } from '@/lib/logger'
 
 // Type definitions
 interface ProductData {
@@ -25,7 +26,7 @@ function verifyWebhookSignature(payload: string, signature: string, secret: stri
 // Handle product updates
 async function handleProductUpdate(product: ProductData): Promise<void> {
   try {
-    console.log('Syncing product:', product.id)
+    webhookLogger.info('Syncing product:', product.id)
 
     // Prepare product data for update (without wooId since it's the key)
     const updateData = {
@@ -50,9 +51,9 @@ async function handleProductUpdate(product: ProductData): Promise<void> {
       create: createData
     })
 
-    console.log(`Product ${product.id} synced successfully`)
+    webhookLogger.info(`Product ${product.id} synced successfully`)
   } catch (error) {
-    console.error('Error syncing product:', error)
+    webhookLogger.error('Error syncing product:', error)
     throw error
   }
 }
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
     const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
 
     if (!secret) {
-      console.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
+      webhookLogger.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
 
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
     }
@@ -84,8 +85,8 @@ export async function POST(request: Request) {
 
     const product: ProductData = JSON.parse(payload)
 
-    console.log(`🔔 Received WooCommerce webhook: ${eventType}`)
-    console.log(`📦 Product ID: ${product.id}`)
+    webhookLogger.info(`🔔 Received WooCommerce webhook: ${eventType}`)
+    webhookLogger.info(`📦 Product ID: ${product.id}`)
 
     // Handle different webhook events
     switch (eventType) {
@@ -94,17 +95,17 @@ export async function POST(request: Request) {
         await handleProductUpdate(product)
         break
       case 'product.deleted':
-        console.log(`🗑️ Product deleted: ${product.id}`)
+        webhookLogger.info(`🗑️ Product deleted: ${product.id}`)
 
         // TODO: Handle product deletion
         break
       default:
-        console.log(`ℹ️ Unhandled event type: ${eventType}`)
+        webhookLogger.info(`ℹ️ Unhandled event type: ${eventType}`)
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('❌ Webhook error:', error)
+    webhookLogger.error('❌ Webhook error:', error)
 
     return NextResponse.json({ error: 'Error processing webhook' }, { status: 500 })
   }

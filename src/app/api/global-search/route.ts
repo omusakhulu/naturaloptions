@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/db/prisma'
 import searchData from '@/data/naturalOptionsSearchData'
+import { apiLogger } from '@/lib/logger'
 
 interface SearchResult {
   type: string
@@ -611,7 +612,7 @@ export async function GET(req: NextRequest) {
 
     searchResults.forEach((result, index) => {
       if (result.status === 'rejected') {
-        console.error(`Global search query ${index} failed:`, result.reason)
+        apiLogger.error(`Global search query ${index} failed:`, result.reason)
       }
     })
 
@@ -635,7 +636,7 @@ export async function GET(req: NextRequest) {
       query
     })
   } catch (error: any) {
-    console.error('Global search error:', error)
+    apiLogger.error('Global search error:', error)
 
     return NextResponse.json({ success: false, error: error?.message || 'Search failed' }, { status: 500 })
   }

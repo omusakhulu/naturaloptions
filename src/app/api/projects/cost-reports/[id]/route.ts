@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { apiLogger } from '@/lib/logger'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       costReport: report
     })
   } catch (error) {
-    console.error('Error fetching cost report:', error)
+    apiLogger.error('Error fetching cost report:', error)
 
     return NextResponse.json(
       {
@@ -127,7 +128,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       costReport
     })
   } catch (error) {
-    console.error('Error updating cost report:', error)
+    apiLogger.error('Error updating cost report:', error)
 
     return NextResponse.json(
       {

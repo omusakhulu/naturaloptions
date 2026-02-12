@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 
 import { rateLimit } from '@/lib/rate-limiter'
+import { webhookLogger } from '@/lib/logger'
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     const topic = request.headers.get('x-wc-webhook-topic')
 
     if (!signature || !topic) {
-      console.error('Missing required webhook headers', {
+      webhookLogger.error('Missing required webhook headers', {
         signature: !!signature,
         topic: !!topic
       })
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
     const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
 
     if (!webhookSecret) {
-      console.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
+      webhookLogger.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
 
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
     }
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     const digest = hmac.update(payload).digest('base64')
 
     if (signature !== digest) {
-      console.error('Invalid webhook signature', {
+      webhookLogger.error('Invalid webhook signature', {
         received: signature,
         expected: digest
       })
@@ -63,12 +64,12 @@ export async function POST(request: Request) {
     if (topic === 'order.created') {
       await handleOrderCreated(data)
     } else {
-      console.warn(`Unhandled webhook topic: ${topic}`)
+      webhookLogger.warn(`Unhandled webhook topic: ${topic}`)
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Order created webhook error:', error)
+    webhookLogger.error('Order created webhook error:', error)
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -76,12 +77,12 @@ export async function POST(request: Request) {
 
 async function handleOrderCreated(order: any) {
   try {
-    console.log(`🆕 Order created: ${order.id} (${order.status})`)
+    webhookLogger.info(`🆕 Order created: ${order.id} (${order.status})`)
 
     // TODO: Implement order processing logic
     // Example: Send confirmation email, update inventory, etc.
 
-    console.log('Order details:', {
+    webhookLogger.info('Order details:', {
       id: order.id,
       status: order.status,
       total: order.total,
@@ -94,7 +95,7 @@ async function handleOrderCreated(order: any) {
     // 3. Update inventory
     // 4. Trigger any business logic
   } catch (error) {
-    console.error('Error processing order created webhook:', error)
+    webhookLogger.error('Error processing order created webhook:', error)
     throw error
   }
 }

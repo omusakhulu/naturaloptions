@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { apiLogger } from '@/lib/logger'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     })
   } catch (error: any) {
-    console.error('Error fetching BOQ:', error)
+    apiLogger.error('Error fetching BOQ:', error)
 
     return NextResponse.json(
       {
@@ -95,7 +96,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       boq
     })
   } catch (error: any) {
-    console.error('Error updating BOQ:', error)
+    apiLogger.error('Error updating BOQ:', error)
 
     return NextResponse.json(
       {

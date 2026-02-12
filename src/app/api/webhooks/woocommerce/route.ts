@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limiter'
+import { webhookLogger } from '@/lib/logger'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       'user-agent': request.headers.get('user-agent')
     }
 
-    console.log('Received webhook headers:', headers)
+    webhookLogger.info('Received webhook headers', { headers })
 
     // Validate required headers
     const missingHeaders: string[] = [
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (missingHeaders.length > 0) {
       const errorMessage = `Missing required webhook headers: ${missingHeaders.join(', ')}`
 
-      console.error(errorMessage, {
+      webhookLogger.error(errorMessage, {
         signature: !!signature,
         topic: !!topic,
         deliveryId: !!deliveryId,
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
 
     if (!webhookSecret) {
-      console.error('WOOCOMMERCE_WEBHOOK_SECRET is not set')
+      webhookLogger.error('WOOCOMMERCE_WEBHOOK_SECRET is not set')
 
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
@@ -80,9 +81,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(payload).digest('base64')
 
     if (signature !== expectedSignature) {
-      console.error('Invalid webhook signature', {
-        received: signature,
-        expected: expectedSignature
+      webhookLogger.error('Invalid webhook signature', {
+        received: signature?.substring(0, 20) + '...',
+        expected: expectedSignature?.substring(0, 20) + '...'
       })
 
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
@@ -91,13 +92,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const data = JSON.parse(payload)
 
     // Enhanced logging for debugging
-    console.log('=== Webhook Payload ===')
-    console.log('Headers:', headers)
-    console.log('Topic:', topic)
-    console.log('Event:', event)
-    console.log('Delivery ID:', deliveryId)
-    console.log('Payload data:', JSON.stringify(data, null, 2))
-    console.log('========================')
+    webhookLogger.info('Webhook payload received', {
+      headers,
+      topic,
+      event,
+      deliveryId,
+      dataKeys: Object.keys(data)
+    })
 
     // 2. Handle different webhook events
     switch (topic) {
@@ -140,12 +141,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // Add more webhook handlers as needed
 
       default:
-        console.log(`Unhandled webhook event: ${topic}`, { event, data })
+        webhookLogger.info('Unhandled webhook event', { topic, event, dataKeys: Object.keys(data) })
     }
 
     return NextResponse.json({ received: true, event, topic }, { status: 200 })
   } catch (error) {
-    console.error('Error processing webhook:', error)
+    webhookLogger.error('Error processing webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
 
     return NextResponse.json(
       {
@@ -202,7 +205,9 @@ async function handleProductUpdate(productData: any) {
       }
     })
   } catch (error) {
-    console.error('Error updating product from webhook:', error)
+    webhookLogger.error('Error updating product from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
@@ -243,7 +248,9 @@ async function handleCouponUpdate(couponData: any) {
       }
     })
   } catch (error) {
-    console.error('Error updating coupon from webhook:', error)
+    webhookLogger.error('Error updating coupon from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
@@ -254,7 +261,9 @@ async function handleCouponDelete(couponId: number) {
       where: { wooId: couponId }
     })
   } catch (error) {
-    console.error('Error deleting coupon from webhook:', error)
+    webhookLogger.error('Error deleting coupon from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
@@ -306,7 +315,9 @@ async function handleOrderUpdate(orderData: any) {
       }
     })
   } catch (error) {
-    console.error('Error updating order from webhook:', error)
+    webhookLogger.error('Error updating order from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
@@ -317,7 +328,9 @@ async function handleOrderDelete(orderId: number) {
       where: { wooId: orderId }
     })
   } catch (error) {
-    console.error('Error deleting order from webhook:', error)
+    webhookLogger.error('Error deleting order from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
@@ -352,7 +365,9 @@ async function handleCustomerUpdate(customerData: any) {
       }
     })
   } catch (error) {
-    console.error('Error updating customer from webhook:', error)
+    webhookLogger.error('Error updating customer from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
@@ -363,7 +378,9 @@ async function handleCustomerDelete(customerId: number) {
       where: { wooId: customerId }
     })
   } catch (error) {
-    console.error('Error deleting customer from webhook:', error)
+    webhookLogger.error('Error deleting customer from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
@@ -375,7 +392,9 @@ async function handleProductDelete(productId: number) {
       where: { wooId: productId }
     })
   } catch (error) {
-    console.error('Error deleting product from webhook:', error)
+    webhookLogger.error('Error deleting product from webhook', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }
