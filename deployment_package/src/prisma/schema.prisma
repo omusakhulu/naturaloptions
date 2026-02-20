@@ -39,7 +39,7 @@ model StockAdjustmentRecord {
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native"]
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 model Account {
@@ -155,12 +155,43 @@ model Product {
   posSaleItems       POSSaleItem[]          @relation("POSSaleItems")
   inventoryLocations InventoryLocation[]    @relation("InventoryLocations")
   stockMovements     ProductStockMovement[] @relation("ProductStockMovements")
+  productWarranties  ProductWarranty[]      @relation("ProductWarranties")
 
   @@index([wooId])
   @@index([status])
   @@index([syncedAt])
   @@index([actualStock])
   @@index([websiteStock])
+}
+
+model Warranty {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  duration     Int
+  durationType String  // months, years, lifetime
+  description  String?
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products ProductWarranty[]
+}
+
+model ProductWarranty {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation("ProductWarranties", fields: [productId], references: [id])
+  warrantyId  String
+  warranty    Warranty  @relation(fields: [warrantyId], references: [id])
+  expiryDate  DateTime?
+  batchNumber String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([productId, warrantyId, batchNumber])
+  @@index([productId])
+  @@index([warrantyId])
 }
 
 model Coupon {
@@ -482,6 +513,47 @@ model EventTentQuote {
   @@index([createdAt])
 }
 
+model Quotation {
+  id              String   @id @default(cuid())
+  quotationNumber String   @unique
+  customerId      String?
+  customerName    String?
+  serviceType     String?
+  status          String   @default("Draft")
+  saleDate        DateTime @default(now())
+  invoiceScheme   String?
+  invoiceNo       String?
+  salesOrder      String?
+
+  // Discount & Tax
+  discountType    String?
+  discountAmount  Decimal  @default(0) @db.Decimal(10, 2)
+  orderTax        String?
+  sellNote        String?
+
+  // Shipping
+  shippingDetails   String?
+  shippingAddress   String?
+  shippingCharges   Decimal @default(0) @db.Decimal(10, 2)
+  shippingStatus    String?
+  deliveredTo       String?
+  deliveryPerson    String?
+
+  // Totals
+  subtotal     Decimal @default(0) @db.Decimal(10, 2)
+  totalPayable Decimal @default(0) @db.Decimal(10, 2)
+
+  // Line items stored as JSON
+  lineItems String @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
 enum QuoteStatus {
   draft
   sent
@@ -511,9 +583,10 @@ model Warehouse {
   location   Location? @relation(fields: [locationId], references: [id])
 
   // Relations
-  locations WarehouseLocation[]
-  inventory InventoryItem[]
-  movements StockMovement[]
+  locations       WarehouseLocation[]
+  inventory       InventoryItem[]
+  movements       StockMovement[]
+  purchaseReturns PurchaseReturn[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -542,6 +615,29 @@ model PaymentAccount {
 
   @@index([name])
   @@index([type])
+}
+
+model ExpenseCategory {
+  id       String  @id @default(cuid())
+  name     String
+  parentId String?
+  parent   ExpenseCategory?  @relation("SubCategories", fields: [parentId], references: [id])
+  children ExpenseCategory[] @relation("SubCategories")
+
+  createdAt DateTime @default(now())
+
+  @@unique([name, parentId])
+  @@index([parentId])
+}
+
+model ExpenseContact {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  type  String? // Employee, Vendor, Project
+  phone String?
+  email String?
+
+  createdAt DateTime @default(now())
 }
 
 model Expense {
@@ -578,9 +674,11 @@ model SalesReturn {
 }
 
 model PurchaseReturn {
-  id       String @id @default(cuid())
-  vendorId String
-  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  id          String     @id @default(cuid())
+  vendorId    String
+  vendor      Vendor     @relation(fields: [vendorId], references: [id])
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
 
   amount Decimal  @db.Decimal(15, 2)
   date   DateTime
@@ -589,6 +687,7 @@ model PurchaseReturn {
   createdAt DateTime @default(now())
 
   @@index([vendorId])
+  @@index([warehouseId])
   @@index([date])
 }
 
@@ -1880,6 +1979,20 @@ model Notification {
   @@index([read])
   @@index([type])
   @@index([createdAt])
+}
+
+model SalesTarget {
+  id            String   @id @default(cuid())
+  name          String
+  revenueTarget Decimal  @db.Decimal(15, 2)
+  month         Int
+  year          Int
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([month, year])
+  @@index([year, month])
 }
 
 enum NotificationType {

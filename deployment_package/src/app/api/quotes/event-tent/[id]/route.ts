@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { apiLogger } from '@/lib/logger'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,7 +24,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Parse JSON fields
-    const lineItems = JSON.parse(quote.lineItems)
+    let lineItems = []
+
+    try {
+      lineItems = JSON.parse(quote.lineItems)
+    } catch {
+      lineItems = []
+    }
 
     return NextResponse.json({
       success: true,
@@ -33,7 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     })
   } catch (error: any) {
-    console.error('Error fetching quote:', error)
+    apiLogger.error('Error fetching quote:', error)
 
     return NextResponse.json(
       {
@@ -64,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       quote
     })
   } catch (error: any) {
-    console.error('Error updating quote:', error)
+    apiLogger.error('Error updating quote:', error)
 
     return NextResponse.json(
       {
@@ -91,7 +98,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       message: 'Quote deleted successfully'
     })
   } catch (error: any) {
-    console.error('Error deleting quote:', error)
+    apiLogger.error('Error deleting quote:', error)
 
     return NextResponse.json(
       {

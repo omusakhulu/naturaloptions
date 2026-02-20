@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography'
 
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-const money = v => `$${Number.parseFloat(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+const money = v => `KSh ${Number.parseFloat(v || 0).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`
 
 export default function TaxesReport({ monthlySeries = [], months = [], topRates = [] }) {
   const barOptions = {

@@ -110,16 +110,18 @@ const OrderListTable = ({ orderData }) => {
   const [rowSelection, setRowSelection] = useState({})
   const [data, setData] = useState(...[orderData])
   const [globalFilter, setGlobalFilter] = useState('')
-  const [statuses, setStatuses] = useState([])
   const [statusFilter, setStatusFilter] = useState('')
 
   // Hooks
   const { lang: locale } = useParams()
   const router = useRouter()
 
-  // Vars
-  const paypal = '/images/apps/ecommerce/paypal.png'
-  const mastercard = '/images/apps/ecommerce/mastercard.png'
+  // Derive unique statuses from data
+  const statuses = useMemo(() => {
+    const unique = new Set((data || []).map(o => String(o.status || '').toLowerCase()).filter(Boolean))
+
+    return Array.from(unique).sort().map(key => ({ key, label: formatStatus(key) }))
+  }, [data])
 
   // Build dynamic color map with memo (before columns so it is defined when referenced)
   const dynamicColorMap = useMemo(() => {
@@ -211,21 +213,17 @@ const OrderListTable = ({ orderData }) => {
           return <Chip label={formatStatus(status)} color={statusColor} variant='tonal' size='small' />
         }
       }),
-      columnHelper.accessor('method', {
-        header: 'Method',
-        cell: ({ row }) => (
-          <div className='flex items-center'>
-            <div className='flex justify-center items-center bg-[#F6F8FA] rounded-sm is-[29px] bs-[18px]'>
-              <img
-                src={row.original.method === 'mastercard' ? mastercard : paypal}
-                height={row.original.method === 'mastercard' ? 11 : 14}
-              />
-            </div>
-            <Typography>
-              {`...${row.original.method === 'mastercard' ? row.original.methodNumber : '@gmail.com'}`}
+      columnHelper.accessor('total', {
+        header: 'Total',
+        cell: ({ row }) => {
+          const total = Number(row.original.total || 0)
+
+          return (
+            <Typography className='font-medium' color='text.primary'>
+              {`KSh ${total.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </Typography>
-          </div>
-        )
+          )
+        }
       }),
       columnHelper.accessor('action', {
         header: 'Action',

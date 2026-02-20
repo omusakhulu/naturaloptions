@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { apiLogger } from '@/lib/logger'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const boqId = parseInt(id)
+    const boqId = parseInt(id, 10)
 
     if (isNaN(boqId)) {
       return NextResponse.json({ success: false, error: 'Invalid BOQ ID' }, { status: 400 })
@@ -20,7 +21,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Parse sections from JSON
-    const sections = typeof boq.sections === 'string' ? JSON.parse(boq.sections) : boq.sections
+    let sections: any = boq.sections
+
+    try {
+      sections = typeof boq.sections === 'string' ? JSON.parse(boq.sections) : boq.sections
+    } catch {
+      sections = []
+    }
 
     return NextResponse.json({
       success: true,
@@ -30,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     })
   } catch (error: any) {
-    console.error('Error fetching BOQ:', error)
+    apiLogger.error('Error fetching BOQ:', error)
 
     return NextResponse.json(
       {
@@ -45,7 +52,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const boqId = parseInt(id)
+    const boqId = parseInt(id, 10)
     const data = await request.json()
 
     if (isNaN(boqId)) {
@@ -69,7 +76,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (data.discount !== undefined) updateData.discount = data.discount
     if (data.paymentTerms !== undefined) updateData.paymentTerms = data.paymentTerms
     if (data.validityDays !== undefined) updateData.validityDays = data.validityDays
-    
+
     // Update sections and calculated totals
     if (data.sections !== undefined) updateData.sections = data.sections
     if (data.subtotal !== undefined) updateData.subtotal = data.subtotal
@@ -89,7 +96,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       boq
     })
   } catch (error: any) {
-    console.error('Error updating BOQ:', error)
+    apiLogger.error('Error updating BOQ:', error)
 
     return NextResponse.json(
       {

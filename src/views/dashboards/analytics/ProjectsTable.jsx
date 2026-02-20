@@ -76,7 +76,7 @@ const ProjectTables = ({ projectTable }) => {
   // States
   const [rowSelection, setRowSelection] = useState({})
 
-  const [data, setData] = useState(...[projectTable])
+  const [data, setData] = useState(Array.isArray(projectTable) ? projectTable : [])
   const [globalFilter, setGlobalFilter] = useState('')
 
   // Hooks

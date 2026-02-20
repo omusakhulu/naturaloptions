@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useEffect } from 'react'
 
 import Button from '@mui/material/Button'
 
@@ -14,17 +15,19 @@ export default function PeriodButtons() {
   const mkHref = p => `${base}?period=${p}`
 
   // Persist selection in sessionStorage and restore if missing
-  if (typeof window !== 'undefined') {
-    const saved = window.sessionStorage.getItem('dashboard_period')
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.sessionStorage.getItem('dashboard_period')
 
-    if (!sp.get('period') && saved) {
-      router.replace(mkHref(saved))
-    }
+      if (!sp.get('period') && saved) {
+        router.replace(mkHref(saved))
+      }
 
-    if (sp.get('period')) {
-      window.sessionStorage.setItem('dashboard_period', period)
+      if (sp.get('period')) {
+        window.sessionStorage.setItem('dashboard_period', period)
+      }
     }
-  }
+  }, [sp, period, router])
 
   return (
     <div className='flex gap-1'>

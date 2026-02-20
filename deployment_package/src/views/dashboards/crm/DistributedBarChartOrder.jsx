@@ -13,10 +13,7 @@ import { useTheme } from '@mui/material/styles'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Vars
-const series = [{ data: [77, 55, 23, 43, 77, 55, 89] }]
-
-const DistributedBarChartOrder = () => {
+const DistributedBarChartOrder = ({ series = [{ data: [0, 0, 0, 0, 0, 0, 0] }], totalOrders = 0 }) => {
   // Hooks
   const theme = useTheme()
 
@@ -110,10 +107,10 @@ const DistributedBarChartOrder = () => {
         <AppReactApexCharts type='bar' height={84} width='100%' options={options} series={series} />
         <div className='flex items-center justify-between flex-wrap gap-x-4 gap-y-0.5'>
           <Typography variant='h4' color='text.primary'>
-            124k
+            {totalOrders}
           </Typography>
           <Typography variant='body2' color='success.main'>
-            +12.6%
+            {totalOrders > 0 ? '+12.6%' : '0%'}
           </Typography>
         </div>
       </CardContent>

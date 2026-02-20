@@ -30,7 +30,6 @@ import PeriodButtons from '@/components/dashboard/PeriodButtons'
 import RefreshButton from '@/components/dashboard/RefreshButton'
 import FiltersBar from '@/components/dashboard/FiltersBar'
 import LineAreaDailySalesChart from '@views/pages/widget-examples/statistics/LineAreaDailySalesChart'
-import ApexLineChart from '@views/charts/apex/ApexLineChart'
 import BeautyKpis from '@views/apps/ecommerce/dashboard/BeautyKpis'
 import TwoLineChart from '@views/apps/ecommerce/dashboard/TwoLineChart'
 import prisma from '@/lib/prisma'
@@ -752,7 +751,7 @@ return d ? (new Date(range.after) <= d && d <= new Date(range.before)) : false
           netSales={summary.totalIncome}
           netProfit={summary.netProfit}
           salesReturns={(orders || []).reduce((acc, o) => acc + (parseFloat(String(o.refund_total || 0).replace(/[^0-9.-]/g, '')) || 0), 0)}
-          purchaseReturns={0}
+          purchaseReturns={purchaseReturnsTotal}
           expenses={summary.totalExpenses}
         />
       </Grid>
@@ -854,17 +853,10 @@ return tx.slice(0, 7)
       </Grid>
 
       <Grid size={12}>
-        <Masonry columns={{ sm: 1, lg: 2 }} spacing={2}>
-          <div>
-            <ApexLineChart />
-          </div>
-          <div>
-            <LineAreaDailySalesChart
-              totalLabel={`KSh ${netSalesRange.toLocaleString('en-KE', { maximumFractionDigits: 0 })}`}
-              series={[{ data: salesLast30 }]}
-            />
-          </div>
-        </Masonry>
+        <LineAreaDailySalesChart
+          totalLabel={`KSh ${netSalesRange.toLocaleString('en-KE', { maximumFractionDigits: 0 })}`}
+          series={[{ data: salesLast30 }]}
+        />
       </Grid>
 
       <Grid size={12}>

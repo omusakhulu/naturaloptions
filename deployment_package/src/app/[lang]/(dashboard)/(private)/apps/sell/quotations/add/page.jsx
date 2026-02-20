@@ -30,6 +30,7 @@ export default function AddQuotationPage() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [lineItems, setLineItems] = useState([])
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -160,6 +161,57 @@ export default function AddQuotationPage() {
     if (!p) return ''
     const sku = p.sku ? ` - ${p.sku}` : ''
     return `${p.name || ''}${sku}`.trim() || String(p.id || '')
+  }
+
+  const handleSave = async (print = false) => {
+    setSaving(true)
+    try {
+      const payload = {
+        customerId: selectedCustomer?.id || null,
+        customerName: selectedCustomer ? `${selectedCustomer.firstName || ''} ${selectedCustomer.lastName || ''}`.trim() : null,
+        serviceType,
+        status: status || 'Draft',
+        saleDate,
+        invoiceScheme,
+        invoiceNo,
+        salesOrder,
+        discountType,
+        discountAmount,
+        orderTax,
+        sellNote,
+        shippingDetails,
+        shippingAddress,
+        shippingCharges,
+        shippingStatus,
+        deliveredTo,
+        deliveryPerson,
+        lineItems,
+        subtotal: itemsSubtotal,
+        totalPayable
+      }
+
+      const res = await fetch('/api/quotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        alert(`Quotation ${data.quotation.quotationNumber} saved successfully!`)
+        if (print) {
+          window.print()
+        }
+      } else {
+        alert(data.error || 'Failed to save quotation')
+      }
+    } catch (err) {
+      console.error('Error saving quotation:', err)
+      alert('Failed to save quotation')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -399,8 +451,8 @@ export default function AddQuotationPage() {
       <div className='bg-white border rounded shadow p-4 flex items-center justify-between'>
         <div className='text-sm text-gray-700'>Total Payable: <span className='font-semibold'>KSh {Number(totalPayable).toLocaleString('en-KE')}</span></div>
         <div className='space-x-2'>
-          <button className='border rounded px-4 py-2 text-sm'>Save</button>
-          <button className='bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 text-sm'>Save and print</button>
+          <button onClick={() => handleSave(false)} disabled={saving || lineItems.length === 0} className='border rounded px-4 py-2 text-sm disabled:opacity-50'>{saving ? 'Saving...' : 'Save'}</button>
+          <button onClick={() => handleSave(true)} disabled={saving || lineItems.length === 0} className='bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50'>{saving ? 'Saving...' : 'Save and print'}</button>
         </div>
       </div>
     </div>

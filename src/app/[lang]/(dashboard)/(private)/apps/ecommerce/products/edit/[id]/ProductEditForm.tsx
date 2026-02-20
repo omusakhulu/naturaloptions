@@ -538,7 +538,13 @@ export const ProductEditForm: React.FC<ProductEditFormProps> = ({ productId, ini
       if (typeof data.short_description === 'string') updatedProduct.short_description = data.short_description
       if (data.catalog_visibility) updatedProduct.catalog_visibility = data.catalog_visibility
 
-      if (typeof data.manage_stock === 'boolean') updatedProduct.manage_stock = data.manage_stock
+      // manage_stock must be true for WooCommerce to accept stock_quantity updates
+      updatedProduct.manage_stock = data.manage_stock === true || String(data.manage_stock) === 'true'
+
+      // If stock_quantity is being set, ensure manage_stock is enabled
+      if (updatedProduct.stock_quantity !== undefined && Number(updatedProduct.stock_quantity) > 0) {
+        updatedProduct.manage_stock = true
+      }
       if (data.backorders) updatedProduct.backorders = data.backorders
       if (data.low_stock_amount !== undefined && data.low_stock_amount !== '') updatedProduct.low_stock_amount = Number(data.low_stock_amount)
       if (typeof data.sold_individually === 'boolean') updatedProduct.sold_individually = data.sold_individually

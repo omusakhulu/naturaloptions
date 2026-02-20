@@ -20,39 +20,46 @@ import CustomAvatar from '@core/components/mui/Avatar'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Vars
-const data = [
-  {
-    title: 'New Tickets',
-    subtitle: '142',
-    avatarColor: 'primary',
-    avatarIcon: 'tabler-ticket'
-  },
-  {
-    title: 'Open Tickets',
-    subtitle: '28',
-    avatarColor: 'info',
-    avatarIcon: 'tabler-check'
-  },
-  {
-    title: 'Response Time',
-    subtitle: '1 Day',
-    avatarColor: 'warning',
-    avatarIcon: 'tabler-clock'
-  }
-]
-
-const SupportTracker = () => {
+const SupportTracker = ({ orderStats }) => {
   // Hooks
   const theme = useTheme()
 
   // Vars
   const disabledText = 'var(--mui-palette-text-disabled)'
 
+  const total = orderStats?.total || 0
+  const pending = orderStats?.pending || 0
+  const processing = orderStats?.processing || 0
+  const completed = orderStats?.completed || 0
+  const onHold = orderStats?.onHold || 0
+
+  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
+
+  const data = [
+    {
+      title: 'Processing',
+      subtitle: processing.toString(),
+      avatarColor: 'info',
+      avatarIcon: 'tabler-clock'
+    },
+    {
+      title: 'Completed',
+      subtitle: completed.toString(),
+      avatarColor: 'success',
+      avatarIcon: 'tabler-check'
+    },
+    {
+      title: 'On Hold',
+      subtitle: onHold.toString(),
+      avatarColor: 'warning',
+      avatarIcon: 'tabler-clock-pause'
+    }
+  ]
+
   const options = {
     stroke: { dashArray: 10 },
-    labels: ['Completed Task'],
-    colors: ['var(--mui-palette-primary-main)'],
+    labels: ['Completion Rate'],
+    colors: ['var(--mui-palette-success-main)'],
     states: {
       hover: {
         filter: { type: 'none' }
@@ -169,15 +176,15 @@ const SupportTracker = () => {
   return (
     <Card>
       <CardHeader
-        title='Support Tracker'
-        subheader='Last 7 Days'
+        title='Order Status'
+        subheader='Current Overview'
         action={<OptionMenu options={['Refresh', 'Edit', 'Share']} />}
       />
       <CardContent className='flex flex-col sm:flex-row items-center justify-between gap-7'>
         <div className='flex flex-col gap-6 is-full sm:is-[unset]'>
           <div className='flex flex-col'>
-            <Typography variant='h2'>164</Typography>
-            <Typography>Total Tickets</Typography>
+            <Typography variant='h2'>{total}</Typography>
+            <Typography>Total Orders</Typography>
           </div>
           <div className='flex flex-col gap-4 is-full'>
             {data.map((item, index) => (
@@ -195,7 +202,7 @@ const SupportTracker = () => {
             ))}
           </div>
         </div>
-        <AppReactApexCharts type='radialBar' height={350} width='100%' series={[85]} options={options} />
+        <AppReactApexCharts type='radialBar' height={350} width='100%' series={[completionRate]} options={options} />
       </CardContent>
     </Card>
   )

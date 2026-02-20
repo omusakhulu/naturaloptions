@@ -4,15 +4,25 @@ import { NextResponse } from 'next/server'
 
 import { createOrGetPackingSlip } from '@/lib/db/packingSlips'
 import { processOrderCompletion, reverseOrderStockMovements } from '@/lib/services/warehouseStockService'
+import { rateLimit } from '@/lib/rate-limiter'
+import { webhookLogger } from '@/lib/logger'
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { limited } = rateLimit('webhook-order-updated', ip, { maxRequests: 30, windowMs: 60_000 })
+
+    if (limited) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
     // Get the signature from headers
     const signature = request.headers.get('x-wc-webhook-signature')
     const topic = request.headers.get('x-wc-webhook-topic')
 
     if (!signature || !topic) {
-      console.error('Missing required webhook headers', {
+      webhookLogger.error('Missing required webhook headers', {
         signature: !!signature,
         topic: !!topic
       })
@@ -24,11 +34,19 @@ export async function POST(request: Request) {
     const payload = await request.text()
 
     // Verify the webhook signature
-    const hmac = crypto.createHmac('sha256', process.env.WOOCOMMERCE_WEBHOOK_SECRET || '')
+    const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
+
+    if (!webhookSecret) {
+      webhookLogger.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
+
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+
+    const hmac = crypto.createHmac('sha256', webhookSecret)
     const digest = hmac.update(payload).digest('base64')
 
     if (signature !== digest) {
-      console.error('Invalid webhook signature', {
+      webhookLogger.error('Invalid webhook signature', {
         received: signature,
         expected: digest
       })
@@ -36,18 +54,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const data = JSON.parse(payload)
+    let data
+
+    try {
+      data = JSON.parse(payload)
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+    }
 
     // Handle order updated webhook
     if (topic === 'order.updated') {
       await handleOrderUpdated(data)
     } else {
-      console.warn(`Unhandled webhook topic: ${topic}`)
+      webhookLogger.warn(`Unhandled webhook topic: ${topic}`)
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Order updated webhook error:', error)
+    webhookLogger.error('Order updated webhook error:', error)
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -55,12 +79,12 @@ export async function POST(request: Request) {
 
 async function handleOrderUpdated(order: any) {
   try {
-    console.log(`📦 Order updated: ${order.id} (${order.status})`)
+    webhookLogger.info(`📦 Order updated: ${order.id} (${order.status})`)
 
     // TODO: Implement order update processing logic
     // Example: Send status update email, update fulfillment, etc.
 
-    console.log('Order update details:', {
+    webhookLogger.info('Order update details:', {
       id: order.id,
       status: order.status,
       previousStatus: order.meta_data?.find((meta: any) => meta.key === '_previous_status')?.value,
@@ -79,7 +103,7 @@ async function handleOrderUpdated(order: any) {
         // Create packing slip
         const slip = await createOrGetPackingSlip({ wooOrderId: Number(order.id) })
 
-        console.log('✅ Packing slip ensured for completed order', {
+        webhookLogger.info('✅ Packing slip ensured for completed order', {
           wooOrderId: order.id,
           packingSlipNumber: slip.packingSlipNumber
         })
@@ -89,29 +113,25 @@ async function handleOrderUpdated(order: any) {
         const lineItems = order.line_items || []
 
         if (lineItems.length > 0) {
-          console.log(`📦 Processing warehouse stock for order ${orderNumber} with ${lineItems.length} items`)
-          
-          const stockResult = await processOrderCompletion(
-            Number(order.id),
-            orderNumber,
-            lineItems
-          )
+          webhookLogger.info(`📦 Processing warehouse stock for order ${orderNumber} with ${lineItems.length} items`)
+
+          const stockResult = await processOrderCompletion(Number(order.id), orderNumber, lineItems)
 
           if (stockResult.success && stockResult.processedItems > 0) {
-            console.log(`✅ Warehouse stock reduced for order ${orderNumber}:`, {
+            webhookLogger.info(`✅ Warehouse stock reduced for order ${orderNumber}:`, {
               processedItems: stockResult.processedItems,
               skippedItems: stockResult.skippedItems,
               movements: stockResult.movements.length
             })
           } else {
-            console.warn(`⚠️ Warehouse stock processing had issues for order ${orderNumber}:`, {
+            webhookLogger.warn(`⚠️ Warehouse stock processing had issues for order ${orderNumber}:`, {
               errors: stockResult.errors,
               skippedItems: stockResult.skippedItems
             })
           }
         }
       } catch (e) {
-        console.error('Failed to process completed order', {
+        webhookLogger.error('Failed to process completed order', {
           wooOrderId: order.id,
           error: (e as Error).message
         })
@@ -122,26 +142,26 @@ async function handleOrderUpdated(order: any) {
     if (order.status === 'cancelled' || order.status === 'refunded') {
       try {
         const orderNumber = order.number || order.id.toString()
-        
-        console.log(`🔄 Reversing warehouse stock for ${order.status} order ${orderNumber}`)
-        
+
+        webhookLogger.info(`🔄 Reversing warehouse stock for ${order.status} order ${orderNumber}`)
+
         const reverseResult = await reverseOrderStockMovements(orderNumber)
 
         if (reverseResult.success && reverseResult.processedItems > 0) {
-          console.log(`✅ Warehouse stock reversed for order ${orderNumber}:`, {
+          webhookLogger.info(`✅ Warehouse stock reversed for order ${orderNumber}:`, {
             processedItems: reverseResult.processedItems,
             skippedItems: reverseResult.skippedItems
           })
         }
       } catch (e) {
-        console.error('Failed to reverse warehouse stock', {
+        webhookLogger.error('Failed to reverse warehouse stock', {
           wooOrderId: order.id,
           error: (e as Error).message
         })
       }
     }
   } catch (error) {
-    console.error('Error processing order updated webhook:', error)
+    webhookLogger.error('Error processing order updated webhook:', error)
     throw error
   }
 }

@@ -12,9 +12,8 @@ import { useTheme } from '@mui/material/styles'
 
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
-const series = [{ data: [32, 52, 72, 94, 116, 94, 72] }]
 
-const BarChartRevenueGrowth = () => {
+const BarChartRevenueGrowth = ({ series = [{ data: [0, 0, 0, 0, 0, 0, 0] }], totalRevenue = 'KSh 0' }) => {
   // Hook
   const theme = useTheme()
 
@@ -119,8 +118,13 @@ const BarChartRevenueGrowth = () => {
             <Typography>Weekly Report</Typography>
           </div>
           <div className='flex flex-col gap-y-2 items-start'>
-            <Typography variant='h3'>$4,673</Typography>
-            <Chip variant='tonal' size='small' color='success' label='+15.2%' />
+            <Typography variant='h3'>{totalRevenue}</Typography>
+            <Chip
+              variant='tonal'
+              size='small'
+              color={totalRevenue !== 'KSh 0' ? 'success' : 'secondary'}
+              label={totalRevenue !== 'KSh 0' ? '+15.2%' : '0%'}
+            />
           </div>
         </div>
         <AppReactApexCharts type='bar' width={170} height={172} series={series} options={options} />

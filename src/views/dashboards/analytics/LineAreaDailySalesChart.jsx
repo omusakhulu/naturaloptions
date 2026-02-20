@@ -12,11 +12,14 @@ import { useTheme } from '@mui/material/styles'
 
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
-const series = [{ data: [40, 20, 65, 50] }]
 
-const LineAreaDailySalesChart = () => {
+const LineAreaDailySalesChart = ({ stats }) => {
   // Hook
   const theme = useTheme()
+
+  const chartData = stats?.weeklySalesChart || [40, 20, 65, 50]
+  const monthTotal = stats?.monthlySales?.total || 0
+  const series = [{ data: chartData }]
 
   const options = {
     chart: {
@@ -80,7 +83,7 @@ const LineAreaDailySalesChart = () => {
       <CardHeader title='Average Daily Sales' className='pbe-3' />
       <CardContent>
         <Typography>Total Sales This Month</Typography>
-        <Typography variant='h4'>$28,450</Typography>
+        <Typography variant='h4'>KSh {monthTotal.toLocaleString('en-KE')}</Typography>
       </CardContent>
       <AppReactApexCharts type='area' height={88} width='100%' series={series} options={options} />
     </Card>

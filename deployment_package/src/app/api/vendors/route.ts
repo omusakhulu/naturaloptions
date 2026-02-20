@@ -19,9 +19,29 @@ function calcTotals(bills: any[]) {
   return { billsCount: count, totalOwed }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
   if (hasDb) {
     try {
+      // Single vendor by id
+      if (id) {
+        const v = await prisma.vendor.findUnique({
+          where: { id },
+          include: { paymentTerm: true }
+        })
+        if (!v) return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+        let profile = {}
+        try { profile = JSON.parse(v.profile || '{}') } catch {}
+        return NextResponse.json({
+          id: v.id, name: v.name, email: v.email || '', phone: v.phone || '',
+          address: v.address || '', paymentTermId: v.paymentTermId || '',
+          isActive: v.isActive, shippingAddress: v.shippingAddress || '', profile
+        })
+      }
+
+      // List all
       const vendors = await prisma.vendor.findMany({
         include: { bills: true, paymentTerm: true },
         orderBy: { name: 'asc' }
@@ -43,6 +63,11 @@ export async function GET() {
     } catch {}
   }
   // Fallback
+  if (id) {
+    const v = memVendors.find(v => v.id === id)
+    if (!v) return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+    return NextResponse.json(v)
+  }
   const items = memVendors.map(v => ({
     ...v,
     billsCount: 0,
@@ -70,4 +95,55 @@ export async function POST(request: Request) {
   const v = { id: String(Date.now()), name, email, phone, address, isActive, paymentTermId, profile, shippingAddress }
   memVendors.unshift(v)
   return NextResponse.json(v)
+}
+
+export async function PUT(request: Request) {
+  const body = await request.json()
+  const { id, name, email, phone, address, paymentTermId, isActive, profile, shippingAddress } = body || {}
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+  if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })
+
+  if (hasDb) {
+    try {
+      const vendor = await prisma.vendor.update({
+        where: { id },
+        data: {
+          name,
+          email: email || null,
+          phone: phone || null,
+          address: address || null,
+          paymentTermId: paymentTermId || null,
+          isActive: isActive !== false,
+          profile: JSON.stringify(profile || {}),
+          shippingAddress: shippingAddress || null
+        }
+      })
+      return NextResponse.json(vendor)
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || 'Failed to update vendor' }, { status: 500 })
+    }
+  }
+
+  const idx = memVendors.findIndex(v => v.id === id)
+  if (idx === -1) return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+  memVendors[idx] = { ...memVendors[idx], name, email, phone, address, paymentTermId, isActive, profile, shippingAddress }
+  return NextResponse.json(memVendors[idx])
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  if (hasDb) {
+    try {
+      await prisma.vendor.delete({ where: { id } })
+      return NextResponse.json({ success: true })
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || 'Failed to delete vendor' }, { status: 500 })
+    }
+  }
+
+  memVendors = memVendors.filter(v => v.id !== id)
+  return NextResponse.json({ success: true })
 }

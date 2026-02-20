@@ -15,13 +15,12 @@ import OptionMenu from '@core/components/option-menu'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Vars
-const series = [
-  { name: 'Sales', data: [32, 27, 27, 30, 25, 25] },
-  { name: 'Visits', data: [25, 35, 20, 20, 20, 20] }
-]
-
-const RadarSalesChart = () => {
+const RadarSalesChart = ({
+  series = [
+    { name: 'Sales', data: [0, 0, 0, 0, 0, 0] },
+    { name: 'Orders', data: [0, 0, 0, 0, 0, 0] }
+  ]
+}) => {
   // Hooks
   const theme = useTheme()
 

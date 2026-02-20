@@ -113,27 +113,36 @@ async function getOrdersFromDatabase() {
     if (!Array.isArray(dbOrders) || dbOrders.length === 0) return []
 
     // Transform database orders for display
-    const transformedOrders = dbOrders.map(order => ({
-      id: order.wooId,
-      orderNumber: String(order.orderNumber || order.number || order.wooId),
-      status: order.status,
-      total: order.total,
-      subtotal: order.subtotal,
-      shippingTotal: order.shippingTotal,
-      taxTotal: order.taxTotal,
-      discountTotal: order.discountTotal,
-      paymentMethod: order.paymentMethod,
-      paymentMethodTitle: order.paymentMethodTitle,
-      customerNote: order.customerNote,
-      dateCreated: order.dateCreated,
-      datePaid: order.datePaid,
-      dateCompleted: order.dateCompleted,
-      shippingAddress: order.shippingAddress ? JSON.parse(order.shippingAddress) : {},
-      billingAddress: order.billingAddress ? JSON.parse(order.billingAddress) : {},
-      lineItems: order.lineItems ? JSON.parse(order.lineItems) : [],
-      customer: order.customer ? JSON.parse(order.customer) : {},
-      _cachedAt: Date.now()
-    }))
+    const transformedOrders = dbOrders.map(order => {
+      const dateCreated = order.dateCreated ? new Date(order.dateCreated) : new Date()
+      const normalizedNumber = String(order.orderNumber || order.number || order.wooId)
+
+      return {
+        id: order.wooId,
+        order: normalizedNumber,
+        orderNumber: normalizedNumber,
+        date: dateCreated,
+        time: dateCreated.toLocaleTimeString(),
+        status: order.status,
+        total: order.total,
+        subtotal: order.subtotal,
+        shippingTotal: order.shippingTotal,
+        taxTotal: order.taxTotal,
+        discountTotal: order.discountTotal,
+        paymentMethod: order.paymentMethod,
+        paymentMethodTitle: order.paymentMethodTitle,
+        customerNote: order.customerNote,
+        dateCreated: dateCreated,
+        datePaid: order.datePaid,
+        dateCompleted: order.dateCompleted,
+        shippingAddress: order.shippingAddress ? JSON.parse(order.shippingAddress) : {},
+        billingAddress: order.billingAddress ? JSON.parse(order.billingAddress) : {},
+        lineItems: order.lineItems ? JSON.parse(order.lineItems) : [],
+        customer: order.customer ? JSON.parse(order.customer) : {},
+        email: (() => { try { const c = order.billingAddress ? JSON.parse(order.billingAddress) : {}; return c.email || '' } catch { return '' } })(),
+        _cachedAt: Date.now()
+      }
+    })
 
     return transformedOrders
   } catch (error) {

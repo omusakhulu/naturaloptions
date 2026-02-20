@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { getDarajaConfigFromEnv, stkQuery } from '@/lib/mpesa/daraja'
+import { apiLogger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
       ...resp
     })
   } catch (error: any) {
-    console.error('M-PESA stkquery error:', error?.message || error)
+    apiLogger.error('M-PESA stkquery error', { error: error instanceof Error ? error.message : String(error) })
+
     return NextResponse.json(
       {
         success: false,

@@ -1,3 +1,5 @@
+'use client'
+
 // Next Imports
 import dynamic from 'next/dynamic'
 
@@ -19,39 +21,44 @@ import CustomAvatar from '@core/components/mui/Avatar'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Vars
-const series = [{ data: [37, 76, 65, 41, 99, 53, 70] }]
-
-const data = [
-  {
-    title: 'Earnings',
-    progress: 64,
-    stats: '$545.69',
-    progressColor: 'primary',
-    avatarColor: 'primary',
-    avatarIcon: 'tabler-currency-dollar'
-  },
-  {
-    title: 'Profit',
-    progress: 59,
-    stats: '$256.34',
-    progressColor: 'info',
-    avatarColor: 'info',
-    avatarIcon: 'tabler-chart-pie-2'
-  },
-  {
-    title: 'Expense',
-    progress: 22,
-    stats: '$74.19',
-    progressColor: 'error',
-    avatarColor: 'error',
-    avatarIcon: 'tabler-brand-paypal'
-  }
-]
-
-const EarningReports = () => {
+const EarningReports = ({ stats, growthPercent }) => {
   // Vars
   const primaryColorWithOpacity = 'var(--mui-palette-primary-lightOpacity)'
+
+  const weekTotal = stats?.weeklySales?.total || 0
+  const revenue = stats?.financials?.revenue || 0
+  const expenses = stats?.financials?.expenses || 0
+  const profit = stats?.financials?.profit || 0
+  const growth = growthPercent || 0
+
+  const series = [{ data: stats?.dailySales?.map(d => d.amount) || [0, 0, 0, 0, 0, 0, 0] }]
+
+  const data = [
+    {
+      title: 'Earnings',
+      progress: revenue > 0 ? Math.min(100, Math.round((revenue / (revenue + (expenses || 1))) * 100)) : 0,
+      stats: `KSh ${revenue.toLocaleString('en-KE')}`,
+      progressColor: 'primary',
+      avatarColor: 'primary',
+      avatarIcon: 'tabler-currency-dollar'
+    },
+    {
+      title: 'Profit',
+      progress: revenue > 0 ? Math.min(100, Math.round((profit / revenue) * 100)) : 0,
+      stats: `KSh ${profit.toLocaleString('en-KE')}`,
+      progressColor: 'info',
+      avatarColor: 'info',
+      avatarIcon: 'tabler-chart-pie-2'
+    },
+    {
+      title: 'Expense',
+      progress: revenue > 0 ? Math.min(100, Math.round((expenses / revenue) * 100)) : 0,
+      stats: `KSh ${expenses.toLocaleString('en-KE')}`,
+      progressColor: 'error',
+      avatarColor: 'error',
+      avatarIcon: 'tabler-brand-paypal'
+    }
+  ]
 
   const options = {
     chart: {
@@ -95,7 +102,7 @@ const EarningReports = () => {
       }
     },
     xaxis: {
-      categories: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
+      categories: stats?.dailySales?.map(d => d.day) || ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
       axisTicks: { show: false },
       axisBorder: { show: false },
       labels: {
@@ -120,11 +127,16 @@ const EarningReports = () => {
         <div className='flex flex-col sm:flex-row items-center justify-between gap-8'>
           <div className='flex flex-col gap-3 is-full sm:is-[unset]'>
             <div className='flex items-center gap-2.5'>
-              <Typography variant='h2'>$468</Typography>
-              <Chip size='small' variant='tonal' color='success' label='+4.2%' />
+              <Typography variant='h2'>KSh {weekTotal.toLocaleString('en-KE')}</Typography>
+              <Chip
+                size='small'
+                variant='tonal'
+                color={growth >= 0 ? 'success' : 'error'}
+                label={`${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`}
+              />
             </div>
             <Typography variant='body2' className='text-balance'>
-              You informed of this week compared to last week
+              Monthly growth compared to last month
             </Typography>
           </div>
           <AppReactApexCharts type='bar' height={163} width='100%' series={series} options={options} />

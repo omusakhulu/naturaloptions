@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       prisma.purchaseReturn.findMany({
         where,
         orderBy: { date: 'desc' },
-        include: { vendor: true },
+        include: { vendor: true, warehouse: true },
         skip: (page - 1) * limit,
         take: limit
       }),
@@ -103,11 +103,12 @@ export async function POST(request: Request) {
       const purchaseReturn = await tx.purchaseReturn.create({
         data: {
           vendorId,
+          warehouseId: warehouseId || undefined,
           amount: new Decimal(amount),
           date: new Date(date),
           reason
         },
-        include: { vendor: true }
+        include: { vendor: true, warehouse: true }
       })
 
       // 2. Adjust inventory if items are provided and adjustInventory is true
@@ -221,8 +222,30 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { 
         error: 'Failed to create purchase return', 
-        details: error instanceof Error ? error.message : String(error) 
+        details: error instanceof Error ? error.message : String(error)
       },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'Purchase return ID is required' }, { status: 400 })
+    }
+
+    await prisma.purchaseReturn.delete({ where: { id } })
+
+    return NextResponse.json({ success: true, message: 'Purchase return deleted' })
+  } catch (error: any) {
+    console.error('Error deleting purchase return:', error)
+
+    return NextResponse.json(
+      { error: 'Failed to delete purchase return', details: error.message },
       { status: 500 }
     )
   }

@@ -20,32 +20,44 @@ import CustomAvatar from '@core/components/mui/Avatar'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Vars
-const series = [
-  { name: 'Earning', data: [15, 10, 20, 8, 12, 18, 12, 5] },
-  { name: 'Expense', data: [-7, -10, -7, -12, -6, -9, -5, -8] }
-]
-
-const data = [
-  {
-    title: 'Total Revenue',
-    subtitle: 'Client Payment',
-    amount: 126,
-    avatarColor: 'primary',
-    avatarIcon: 'tabler-brand-paypal'
-  },
-  {
-    title: 'Total Sales',
-    subtitle: 'Refund',
-    amount: 98,
-    avatarColor: 'secondary',
-    avatarIcon: 'tabler-currency-dollar'
-  }
-]
-
-const TotalEarning = () => {
+const TotalEarning = ({ stats }) => {
   // Hooks
   const theme = useTheme()
+
+  // Derived values from stats
+  const revenue = stats?.financials?.revenue || 0
+  const expenses = stats?.financials?.expenses || 0
+  const earningPct = revenue > 0 ? Math.round(((revenue - expenses) / revenue) * 100) : 0
+  const monthGrowth = stats?.monthlySales?.growth || 0
+
+  const series = [
+    {
+      name: 'Earning',
+      data: stats?.dailySales?.slice(0, 7).map(d => Math.round(d.amount / 1000)) || [0, 0, 0, 0, 0, 0, 0]
+    },
+    {
+      name: 'Expense',
+      data:
+        stats?.dailySales?.slice(0, 7).map(() => -Math.round(expenses / 30 / 1000)) || [0, 0, 0, 0, 0, 0, 0]
+    }
+  ]
+
+  const data = [
+    {
+      title: 'Total Revenue',
+      subtitle: 'Monthly',
+      amount: revenue,
+      avatarColor: 'primary',
+      avatarIcon: 'tabler-brand-paypal'
+    },
+    {
+      title: 'Total Sales',
+      subtitle: 'Monthly',
+      amount: stats?.monthlySales?.count || 0,
+      avatarColor: 'secondary',
+      avatarIcon: 'tabler-currency-dollar'
+    }
+  ]
 
   // Vars
   const options = {
@@ -175,10 +187,10 @@ const TotalEarning = () => {
         action={<OptionMenu options={['Refresh', 'Share', 'Update']} />}
         subheader={
           <div className='flex items-center gap-2'>
-            <Typography variant='h2'>87%</Typography>
+            <Typography variant='h2'>{earningPct}%</Typography>
             <div className='flex items-center gap-1'>
-              <i className='tabler-chevron-up text-xl text-success' />
-              <Typography color='success.main'>25.8%</Typography>
+              <i className={classnames('text-xl', monthGrowth >= 0 ? 'tabler-chevron-up text-success' : 'tabler-chevron-down text-error')} />
+              <Typography color={monthGrowth >= 0 ? 'success.main' : 'error.main'}>{monthGrowth}%</Typography>
             </div>
           </div>
         }
@@ -197,10 +209,9 @@ const TotalEarning = () => {
                 </Typography>
                 <Typography variant='body2'>{item.subtitle}</Typography>
               </div>
-              <Typography
-                className='font-medium'
-                color={`${item.amountDiff === 'negative' ? 'error' : 'success'}.main`}
-              >{`${item.amountDiff === 'negative' ? '-' : '+'}$${item.amount}`}</Typography>
+              <Typography className='font-medium' color='success.main'>
+                KSh {item.amount.toLocaleString('en-KE')}
+              </Typography>
             </div>
           </div>
         ))}

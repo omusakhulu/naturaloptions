@@ -130,7 +130,7 @@ export default function TrendingProductsReportTSX({ lang = 'en' }: { lang?: stri
               <div className="text-right">Rank</div>
             </div>
             {(data.items || []).map((r, idx) => (
-              <div key={r.productId} className="grid grid-cols-3 text-sm border-b py-2 px-3">
+              <div key={r.productId || `item-${idx}`} className="grid grid-cols-3 text-sm border-b py-2 px-3">
                 <div>{r.productName}</div>
                 <div className="text-right">{Number(r.quantity||0).toLocaleString()}</div>
                 <div className="text-right">#{idx+1}</div>

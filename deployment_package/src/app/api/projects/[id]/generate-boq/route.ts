@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { apiLogger } from '@/lib/logger'
 
 interface BOQItem {
   itemNo: string
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const { id: projectId } = await params
 
-    console.log('Project BOQ Generation Request:', { projectId })
+    apiLogger.info('Project BOQ Generation Request:', { projectId })
 
     if (!projectId) {
       return NextResponse.json({ success: false, error: 'Project ID is required' }, { status: 400 })
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     let nextNumber = 1
 
     if (existingBOQs.length > 0) {
-      const lastNumber = parseInt(existingBOQs[0].boqNumber.split('-')[2])
+      const lastNumber = parseInt(existingBOQs[0].boqNumber.split('-')[2], 10)
 
       nextNumber = lastNumber + 1
     }
@@ -144,7 +145,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // 3. MATERIALS & EQUIPMENT SECTION (if from order)
     if (order && order.lineItems) {
-      const orderItems = typeof order.lineItems === 'string' ? JSON.parse(order.lineItems) : order.lineItems
+      let orderItems: any[] = []
+
+      try {
+        orderItems = typeof order.lineItems === 'string' ? JSON.parse(order.lineItems) : order.lineItems
+      } catch {
+        orderItems = []
+      }
 
       if (orderItems && orderItems.length > 0) {
         const items: BOQItem[] = orderItems.map((item: any) => {
@@ -249,7 +256,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       message: `BOQ ${boqNumber} generated successfully`
     })
   } catch (error: any) {
-    console.error('Error generating project BOQ:', error)
+    apiLogger.error('Error generating project BOQ:', error)
 
     return NextResponse.json(
       {

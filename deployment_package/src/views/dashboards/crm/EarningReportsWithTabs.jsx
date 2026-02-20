@@ -27,31 +27,7 @@ import CustomAvatar from '@core/components/mui/Avatar'
 // Styled Component Imports
 const AppReactApexCharts = dynamic(() => import('@/libs/styles/AppReactApexCharts'))
 
-// Vars
-const tabData = [
-  {
-    type: 'orders',
-    avatarIcon: 'tabler-shopping-cart',
-    series: [{ data: [28, 10, 46, 38, 15, 30, 35, 28, 8] }]
-  },
-  {
-    type: 'sales',
-    avatarIcon: 'tabler-chart-bar',
-    series: [{ data: [35, 25, 15, 40, 42, 25, 48, 8, 30] }]
-  },
-  {
-    type: 'profit',
-    avatarIcon: 'tabler-currency-dollar',
-    series: [{ data: [10, 22, 27, 33, 42, 32, 27, 22, 8] }]
-  },
-  {
-    type: 'income',
-    avatarIcon: 'tabler-chart-pie-2',
-    series: [{ data: [5, 9, 12, 18, 20, 25, 30, 36, 48] }]
-  }
-]
-
-const renderTabs = value => {
+const renderTabs = (value, tabData) => {
   return tabData.map((item, index) => (
     <Tab
       key={index}
@@ -76,7 +52,7 @@ const renderTabs = value => {
   ))
 }
 
-const renderTabPanels = (value, theme, options, colors) => {
+const renderTabPanels = (value, theme, options, colors, tabData) => {
   return tabData.map((item, index) => {
     const max = Math.max(...item.series[0].data)
     const seriesIndex = item.series[0].data.indexOf(max)
@@ -96,7 +72,30 @@ const renderTabPanels = (value, theme, options, colors) => {
   })
 }
 
-const EarningReportsWithTabs = () => {
+const EarningReportsWithTabs = ({
+  tabData = [
+    {
+      type: 'orders',
+      avatarIcon: 'tabler-shopping-cart',
+      series: [{ data: [0, 0, 0, 0, 0, 0, 0, 0, 0] }]
+    },
+    {
+      type: 'sales',
+      avatarIcon: 'tabler-chart-bar',
+      series: [{ data: [0, 0, 0, 0, 0, 0, 0, 0, 0] }]
+    },
+    {
+      type: 'profit',
+      avatarIcon: 'tabler-currency-dollar',
+      series: [{ data: [0, 0, 0, 0, 0, 0, 0, 0, 0] }]
+    },
+    {
+      type: 'income',
+      avatarIcon: 'tabler-chart-pie-2',
+      series: [{ data: [0, 0, 0, 0, 0, 0, 0, 0, 0] }]
+    }
+  ]
+}) => {
   // States
   const [value, setValue] = useState('orders')
 
@@ -170,7 +169,7 @@ const EarningReportsWithTabs = () => {
     yaxis: {
       labels: {
         offsetX: -18,
-        formatter: val => `$${val}k`,
+        formatter: val => `KSh ${val}k`,
         style: {
           colors: disabledText,
           fontFamily: theme.typography.fontFamily,
@@ -231,7 +230,7 @@ const EarningReportsWithTabs = () => {
               '& .MuiTab-root': { padding: '0 !important', border: '0 !important' }
             }}
           >
-            {renderTabs(value)}
+            {renderTabs(value, tabData)}
             <Tab
               disabled
               value='add'
@@ -244,7 +243,7 @@ const EarningReportsWithTabs = () => {
               }
             />
           </TabList>
-          {renderTabPanels(value, theme, options, colors)}
+          {renderTabPanels(value, theme, options, colors, tabData)}
         </TabContext>
       </CardContent>
     </Card>

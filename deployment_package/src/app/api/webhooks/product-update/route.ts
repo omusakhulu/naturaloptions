@@ -4,9 +4,18 @@ import { NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/utils/logger'
+import { rateLimit } from '@/lib/rate-limiter'
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { limited } = rateLimit('webhook-product-update', ip, { maxRequests: 30, windowMs: 60_000 })
+
+    if (limited) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
     // Get the signature from headers
     const signature = request.headers.get('x-wc-webhook-signature')
     const topic = request.headers.get('x-wc-webhook-topic')
@@ -24,7 +33,15 @@ export async function POST(request: Request) {
     const payload = await request.text()
 
     // Verify the webhook signature
-    const hmac = crypto.createHmac('sha256', process.env.WOOCOMMERCE_WEBHOOK_SECRET || '')
+    const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET
+
+    if (!webhookSecret) {
+      logger.error('WOOCOMMERCE_WEBHOOK_SECRET not configured')
+
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+
+    const hmac = crypto.createHmac('sha256', webhookSecret)
     const digest = hmac.update(payload).digest('base64')
 
     if (signature !== digest) {
@@ -36,7 +53,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const data = JSON.parse(payload)
+    let data
+
+    try {
+      data = JSON.parse(payload)
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+    }
 
     // Handle different webhook events
     switch (topic) {

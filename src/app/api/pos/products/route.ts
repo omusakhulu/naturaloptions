@@ -25,8 +25,7 @@ export async function GET() {
       },
       orderBy: {
         name: 'asc'
-      },
-      take: 100 // Limit to 100 products for performance
+      }
     })
 
     console.log(`📦 Found ${products.length} products in database`)

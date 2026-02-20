@@ -125,6 +125,7 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
     'sell.allSales',
     'sell.posList',
     'sell.pos',
+    'sell.salesTargets',
     'sell.quotationsAdd',
     'sell.quotationsList',
     'sell.returns',
@@ -331,6 +332,9 @@ const VerticalMenu = ({ dictionary, scrollMenu }) => {
               {can('sell.allSales') && <MenuItem href={`/${locale}/apps/sell/sales`}>All sales</MenuItem>}
               {can('sell.posList') && <MenuItem href={`/${locale}/apps/sell/pos/list`}>List POS</MenuItem>}
               {can('sell.pos') && <MenuItem href={`/${locale}/apps/sell/pos`}>POS</MenuItem>}
+              {can('sell.salesTargets') && (
+                <MenuItem href={`/${locale}/apps/pos/sales-targets`}>Sales Targets</MenuItem>
+              )}
               {can('sell.quotationsAdd') && (
                 <MenuItem href={`/${locale}/apps/sell/quotations/add`}>Add Quotation</MenuItem>
               )}

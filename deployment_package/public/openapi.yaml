@@ -1,0 +1,1386 @@
+openapi: 3.1.0
+info:
+  title: Natural Options API
+  description: |
+    Internal API for the Natural Options dashboard application.
+    Covers orders, products, customers, invoices, POS, accounting, and logistics.
+
+    **Authentication:** All endpoints (except `/api/auth/*`) require an active NextAuth session cookie.
+
+    **Common response patterns:**
+    - Success: `{ success: true, ...data }`
+    - Error: `{ success: false, error: "description" }`
+  version: 1.0.0
+  contact:
+    name: Natural Options Dev Team
+
+servers:
+  - url: /
+    description: Current environment
+
+security:
+  - sessionCookie: []
+
+tags:
+  - name: Orders
+    description: WooCommerce order management
+  - name: Products
+    description: Product catalog
+  - name: Customers
+    description: Customer management
+  - name: Invoices
+    description: Invoice generation and retrieval
+  - name: POS
+    description: Point of Sale transactions
+  - name: Accounting
+    description: Chart of accounts, journal entries, and financial reports
+  - name: Logistics
+    description: Driver and delivery management
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: NextAuth session cookie. Obtain by signing in via `/api/auth/signin`.
+
+  schemas:
+    # ------------------------------------------------------------------ Common
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          example: Unauthorized
+
+    # ------------------------------------------------------------------ Orders
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 48210
+        status:
+          type: string
+          example: processing
+        currency:
+          type: string
+          example: USD
+        total:
+          type: string
+          example: "125.50"
+        billing:
+          $ref: '#/components/schemas/Address'
+        shipping:
+          $ref: '#/components/schemas/Address'
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        date_created:
+          type: string
+          format: date-time
+        date_modified:
+          type: string
+          format: date-time
+
+    LineItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+        price:
+          type: number
+          format: double
+        total:
+          type: string
+
+    OrderListResponse:
+      type: object
+      required: [success, orders]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        cached:
+          type: boolean
+          description: Whether the response was served from cache.
+
+    # ---------------------------------------------------------------- Products
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1024
+        name:
+          type: string
+          example: Organic Turmeric Capsules
+        slug:
+          type: string
+          example: organic-turmeric-capsules
+        price:
+          type: string
+          example: "29.99"
+        regularPrice:
+          type: string
+          example: "34.99"
+        salePrice:
+          type: string
+          example: "29.99"
+        sku:
+          type: string
+          example: NO-TUR-001
+        stockStatus:
+          type: string
+          enum: [instock, outofstock, onbackorder]
+          example: instock
+        stockQuantity:
+          type: integer
+          nullable: true
+          example: 150
+        image:
+          type: string
+          format: uri
+          example: https://example.com/images/turmeric.jpg
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+        status:
+          type: string
+          enum: [publish, draft, pending, private]
+          example: publish
+
+    ProductListResponse:
+      type: object
+      required: [success, products, count]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        count:
+          type: integer
+          example: 87
+
+    # -------------------------------------------------------------- Customers
+    Address:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        company:
+          type: string
+        address_1:
+          type: string
+        address_2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postcode:
+          type: string
+        country:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 512
+        email:
+          type: string
+          format: email
+          example: jane@example.com
+        first_name:
+          type: string
+          example: Jane
+        last_name:
+          type: string
+          example: Doe
+        billing:
+          $ref: '#/components/schemas/Address'
+        shipping:
+          $ref: '#/components/schemas/Address'
+        date_created:
+          type: string
+          format: date-time
+        date_modified:
+          type: string
+          format: date-time
+
+    CustomerCreateRequest:
+      type: object
+      required: [email, first_name, last_name]
+      properties:
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        billing:
+          $ref: '#/components/schemas/Address'
+        shipping:
+          $ref: '#/components/schemas/Address'
+
+    CustomerResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        customer:
+          $ref: '#/components/schemas/Customer'
+
+    CustomerListResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+
+    # --------------------------------------------------------------- Invoices
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          example: inv_abc123
+        orderId:
+          type: integer
+        customerName:
+          type: string
+        amount:
+          type: number
+          format: double
+          description: Sanitized monetary amount.
+        status:
+          type: string
+          enum: [draft, sent, paid, overdue, void]
+        issuedDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    InvoiceListResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        invoices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+
+    InvoiceGenerateRequest:
+      type: object
+      required: [orderIds]
+      properties:
+        orderIds:
+          type: array
+          items:
+            type: integer
+          description: List of WooCommerce order IDs to generate invoices from.
+
+    InvoiceGenerateResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        invoices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+        count:
+          type: integer
+
+    # -------------------------------------------------------------------- POS
+    POSSaleItem:
+      type: object
+      required: [productId, quantity, price]
+      properties:
+        productId:
+          type: integer
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        price:
+          type: number
+          format: double
+
+    POSPayment:
+      type: object
+      required: [method, amount]
+      properties:
+        method:
+          type: string
+          enum: [cash, card, other]
+        amount:
+          type: number
+          format: double
+
+    POSSale:
+      type: object
+      properties:
+        id:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/POSSaleItem'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/POSPayment'
+        customerId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        total:
+          type: number
+          format: double
+        createdAt:
+          type: string
+          format: date-time
+
+    POSSaleCreateRequest:
+      type: object
+      required: [items, payments]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/POSSaleItem'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/POSPayment'
+        customerId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    POSSaleResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        sale:
+          $ref: '#/components/schemas/POSSale'
+
+    POSSaleListResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        sales:
+          type: array
+          items:
+            $ref: '#/components/schemas/POSSale'
+
+    # ------------------------------------------------------------- Accounting
+    ChartOfAccount:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          example: "1000"
+        name:
+          type: string
+          example: Cash
+        type:
+          type: string
+          enum: [asset, liability, equity, revenue, expense]
+        subtype:
+          type: string
+          nullable: true
+        balance:
+          type: number
+          format: double
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    AccountListResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChartOfAccount'
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              accountId:
+                type: string
+              debit:
+                type: number
+                format: double
+              credit:
+                type: number
+                format: double
+        createdAt:
+          type: string
+          format: date-time
+
+    JournalEntryCreateRequest:
+      type: object
+      required: [date, description, lines]
+      properties:
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        lines:
+          type: array
+          minItems: 2
+          items:
+            type: object
+            required: [accountId]
+            properties:
+              accountId:
+                type: string
+              debit:
+                type: number
+                format: double
+                default: 0
+              credit:
+                type: number
+                format: double
+                default: 0
+
+    JournalEntryListResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntry'
+
+    BalanceSheetResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        asOfDate:
+          type: string
+          format: date
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLineItem'
+        liabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLineItem'
+        equity:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLineItem'
+        totalAssets:
+          type: number
+          format: double
+        totalLiabilities:
+          type: number
+          format: double
+        totalEquity:
+          type: number
+          format: double
+
+    ProfitLossResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        revenue:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLineItem'
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLineItem'
+        totalRevenue:
+          type: number
+          format: double
+        totalExpenses:
+          type: number
+          format: double
+        netIncome:
+          type: number
+          format: double
+
+    TrialBalanceResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        asOfDate:
+          type: string
+          format: date
+        accounts:
+          type: array
+          items:
+            type: object
+            properties:
+              accountId:
+                type: string
+              accountName:
+                type: string
+              code:
+                type: string
+              debit:
+                type: number
+                format: double
+              credit:
+                type: number
+                format: double
+        totalDebits:
+          type: number
+          format: double
+        totalCredits:
+          type: number
+          format: double
+
+    ReportLineItem:
+      type: object
+      properties:
+        accountId:
+          type: string
+        accountName:
+          type: string
+        code:
+          type: string
+        balance:
+          type: number
+          format: double
+
+    # ------------------------------------------------------------- Logistics
+    Driver:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: John Smith
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          example: "+15551234567"
+        licenseNumber:
+          type: string
+          example: DL-12345678
+        vehicleId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive, on_delivery]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DriverCreateRequest:
+      type: object
+      required: [name, email, phone, licenseNumber]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        licenseNumber:
+          type: string
+        vehicleId:
+          type: string
+          nullable: true
+
+    DriverResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        driver:
+          $ref: '#/components/schemas/Driver'
+
+    DriverListResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        drivers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Driver'
+
+paths:
+  # =================================================================== Orders
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: List or search orders
+      description: |
+        Returns WooCommerce orders. Supports free-text search and filtering by deliverable status.
+        Results may be cached; check the `cached` field in the response.
+      parameters:
+        - name: q
+          in: query
+          description: Free-text search string (matches order number, customer name, etc.)
+          schema:
+            type: string
+        - name: take
+          in: query
+          description: Maximum number of orders to return (max 100).
+          schema:
+            type: integer
+            default: 25
+            maximum: 100
+        - name: deliverable
+          in: query
+          description: Filter to deliverable orders only (`"true"` or `"false"` as a string).
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        '200':
+          description: Order list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ================================================================= Products
+  /api/products/list:
+    get:
+      tags: [Products]
+      summary: List all products
+      description: Returns the full product catalog with stock and pricing info.
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ================================================================ Customers
+  /api/customers:
+    get:
+      tags: [Customers]
+      summary: Get customer(s)
+      description: |
+        Without `id`, returns a list of all customers.
+        With `id`, returns a single customer record.
+      parameters:
+        - name: id
+          in: query
+          description: WooCommerce customer ID. If provided, returns a single customer.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Customer data
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/CustomerResponse'
+                  - $ref: '#/components/schemas/CustomerListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Customers]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Customers]
+      summary: Update a customer
+      description: Updates an existing customer. The request body should include the customer `id` and any fields to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [id]
+                  properties:
+                    id:
+                      type: integer
+                      description: Customer ID to update.
+                - $ref: '#/components/schemas/CustomerCreateRequest'
+      responses:
+        '200':
+          description: Customer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ================================================================= Invoices
+  /api/invoices:
+    get:
+      tags: [Invoices]
+      summary: List all invoices
+      description: Returns all invoices with sanitized monetary amounts.
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/invoices/{id}:
+    get:
+      tags: [Invoices]
+      summary: Get a single invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  invoice:
+                    $ref: '#/components/schemas/Invoice'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/invoices/generate:
+    post:
+      tags: [Invoices]
+      summary: Generate invoices from orders
+      description: Accepts a list of order IDs and generates corresponding invoices.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceGenerateRequest'
+      responses:
+        '200':
+          description: Invoices generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceGenerateResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ====================================================================== POS
+  /api/pos/sales:
+    post:
+      tags: [POS]
+      summary: Create a POS sale
+      description: Records a new point-of-sale transaction with line items and payment details.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/POSSaleCreateRequest'
+      responses:
+        '201':
+          description: Sale created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/POSSaleResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags: [POS]
+      summary: Query POS sales
+      description: Retrieve POS sales filtered by date range.
+      parameters:
+        - name: startDate
+          in: query
+          description: Start of date range (ISO 8601 date).
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End of date range (ISO 8601 date).
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Sales list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/POSSaleListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # =============================================================== Accounting
+  /api/accounting/accounts:
+    get:
+      tags: [Accounting]
+      summary: List chart of accounts
+      description: Returns all accounts in the chart of accounts.
+      responses:
+        '200':
+          description: Account list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/accounting/journal-entries:
+    get:
+      tags: [Accounting]
+      summary: List journal entries
+      description: Returns all journal entries, optionally filtered by date range.
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Journal entry list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Accounting]
+      summary: Create a journal entry
+      description: |
+        Creates a new double-entry journal entry. The sum of debits must equal the sum of credits.
+        At least two line items are required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalEntryCreateRequest'
+      responses:
+        '201':
+          description: Journal entry created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  entry:
+                    $ref: '#/components/schemas/JournalEntry'
+        '400':
+          description: Validation error (e.g. debits != credits)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/accounting/reports/balance-sheet:
+    get:
+      tags: [Accounting]
+      summary: Get balance sheet
+      description: Returns a balance sheet report as of a given date.
+      parameters:
+        - name: asOfDate
+          in: query
+          description: Report date (defaults to today).
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Balance sheet report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceSheetResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/accounting/reports/profit-loss:
+    get:
+      tags: [Accounting]
+      summary: Get profit & loss statement
+      description: Returns a P&L report for a given date range.
+      parameters:
+        - name: startDate
+          in: query
+          description: Start of reporting period.
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End of reporting period.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Profit & loss report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfitLossResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/accounting/reports/trial-balance:
+    get:
+      tags: [Accounting]
+      summary: Get trial balance
+      description: Returns a trial balance report verifying that total debits equal total credits.
+      parameters:
+        - name: asOfDate
+          in: query
+          description: Report date (defaults to today).
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Trial balance report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrialBalanceResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ================================================================ Logistics
+  /api/logistics/drivers:
+    get:
+      tags: [Logistics]
+      summary: List drivers
+      description: Returns all drivers, optionally filtered by status.
+      parameters:
+        - name: status
+          in: query
+          description: Filter by driver status.
+          schema:
+            type: string
+            enum: [active, inactive, on_delivery]
+      responses:
+        '200':
+          description: Driver list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Logistics]
+      summary: Create a driver
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverCreateRequest'
+      responses:
+        '201':
+          description: Driver created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

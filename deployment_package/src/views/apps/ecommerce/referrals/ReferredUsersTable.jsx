@@ -107,7 +107,7 @@ const ReferredUsersTable = ({ referralsData }) => {
             <div className='flex flex-col items-start'>
               <Typography
                 component={Link}
-                href={getLocalizedUrl('/apps/ecommerce/customers/details/879861', locale)}
+                href={getLocalizedUrl(`/apps/ecommerce/customers/details/${row.original.customerId || row.original.id}`, locale)}
                 color='text.primary'
                 className='font-medium hover:text-primary'
               >

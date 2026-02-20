@@ -8,7 +8,10 @@ import { rateLimit } from '@/lib/rate-limiter'
 const handler = NextAuth(authOptions)
 
 // Rate limit login attempts: 5 per minute per IP
-async function rateLimitedPOST(req: NextRequest) {
+async function rateLimitedPOST(
+  req: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> }
+) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
   const { limited, resetIn } = rateLimit('auth', ip, { maxRequests: 5, windowMs: 60_000 })
 
@@ -22,7 +25,7 @@ async function rateLimitedPOST(req: NextRequest) {
     )
   }
 
-  return handler(req as any, { params: {} } as any)
+  return handler(req as any, context as any)
 }
 
 export { handler as GET, rateLimitedPOST as POST }

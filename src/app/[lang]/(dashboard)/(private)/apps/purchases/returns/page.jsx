@@ -131,7 +131,7 @@ export default function PurchaseReturnsPage() {
                     <td className='border px-2 py-1'>{new Date(r.date).toLocaleDateString()}</td>
                     <td className='border px-2 py-1 font-medium'>PR-{r.id.slice(-6).toUpperCase()}</td>
                     <td className='border px-2 py-1'>{r.purchaseOrderId || 'N/A'}</td>
-                    <td className='border px-2 py-1'>{r.warehouseId || 'Main Store'}</td>
+                    <td className='border px-2 py-1'>{r.warehouse?.name || 'Main Store'}</td>
                     <td className='border px-2 py-1'>{r.vendor?.name}</td>
                     <td className='border px-2 py-1 text-center'>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success`}>

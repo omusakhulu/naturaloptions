@@ -7,6 +7,7 @@ import type { WooProduct } from '@/types/woocommerce'
 import { prisma } from '@/lib/db/prisma'
 import { saveProduct } from '@/lib/db/products'
 import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
+import { apiLogger } from '@/lib/logger'
 
 interface WooCommerceProduct extends WooProduct {}
 
@@ -37,7 +38,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       await prisma.product.delete({ where: { wooId } })
     } catch (e) {
       // Ignore if not found
-      console.warn('Local product delete warning:', (e as Error).message)
+      apiLogger.warn('Local product delete warning:', (e as Error).message)
     }
 
     return NextResponse.json({ success: true, deleted: result })
@@ -54,20 +55,12 @@ interface LocalProduct extends Omit<Product, 'id'> {
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  console.log('=== PRODUCT API REQUEST STARTED ===')
+  apiLogger.info('=== PRODUCT API REQUEST STARTED ===')
   const resolvedParams = await params
 
-  console.log('Params received:', resolvedParams)
-  console.log('Request URL:', request.url)
-  console.log('Request method:', request.method)
-
-  // Set a timeout for the entire operation
-  const controller = new AbortController()
-
-  const timeout = setTimeout(() => {
-    console.error('Request timed out after 45 seconds')
-    controller.abort()
-  }, 45000) // 45 second timeout
+  apiLogger.info('Params received:', resolvedParams)
+  apiLogger.info('Request URL:', request.url)
+  apiLogger.info('Request method:', request.method)
 
   // Declare variables outside try block for scope accessibility
   let id: string = ''
@@ -94,17 +87,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })) as LocalProduct | null
     }
 
-    console.log('Checking if we need to fetch from WooCommerce...')
-    console.log('Product found in DB:', product ? 'Yes' : 'No')
-    console.log('WooCommerce ID:', wooId)
+    apiLogger.info('Checking if we need to fetch from WooCommerce...')
+    apiLogger.info('Product found in DB:', product ? 'Yes' : 'No')
+    apiLogger.info('WooCommerce ID:', wooId)
 
     // If product is still not found and we have a WooCommerce ID, try to fetch from WooCommerce
     if (!product && wooId) {
-      console.log('Attempting to fetch product from WooCommerce...')
+      apiLogger.info('Attempting to fetch product from WooCommerce...')
 
       try {
-        console.log(`[${new Date().toISOString()}] Fetching product from WooCommerce API. WooCommerce ID:`, wooId)
-        console.log('WooCommerce API Request:', {
+        apiLogger.info(`[${new Date().toISOString()}] Fetching product from WooCommerce API. WooCommerce ID:`, wooId)
+        apiLogger.info('WooCommerce API Request:', {
           method: 'GET',
           endpoint: `/wp-json/wc/v3/products/${wooId}`,
           timestamp: new Date().toISOString()
@@ -114,7 +107,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const startTime = Date.now()
         const wooProduct = await wooService.getProduct(wooId)
 
-        console.log(`[${new Date().toISOString()}] WooCommerce API Response (${Date.now() - startTime}ms):`, {
+        apiLogger.info(`[${new Date().toISOString()}] WooCommerce API Response (${Date.now() - startTime}ms):`, {
           status: 'success',
           productId: wooProduct?.id,
           name: wooProduct?.name,
@@ -154,7 +147,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         product = savedProduct as unknown as LocalProduct
       } catch (error) {
-        console.error('Error fetching from WooCommerce:', error)
+        apiLogger.error('Error fetching from WooCommerce:', error)
 
         // Return a 500 error if we can't fetch from WooCommerce
         return NextResponse.json(
@@ -169,7 +162,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     if (!product) {
-      console.error('Product not found in database or WooCommerce')
+      apiLogger.error('Product not found in database or WooCommerce')
 
       return NextResponse.json(
         {
@@ -186,18 +179,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       data: product
     })
   } catch (error: unknown) {
-    console.error('=== ERROR IN PRODUCT API ===')
+    apiLogger.error('=== ERROR IN PRODUCT API ===')
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     const errorName = error instanceof Error ? error.name : 'UnknownError'
     const errorStack = error instanceof Error ? error.stack : undefined
 
-    console.error('Error details:', {
+    apiLogger.error('Error details:', {
       name: errorName,
       message: errorMessage,
       stack: errorStack,
       timestamp: new Date().toISOString()
     })
-    console.error('=== END ERROR DETAILS ===')
+    apiLogger.error('=== END ERROR DETAILS ===')
 
     if (error instanceof Error && error.name === 'AbortError') {
       return NextResponse.json(
@@ -225,8 +218,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     )
   } finally {
-    clearTimeout(timeout)
-    console.log('=== PRODUCT API REQUEST COMPLETED ===\n')
+    apiLogger.info('=== PRODUCT API REQUEST COMPLETED ===\n')
   }
 }
 
@@ -253,7 +245,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     // await wooService.initialize()
-    console.log('WooCommerce service initialized')
+    apiLogger.info('WooCommerce service initialized')
 
     // Get the WooCommerce ID from the URL - await params first
     const resolvedParams = await params
@@ -273,7 +265,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       )
     }
 
-    console.log('🔍 Processing update for WooCommerce product ID:', wooId)
+    apiLogger.info('🔍 Processing update for WooCommerce product ID:', wooId)
 
     // Find the product by WooCommerce ID
     const product = await prisma.product.findFirst({
@@ -281,10 +273,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!product) {
-      console.log('ℹ️ No local product found for WooCommerce ID:', wooId)
-      console.log('ℹ️ Will update product in WooCommerce using WooCommerce ID:', wooId)
+      apiLogger.info('ℹ️ No local product found for WooCommerce ID:', wooId)
+      apiLogger.info('ℹ️ Will update product in WooCommerce using WooCommerce ID:', wooId)
     } else {
-      console.log('✅ Found existing product:', { id: product.id, wooId })
+      apiLogger.info('✅ Found existing product:', { id: product.id, wooId })
     }
 
     // Parse the request body
@@ -292,9 +284,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     try {
       updateData = await request.json()
-      console.log('📝 Update data received:', JSON.stringify(updateData, null, 2))
+      apiLogger.info('📝 Update data received:', JSON.stringify(updateData, null, 2))
     } catch (parseError) {
-      console.error('Failed to parse request body:', parseError)
+      apiLogger.error('Failed to parse request body:', parseError)
 
       return NextResponse.json(
         {
@@ -308,7 +300,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Validate product data
     if (!updateData || typeof updateData !== 'object' || Object.keys(updateData).length === 0) {
-      console.error('Invalid product data received:', updateData)
+      apiLogger.error('Invalid product data received:', updateData)
 
       return NextResponse.json(
         {
@@ -349,7 +341,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       )
     }
 
-    console.log(`🔄 Updating product ${wooId} in WooCommerce...`)
+    apiLogger.info(`🔄 Updating product ${wooId} in WooCommerce...`)
 
     // Prepare product data for WooCommerce
     const wooCommerceData: any = {
@@ -369,7 +361,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Strip undefined keys to avoid overwriting existing values
     Object.keys(wooCommerceData).forEach(k => wooCommerceData[k] === undefined && delete wooCommerceData[k])
 
-    console.log('📊 Sending to WooCommerce:', JSON.stringify(wooCommerceData, null, 2))
+    apiLogger.info('📊 Sending to WooCommerce:', JSON.stringify(wooCommerceData, null, 2))
 
     // Update the product in WooCommerce
     const updatedProduct = await wooService.updateProduct(wooId, wooCommerceData)
@@ -414,7 +406,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           where: { id: product.id },
           data: dbProductData
         })
-        console.log(`✅ Updated existing product in database: ${product.id}`)
+        apiLogger.info(`✅ Updated existing product in database: ${product.id}`)
       } else {
         // Create new product
         await prisma.product.create({
@@ -423,17 +415,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             id: `woo-${wooId}` // Generate a consistent ID for new products
           }
         })
-        console.log(`✅ Created new product in database: woo-${wooId}`)
+        apiLogger.info(`✅ Created new product in database: woo-${wooId}`)
       }
 
-      console.log(`💾 Successfully updated product ${wooId} in both WooCommerce and local database`)
+      apiLogger.info(`💾 Successfully updated product ${wooId} in both WooCommerce and local database`)
 
       return NextResponse.json({
         success: true,
         product: updatedProduct
       })
     } catch (dbError) {
-      console.error('❌ Database error:', dbError)
+      apiLogger.error('❌ Database error:', dbError)
 
       return NextResponse.json(
         {
@@ -447,7 +439,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
 
-    console.error('❌ Error in product update API:', errorMessage, {
+    apiLogger.error('❌ Error in product update API:', errorMessage, {
       error: error instanceof Error ? error.stack : undefined
     })
 

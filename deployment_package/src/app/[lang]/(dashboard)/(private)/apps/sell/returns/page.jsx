@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 export default function SellReturnsListPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -8,6 +8,18 @@ export default function SellReturnsListPage() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showColMenu, setShowColMenu] = useState(false)
+  const [columns, setColumns] = useState([
+    { key: 'date', label: 'Date', visible: true },
+    { key: 'invoiceNo', label: 'Invoice No.', visible: true },
+    { key: 'parentSale', label: 'Parent Sale #', visible: true },
+    { key: 'customer', label: 'Customer name', visible: true },
+    { key: 'location', label: 'Location', visible: true },
+    { key: 'paymentStatus', label: 'Payment Status', visible: true },
+    { key: 'totalAmount', label: 'Total amount', visible: true },
+    { key: 'paymentDue', label: 'Payment Due', visible: true },
+    { key: 'action', label: 'Action', visible: true }
+  ])
 
   useEffect(() => {
     const fetchReturns = async () => {
@@ -53,6 +65,12 @@ export default function SellReturnsListPage() {
     }
     return list
   }, [rows, search, entries])
+
+  const totals = useMemo(() => ({
+    dueCount: filtered.filter(r => r.paymentStatus === 'Due').length,
+    totalAmount: filtered.reduce((sum, r) => sum + (r.totalAmount || 0), 0),
+    paymentDue: filtered.reduce((sum, r) => sum + (r.paymentDue || 0), 0)
+  }), [filtered])
 
   const visibleCols = [
     { key: 'date', label: 'Date' },

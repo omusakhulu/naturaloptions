@@ -58,7 +58,11 @@ export default function ImportOpeningStockPage() {
               Download template file
             </button>
           </div>
-          {log && <p className='text-sm'>{log}</p>}
+          {log && (
+            <div className='bg-gray-50 border rounded p-4 text-sm'>
+              <pre className='whitespace-pre-wrap font-mono text-xs'>{log}</pre>
+            </div>
+          )}
         </form>
       </div>
 
@@ -66,11 +70,17 @@ export default function ImportOpeningStockPage() {
         <h2 className='text-lg font-semibold mb-4'>Instructions</h2>
         <p className='mb-4'>Ensure the CSV contains the following columns:</p>
         <ul className='list-disc pl-6 space-y-1 text-sm'>
-          <li>product_sku* – SKU matching existing product</li>
-          <li>location* – Business location name</li>
-          <li>quantity* – Opening stock quantity (number)</li>
-          <li>expiry_date (optional) – YYYY-MM-DD</li>
+          <li><strong>product_sku*</strong> – SKU matching existing product</li>
+          <li><strong>location*</strong> – Business location name (created if new)</li>
+          <li><strong>quantity*</strong> – Opening stock quantity (positive number)</li>
+          <li><strong>unit_cost</strong> (optional) – Cost per unit</li>
+          <li><strong>expiry_date</strong> (optional) – YYYY-MM-DD format</li>
+          <li><strong>batch_number</strong> (optional) – Batch/lot identifier</li>
+          <li><strong>warranty_name</strong> (optional) – Must match an existing warranty name</li>
         </ul>
+        <p className='mt-4 text-xs text-gray-500'>
+          Fields marked with * are required. Download the template for the correct format.
+        </p>
       </div>
     </div>
   )

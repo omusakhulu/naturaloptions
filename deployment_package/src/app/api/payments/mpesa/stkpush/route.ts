@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 
 import { getDarajaConfigFromEnv, stkPush } from '@/lib/mpesa/daraja'
+import { apiLogger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
 function normalizeKenyanPhone(input: string) {
   const digits = String(input || '').replace(/\D/g, '')
+
   if (!digits) return ''
 
   if (digits.startsWith('0') && digits.length === 10) return `254${digits.slice(1)}`
@@ -33,6 +35,7 @@ export async function POST(req: Request) {
     }
 
     const cfg = getDarajaConfigFromEnv()
+
     const resp = await stkPush(cfg, {
       phone,
       amount,
@@ -42,7 +45,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, phone, amount, ...resp })
   } catch (error: any) {
-    console.error('M-PESA stkpush error:', error?.message || error)
+    apiLogger.error('M-PESA stkpush error', { error: error instanceof Error ? error.message : String(error) })
+
     return NextResponse.json(
       {
         success: false,

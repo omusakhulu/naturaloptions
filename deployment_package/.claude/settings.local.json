@@ -1,7 +1,32 @@
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npx husky init:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm build:*)",
+      "Bash(set \"NODE_OPTIONS=--max-old-space-size=2048\")",
+      "Bash(npx next build:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm info:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm view:*)",
+      "Bash(node -e:*)",
+      "Bash(findstr:*)",
+      "Bash(pnpm update:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm test:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

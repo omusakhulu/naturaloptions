@@ -29,13 +29,12 @@ export async function GET() {
     // Fetch WooCommerce orders
     let wooOrders = []
     try {
-      wooOrders = await wooClient.get('orders', {
-        params: {
-          per_page: 100,
-          orderby: 'date',
-          order: 'desc'
-        }
+      const wooResponse = await wooClient.get('orders', {
+        per_page: 100,
+        orderby: 'date',
+        order: 'desc'
       })
+      wooOrders = Array.isArray(wooResponse?.data) ? wooResponse.data : []
     } catch (wooError) {
       console.error('Error fetching WooCommerce orders:', wooError)
     }
