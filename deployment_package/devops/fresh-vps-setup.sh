@@ -34,13 +34,20 @@ remote_copy() {
 # Step 1: Initial server setup and updates
 echo -e "\n${YELLOW}📦 Step 1: Updating Ubuntu and installing base packages...${NC}"
 remote_exec "
-    # Update system
+    # Ensure swap exists (helps prevent OOM kills during npm install / next build)
+    if ! swapon --show | grep -q '^/'; then
+        if [ ! -f /swapfile ]; then
+            fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096
+            chmod 600 /swapfile
+            mkswap /swapfile
+        fi
+        swapon /swapfile
+        grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    fi
+
     apt update && apt upgrade -y
-    
-    # Install essential packages
     apt install -y curl wget git build-essential software-properties-common \
-        nginx certbot python3-certbot-nginx ufw fail2ban \
-        htop net-tools unzip gnupg lsb-release ca-certificates
+        nginx certbot python3-certbot-nginx ufw fail2ban htop net-tools unzip gnupg lsb-release ca-certificates
     
     # Set timezone
     timedatectl set-timezone Africa/Nairobi
@@ -61,70 +68,48 @@ remote_exec "
     npm install -g pnpm
 "
 
-# Step 3: Install MongoDB
-echo -e "\n${YELLOW}🗄 Step 3: Installing MongoDB...${NC}"
+# Step 3: Install PostgreSQL
+echo -e "\n${YELLOW}🗄 Step 3: Installing PostgreSQL...${NC}"
 remote_exec "
-    # Import MongoDB GPG key
-    curl -fsSL https://pgp.mongodb.com/server-7.0.asc | \
-        gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
-    
-    # Add MongoDB repository
-    echo 'deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse' | \
-        tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-    
-    # Update and install MongoDB
     apt update
-    apt install -y mongodb-org
-    
-    # Start and enable MongoDB
-    systemctl start mongod
-    systemctl enable mongod
-    
-    # Configure MongoDB for production
-    cat > /etc/mongod.conf << 'MONGEOF'
-# MongoDB configuration for production
-storage:
-  dbPath: /var/lib/mongodb
-  journal:
-    enabled: true
-  engine: wiredTiger
-  wiredTiger:
-    engineConfig:
-      cacheSizeGB: 0.5
+    apt install -y postgresql postgresql-contrib
 
-systemLog:
-  destination: file
-  logAppend: true
-  path: /var/log/mongodb/mongod.log
+    systemctl enable postgresql
+    systemctl start postgresql
 
-net:
-  port: 27017
-  bindIp: 127.0.0.1
+    # Create database user/password (stored on server)
+    if [ ! -f /root/.naturaloptions_db_pass ]; then
+        (umask 077 && openssl rand -base64 24 > /root/.naturaloptions_db_pass)
+    fi
 
-processManagement:
-  timeZoneInfo: /usr/share/zoneinfo
+    DB_PASS=\"\$(cat /root/.naturaloptions_db_pass)\"
 
-# Connection pool settings
-setParameter:
-  maxIncomingConnections: 65536
-MONGEOF
-    
-    # Restart MongoDB with new configuration
-    systemctl restart mongod
-    
-    # Create database and user
-    mongosh << 'MONGOCOMMANDS'
-use naturaloptions_db
-db.createUser({
-  user: 'naturaloptions_user',
-  pwd: 'NatOpt2024Secure!',
-  roles: [
-    { role: 'readWrite', db: 'naturaloptions_db' },
-    { role: 'dbAdmin', db: 'naturaloptions_db' }
-  ]
-})
-exit
-MONGOCOMMANDS
+    cat > /tmp/naturaloptions_pg_setup.sql <<'PSQL'
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'naturaloptions_user') THEN
+    CREATE ROLE naturaloptions_user LOGIN PASSWORD :'dbpass';
+  ELSE
+    ALTER ROLE naturaloptions_user WITH PASSWORD :'dbpass';
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'naturaloptions_db') THEN
+    CREATE DATABASE naturaloptions_db OWNER naturaloptions_user;
+  END IF;
+END
+$$;
+PSQL
+
+    sudo -u postgres psql -v ON_ERROR_STOP=1 -v dbpass=\"${DB_PASS}\" -f /tmp/naturaloptions_pg_setup.sql
+    rm -f /tmp/naturaloptions_pg_setup.sql
+
+    # Ensure local connections work
+    sudo -u postgres psql -d naturaloptions_db -c \"GRANT ALL PRIVILEGES ON DATABASE naturaloptions_db TO naturaloptions_user;\" || true
+    sudo -u postgres psql -c \"SELECT version();\"
 "
 
 # Step 4: Install PM2
@@ -162,17 +147,8 @@ remote_exec "
     chown www-data:www-data /var/cache/nginx
 "
 
-# Step 7: Build application locally
-echo -e "\n${YELLOW}🔨 Step 7: Building application with optimizations...${NC}"
-# Clean previous builds
-rm -rf .next
-rm -rf node_modules/.cache
-
-# Build with optimizations
-NODE_OPTIONS="--max-old-space-size=2048" npm run build
-
-# Step 8: Create deployment package
-echo -e "\n${YELLOW}📦 Step 8: Creating deployment package...${NC}"
+# Step 7: Create deployment package
+echo -e "\n${YELLOW}📦 Step 7: Creating deployment package...${NC}"
 rm -rf deployment_package
 mkdir -p deployment_package
 
@@ -190,27 +166,30 @@ rsync -av --progress \
   --exclude 'natural-options-ai-assistant' \
   ./ deployment_package/
 
-# Step 9: Upload application
-echo -e "\n${YELLOW}📤 Step 9: Uploading application to server...${NC}"
+# Step 8: Upload application
+echo -e "\n${YELLOW}📤 Step 8: Uploading application to server...${NC}"
 rsync -avz --delete \
   --exclude 'public/uploads' \
   --exclude 'logs' \
   deployment_package/ ${SERVER_USER}@${SERVER_IP}:${DEPLOY_PATH}/
 
-# Step 10: Install dependencies and setup environment
-echo -e "\n${YELLOW}📦 Step 10: Installing production dependencies...${NC}"
+# Step 9: Install dependencies and build
+echo -e "\n${YELLOW}📦 Step 9: Installing production dependencies and building...${NC}"
 remote_exec "
     cd ${DEPLOY_PATH}
     
-    # Install production dependencies
-    NODE_ENV=production npm ci --only=production --omit=dev
+    # Install dependencies (no lockfile present, so avoid npm ci)
+    npm install --legacy-peer-deps --no-audit --no-fund --omit=optional
     
     # Generate Prisma client
-    npx prisma generate --schema=./src/prisma/schema.prisma
+    npx prisma@5.22.0 generate --schema=./src/prisma/schema.prisma
+
+    # Build Next.js application
+    NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=\"--max-old-space-size=3072\" npm run build
 "
 
-# Step 11: Configure environment with all integrations
-echo -e "\n${YELLOW}⚙️ Step 11: Configuring environment and integrations...${NC}"
+# Step 10: Configure environment with all integrations
+echo -e "\n${YELLOW}⚙️ Step 10: Configuring environment and integrations...${NC}"
 remote_exec "
     cd ${DEPLOY_PATH}
     
@@ -219,14 +198,14 @@ remote_exec "
 # Application
 NODE_ENV=production
 PORT=3000
-NEXTAUTH_URL=http://102.212.246.251:3000
+NEXTAUTH_URL=http://${SERVER_IP}:3000
 NEXTAUTH_SECRET=your-secret-key-here-change-this-to-random-string
 
-# Database with connection pooling
-DATABASE_URL=mongodb://naturaloptions_user:NatOpt2024Secure!@localhost:27017/naturaloptions_db?authSource=naturaloptions_db&maxPoolSize=10&minPoolSize=2&maxIdleTimeMS=10000
+# Database
+DATABASE_URL=postgresql://naturaloptions_user:__DB_PASS__@localhost:5432/naturaloptions_db?schema=public
 
 # NextAuth Configuration
-AUTH_URL=http://102.212.246.251:3000
+AUTH_URL=http://${SERVER_IP}:3000
 AUTH_TRUST_HOST=true
 AUTH_SECRET=your-secret-key-here-change-this-to-random-string
 
@@ -265,8 +244,8 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 # Application URLs
-APP_URL=http://102.212.246.251:3000
-API_URL=http://102.212.246.251:3000/api
+APP_URL=http://${SERVER_IP}:3000
+API_URL=http://${SERVER_IP}:3000/api
 
 # Memory optimization
 NODE_OPTIONS=--max-old-space-size=768 --optimize-for-size
@@ -277,6 +256,9 @@ PM2_INSTANCES=2
 # Logging
 LOG_LEVEL=info
 ENVEOF
+
+    DB_PASS="\$(cat /root/.naturaloptions_db_pass)"
+    sed -i "s|__DB_PASS__|\${DB_PASS}|g" .env.production
     
     # Create .env from .env.production
     cp .env.production .env
@@ -301,7 +283,7 @@ upstream naturaloptions_backend {
 
 server {
     listen 80;
-    server_name 102.212.246.251;
+    server_name ${SERVER_IP};
     
     # Max upload size for product images
     client_max_body_size 50M;

@@ -11,10 +11,10 @@ module.exports = {
       max_memory_restart: '512M',
       env_production: {
         NODE_ENV: 'production',
-        PORT: process.env.PORT ? Number(process.env.PORT) : 3010,
+        PORT: process.env.PORT ? Number(process.env.PORT) : 3000,
         HOST: '0.0.0.0',
         BASEPATH: process.env.BASEPATH || "",
-        NEXTAUTH_URL: process.env.NEXTAUTH_URL || "http://167.86.108.197:3010",
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL || "http://194.146.39.176",
         NODE_OPTIONS: '--max-old-space-size=768 --optimize-for-size'
       },
       error_file: '/var/www/naturaloptions/logs/pm2-error.log',

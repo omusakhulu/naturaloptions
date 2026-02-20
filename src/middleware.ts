@@ -15,7 +15,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://naturaloptions.co.ke https://*.wp.com",
+      "img-src 'self' data: blob: https: http:",
       "font-src 'self' data:",
       "connect-src 'self' https://naturaloptions.co.ke https://sandbox.safaricom.co.ke https://api.safaricom.co.ke",
       "frame-ancestors 'none'",
@@ -80,6 +80,11 @@ export default async function middleware(request: NextRequest) {
 
   const isAuthApi = pathnameWithoutBase.startsWith('/api/auth')
   const isHealthCheck = pathnameWithoutBase === '/api/health'
+  const isWebhook = pathnameWithoutBase.startsWith('/api/webhooks')
+  const isPaymentCallback =
+    pathnameWithoutBase.startsWith('/api/payments/mpesa/callback') ||
+    pathnameWithoutBase.startsWith('/api/payments/pesapal/ipn') ||
+    pathnameWithoutBase.startsWith('/api/payments/pesapal/callback')
 
   // Check both pathname and pathnameWithoutBase for static assets
   // This handles cases where basePath may or may not be set at build time
@@ -116,8 +121,8 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
-  // Allow public assets, auth API, and health check
-  if (isPublicAsset || isAuthApi || isHealthCheck) {
+  // Allow public assets, auth API, health check, webhooks, and payment callbacks
+  if (isPublicAsset || isAuthApi || isHealthCheck || isWebhook || isPaymentCallback) {
     return addSecurityHeaders(NextResponse.next())
   }
 

@@ -216,6 +216,11 @@ const verticalMenuData = dictionary => [
         label: 'Locations',
         icon: 'tabler-map-pin',
         href: '/apps/pos/locations'
+      },
+      {
+        label: 'Sales Targets',
+        icon: 'tabler-target-arrow',
+        href: '/apps/pos/sales-targets'
       }
     ]
   },

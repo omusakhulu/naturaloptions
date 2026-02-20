@@ -1,3 +1,5 @@
+'use client'
+
 // MUI Imports
 import Card from '@mui/material/Card'
 import CardHeader from '@mui/material/CardHeader'
@@ -10,60 +12,39 @@ import classnames from 'classnames'
 // Components Imports
 import OptionMenu from '@core/components/option-menu'
 
-// Vars
-const data = [
+const flagImages = ['us', 'brazil', 'india', 'australia', 'france', 'china']
+
+const defaultData = [
   {
-    title: 'KSh 8.45k',
-    subtitle: 'Nairobi',
-    trendNumber: 25.8,
+    title: 'Nairobi',
+    subtitle: 'No data yet',
+    trendNumber: 0,
     imgSrc: '/images/cards/us.png'
-  },
-  {
-    title: 'KSh 7.78k',
-    subtitle: 'Mombasa',
-    trendNumber: 16.2,
-    trend: 'negative',
-    imgSrc: '/images/cards/brazil.png'
-  },
-  {
-    title: 'KSh 6.48k',
-    subtitle: 'Kisumu',
-    trendNumber: 12.3,
-    imgSrc: '/images/cards/india.png'
-  },
-  {
-    title: 'KSh 5.12k',
-    subtitle: 'Nakuru',
-    trendNumber: 11.9,
-    trend: 'negative',
-    imgSrc: '/images/cards/australia.png'
-  },
-  {
-    title: 'KSh 4.45k',
-    subtitle: 'Eldoret',
-    trendNumber: 16.2,
-    imgSrc: '/images/cards/france.png'
-  },
-  {
-    title: 'KSh 3.90k',
-    subtitle: 'Thika',
-    trendNumber: 14.8,
-    imgSrc: '/images/cards/china.png'
   }
 ]
 
-const SalesByCountries = () => {
+const SalesByCountries = ({ stats }) => {
+  const locationData =
+    stats?.salesByLocation?.length > 0
+      ? stats.salesByLocation.map((loc, i) => ({
+          title: loc.location,
+          subtitle: `${loc.quantity.toLocaleString('en-KE')} units`,
+          trendNumber: 0,
+          imgSrc: `/images/cards/${flagImages[i % flagImages.length]}.png`
+        }))
+      : defaultData
+
   return (
     <Card>
       <CardHeader
-        title='Sales by Countries'
-        subheader='Monthly Sales Overview'
+        title='Sales by Location'
+        subheader='Monthly Stock Overview'
         action={<OptionMenu options={['Last Week', 'Last Month', 'Last Year']} />}
       />
       <CardContent className='flex flex-col gap-[1.0875rem]'>
-        {data.map((item, index) => (
+        {locationData.map((item, index) => (
           <div key={index} className='flex items-center gap-4'>
-            <img src={item.imgSrc} alt={item.subtitle} width={34} />
+            <img src={item.imgSrc} alt={item.title} width={34} />
             <div className='flex flex-wrap justify-between items-center gap-x-4 gap-y-1 is-full'>
               <div className='flex flex-col'>
                 <Typography className='font-medium' color='text.primary'>

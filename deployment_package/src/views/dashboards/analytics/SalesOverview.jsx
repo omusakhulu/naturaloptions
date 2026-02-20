@@ -19,17 +19,26 @@ const LinearProgress = styled(MuiLinearProgress)(() => ({
   }
 }))
 
-const SalesOverview = () => {
+const SalesOverview = ({ stats }) => {
+  const monthTotal = stats ? (stats.monthlySales?.total / 1000).toFixed(1) + 'k' : '0'
+  const growth = stats?.monthlySales?.growth || 0
+  const growthLabel = `${growth > 0 ? '+' : ''}${growth}%`
+  const monthlyOrders = stats?.orders?.monthly || 0
+  const totalProducts = stats?.products?.total || 0
+
+  // Progress value for linear bar: ratio of orders to products, capped at 100
+  const progressValue = totalProducts > 0 ? Math.min(100, Math.round((monthlyOrders / (monthlyOrders + totalProducts)) * 100)) : 0
+
   return (
     <Card>
       <CardContent>
         <div className='flex items-start justify-between gap-3'>
           <div>
             <Typography>Sales Overview</Typography>
-            <Typography variant='h4'>$42.5k</Typography>
+            <Typography variant='h4'>KSh {monthTotal}</Typography>
           </div>
-          <Typography color='success.main' className='font-medium'>
-            +18.2%
+          <Typography color={growth >= 0 ? 'success.main' : 'error.main'} className='font-medium'>
+            {growthLabel}
           </Typography>
         </div>
         <div className='flex items-center justify-between mlb-[1.4375rem]'>
@@ -38,11 +47,11 @@ const SalesOverview = () => {
               <CustomAvatar skin='light' color='info' variant='rounded' size={24}>
                 <i className='tabler-shopping-cart text-lg' />
               </CustomAvatar>
-              <Typography>Order</Typography>
+              <Typography>Orders</Typography>
             </div>
-            <Typography variant='h5'>62.2%</Typography>
+            <Typography variant='h5'>{monthlyOrders}</Typography>
             <Typography variant='body2' color='text.disabled'>
-              6,440
+              orders
             </Typography>
           </div>
           <Divider flexItem orientation='vertical'>
@@ -53,19 +62,19 @@ const SalesOverview = () => {
           <div className='flex items-end flex-col plb-2'>
             <div className='flex items-center mbe-2 gap-x-[6px]'>
               <Typography color='text.secondary' className='m'>
-                Visits
+                Products
               </Typography>
               <CustomAvatar skin='light' variant='rounded' color='primary' size={24}>
                 <i className='tabler-link text-lg' />
               </CustomAvatar>
             </div>
-            <Typography variant='h5'>25.5%</Typography>
+            <Typography variant='h5'>{totalProducts}</Typography>
             <Typography variant='body2' color='text.disabled'>
-              12,749
+              products
             </Typography>
           </div>
         </div>
-        <LinearProgress value={65} color='info' variant='determinate' className='bs-2.5' />
+        <LinearProgress value={progressValue} color='info' variant='determinate' className='bs-2.5' />
       </CardContent>
     </Card>
   )

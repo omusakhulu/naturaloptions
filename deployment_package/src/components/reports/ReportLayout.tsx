@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import ReportLayoutJs from './ReportLayout'
+import ReportLayoutJs from './ReportLayout.jsx'
 
 export type Breadcrumb = {
   label: string

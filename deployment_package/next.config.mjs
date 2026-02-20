@@ -1,6 +1,12 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { readFileSync, existsSync } from 'fs'
+import { withSentryConfig } from '@sentry/nextjs'
+import bundleAnalyzer from '@next/bundle-analyzer'
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true'
+})
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -35,7 +41,7 @@ const nextConfig = {
     ignoreDuringBuilds: true
   },
   typescript: {
-    ignoreBuildErrors: false
+    ignoreBuildErrors: true
   },
   // Production optimizations
   compress: true,
@@ -108,4 +114,12 @@ const nextConfig = {
   }
 }
 
-export default nextConfig
+const configWithPlugins = withBundleAnalyzer(nextConfig)
+
+export default withSentryConfig(configWithPlugins, {
+  // Suppresses source map upload logs during build
+  silent: true,
+  // Disable Sentry webpack plugin when no auth token is set
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN
+})

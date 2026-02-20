@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Line } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from 'chart.js'
+import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
+import TextField from '@mui/material/TextField'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
+
+const filter = createFilterOptions()
 
 export default function Page() {
   const [rows, setRows] = useState([])
@@ -16,7 +20,7 @@ export default function Page() {
   const [showColMenu, setShowColMenu] = useState(false)
   const [open, setOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState(-1)
-  const [form, setForm] = useState({ reference: '', category: '', amount: '', account: '', date: new Date().toISOString().slice(0,10) })
+  const [form, setForm] = useState({ reference: '', category: '', amount: '', account: '', date: '' })
   // Add Expense detailed fields
   const [location, setLocation] = useState('NATURAL OPTIONS (M.0001)')
   const [subCategory, setSubCategory] = useState('')
@@ -30,9 +34,17 @@ export default function Page() {
   const [recUnit, setRecUnit] = useState('Days')
   const [recRepetitions, setRecRepetitions] = useState('')
   const [payAmount, setPayAmount] = useState('')
-  const [paidOn, setPaidOn] = useState(() => new Date().toISOString().slice(0,16))
+  const [paidOn, setPaidOn] = useState('')
   const [payMethod, setPayMethod] = useState('Cash')
   const [payNote, setPayNote] = useState('')
+
+  // Category, sub-category, and contact options from DB
+  const [categories, setCategories] = useState([])
+  const [subCategories, setSubCategories] = useState([])
+  const [contacts, setContacts] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedSubCategory, setSelectedSubCategory] = useState(null)
+  const [selectedContact, setSelectedContact] = useState(null)
 
   const [columns, setColumns] = useState([
     { key: 'action', label: 'Action', visible: true },
@@ -56,7 +68,81 @@ export default function Page() {
     setAccounts(aJson.items || [])
   }
 
-  useEffect(() => { fetchAll() }, [])
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/expenses/categories')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        // Top-level categories (no parent)
+        setCategories(data.filter(c => !c.parentId))
+      }
+    } catch { /* ignore */ }
+  }
+
+  const fetchSubCategories = async (parentId) => {
+    if (!parentId) {
+      setSubCategories([])
+      return
+    }
+    try {
+      const res = await fetch(`/api/expenses/categories?parentId=${parentId}`)
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setSubCategories(data)
+      }
+    } catch { /* ignore */ }
+  }
+
+  const fetchContacts = async () => {
+    try {
+      const res = await fetch('/api/expenses/contacts')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setContacts(data)
+      }
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    fetchAll()
+    fetchCategories()
+    fetchContacts()
+  }, [])
+
+  // When category changes, load its sub-categories
+  useEffect(() => {
+    if (selectedCategory?.id) {
+      fetchSubCategories(selectedCategory.id)
+    } else {
+      setSubCategories([])
+    }
+    setSelectedSubCategory(null)
+    setSubCategory('')
+  }, [selectedCategory])
+
+  const createCategory = async (name, parentId = null) => {
+    try {
+      const res = await fetch('/api/expenses/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, parentId })
+      })
+      const data = await res.json()
+      return data
+    } catch { return null }
+  }
+
+  const createContact = async (name) => {
+    try {
+      const res = await fetch('/api/expenses/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, type: expenseFor !== 'None' ? expenseFor : null })
+      })
+      const data = await res.json()
+      return data
+    } catch { return null }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -94,6 +180,9 @@ export default function Page() {
   const resetDetailed = () => {
     setLocation('NATURAL OPTIONS (M.0001)')
     setSubCategory('')
+    setSelectedCategory(null)
+    setSelectedSubCategory(null)
+    setSelectedContact(null)
     setExpenseFor('None')
     setExpenseContact('')
     setAttachment(null)
@@ -104,25 +193,83 @@ export default function Page() {
     setRecUnit('Days')
     setRecRepetitions('')
     setPayAmount('')
-    setPaidOn(new Date().toISOString().slice(0,16))
+    setPaidOn('')
     setPayMethod('Cash')
     setPayNote('')
   }
-  const onNew = () => { setEditingIndex(-1); setForm({ reference: '', category: '', amount: '', account: '', date: new Date().toISOString().slice(0,10) }); resetDetailed(); setOpen(true) }
+  const onNew = () => { setEditingIndex(-1); setForm({ reference: '', category: '', amount: '', account: '', date: '' }); resetDetailed(); setOpen(true) }
   const onEdit = i => { setEditingIndex(i); const r = rows[i]; setForm({ reference: r.note || '', category: r.category || '', amount: String(r.amount || ''), account: r.accountId || '', date: (r.date || '').slice(0,10) }); resetDetailed(); setOpen(true) }
   const onDelete = async i => { const r = rows[i]; await fetch(`/api/expenses/${r.id}`, { method: 'DELETE' }); await fetchAll() }
 
   const onSubmit = async () => {
-    // Build payload for existing API; extra fields currently not persisted
-    const payload = { amount: Number(form.amount || payAmount || 0), category: subCategory ? `${form.category} / ${subCategory}` : form.category, accountId: form.account, date: paidOn ? paidOn : form.date, note: [form.reference, payNote].filter(Boolean).join(' | ') }
+    // Resolve category name
+    let categoryName = ''
+    if (selectedCategory) {
+      categoryName = selectedCategory.name || form.category
+      // If it's a new category (inputValue), create it
+      if (selectedCategory.inputValue) {
+        const created = await createCategory(selectedCategory.inputValue)
+        if (created) {
+          categoryName = created.name
+          // Create sub-category under the new parent if needed
+          if (selectedSubCategory?.inputValue) {
+            await createCategory(selectedSubCategory.inputValue, created.id)
+          }
+        }
+      }
+    } else {
+      categoryName = form.category
+    }
+
+    // Resolve sub-category name
+    let subCatName = ''
+    if (selectedSubCategory) {
+      subCatName = selectedSubCategory.name || subCategory
+      if (selectedSubCategory.inputValue && selectedCategory?.id) {
+        const created = await createCategory(selectedSubCategory.inputValue, selectedCategory.id)
+        if (created) subCatName = created.name
+      }
+    } else {
+      subCatName = subCategory
+    }
+
+    // Resolve contact
+    if (selectedContact?.inputValue) {
+      const created = await createContact(selectedContact.inputValue)
+      if (created) setExpenseContact(created.name)
+    }
+
+    const fullCategory = subCatName ? `${categoryName} / ${subCatName}` : categoryName
+    const payload = {
+      amount: Number(form.amount || payAmount || 0),
+      category: fullCategory,
+      accountId: form.account,
+      date: paidOn ? paidOn : form.date,
+      note: [form.reference, payNote].filter(Boolean).join(' | ')
+    }
+
     if (editingIndex >= 0) {
       const id = rows[editingIndex].id
       await fetch(`/api/expenses/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     } else {
       await fetch('/api/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     }
+
+    // Ensure new categories/contacts are created even if not already done
+    if (categoryName && !selectedCategory?.id) {
+      await createCategory(categoryName)
+    }
+    if (subCatName && selectedCategory?.id && !selectedSubCategory?.id) {
+      await createCategory(subCatName, selectedCategory.id)
+    }
+    if (expenseContact && !selectedContact?.id) {
+      await createContact(expenseContact)
+    }
+
     setOpen(false)
     await fetchAll()
+    await fetchCategories()
+    await fetchContacts()
   }
 
   const totalPaid = useMemo(() => rows.reduce((s, r) => s + Number(r.amount || 0), 0), [rows])
@@ -162,7 +309,7 @@ export default function Page() {
         <div className='flex items-center justify-between mb-3'>
           <button className='text-sm' onClick={() => setFiltersOpen(o => !o)}><i className='tabler-filter' /> Filters</button>
           <div className='flex items-center gap-2'>
-            <button onClick={() => setOpen(true)} className='bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 text-sm'>+ Add</button>
+            <button onClick={onNew} className='bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 text-sm'>+ Add</button>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder='Search…' className='border rounded p-2 text-sm' />
           </div>
         </div>
@@ -266,11 +413,88 @@ export default function Page() {
               </div>
               <div>
                 <label className='block text-xs text-gray-500 mb-1'>Expense Category*</label>
-                <input value={form.category} onChange={e=>setForm({ ...form, category: e.target.value })} className='border rounded p-2 w-full' placeholder='Please Select' />
+                <Autocomplete
+                  value={selectedCategory}
+                  onChange={(_, newValue) => {
+                    if (typeof newValue === 'string') {
+                      setSelectedCategory({ name: newValue, inputValue: newValue })
+                      setForm(prev => ({ ...prev, category: newValue }))
+                    } else if (newValue && newValue.inputValue) {
+                      setSelectedCategory(newValue)
+                      setForm(prev => ({ ...prev, category: newValue.inputValue }))
+                    } else {
+                      setSelectedCategory(newValue)
+                      setForm(prev => ({ ...prev, category: newValue?.name || '' }))
+                    }
+                  }}
+                  filterOptions={(options, params) => {
+                    const filtered = filter(options, params)
+                    const { inputValue } = params
+                    const isExisting = options.some(o => o.name === inputValue)
+                    if (inputValue !== '' && !isExisting) {
+                      filtered.push({ inputValue, name: `+ Create "${inputValue}"` })
+                    }
+                    return filtered
+                  }}
+                  selectOnFocus
+                  clearOnBlur
+                  handleHomeEndKeys
+                  options={categories}
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option
+                    if (option.inputValue) return option.inputValue
+                    return option.name || ''
+                  }}
+                  renderOption={(props, option) => {
+                    const { key, ...rest } = props
+                    return <li key={key} {...rest}>{option.name}</li>
+                  }}
+                  freeSolo
+                  renderInput={(params) => <TextField {...params} placeholder='Select or type new' size='small' />}
+                />
               </div>
               <div>
-                <label className='block text-xs text-gray-500 mb-1'>Sub category</label>
-                <input value={subCategory} onChange={e=>setSubCategory(e.target.value)} className='border rounded p-2 w-full' placeholder='Please Select' />
+                <label className='block text-xs text-gray-500 mb-1'>Sub Category</label>
+                <Autocomplete
+                  value={selectedSubCategory}
+                  onChange={(_, newValue) => {
+                    if (typeof newValue === 'string') {
+                      setSelectedSubCategory({ name: newValue, inputValue: newValue })
+                      setSubCategory(newValue)
+                    } else if (newValue && newValue.inputValue) {
+                      setSelectedSubCategory(newValue)
+                      setSubCategory(newValue.inputValue)
+                    } else {
+                      setSelectedSubCategory(newValue)
+                      setSubCategory(newValue?.name || '')
+                    }
+                  }}
+                  filterOptions={(options, params) => {
+                    const filtered = filter(options, params)
+                    const { inputValue } = params
+                    const isExisting = options.some(o => o.name === inputValue)
+                    if (inputValue !== '' && !isExisting) {
+                      filtered.push({ inputValue, name: `+ Create "${inputValue}"` })
+                    }
+                    return filtered
+                  }}
+                  selectOnFocus
+                  clearOnBlur
+                  handleHomeEndKeys
+                  options={selectedCategory?.id ? subCategories : []}
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option
+                    if (option.inputValue) return option.inputValue
+                    return option.name || ''
+                  }}
+                  renderOption={(props, option) => {
+                    const { key, ...rest } = props
+                    return <li key={key} {...rest}>{option.name}</li>
+                  }}
+                  freeSolo
+                  disabled={!selectedCategory}
+                  renderInput={(params) => <TextField {...params} placeholder={selectedCategory ? 'Select or type new' : 'Select category first'} size='small' />}
+                />
               </div>
               <div>
                 <label className='block text-xs text-gray-500 mb-1'>Reference No</label>
@@ -290,8 +514,46 @@ export default function Page() {
                 </select>
               </div>
               <div>
-                <label className='block text-xs text-gray-500 mb-1'>Expense for contact</label>
-                <input value={expenseContact} onChange={e=>setExpenseContact(e.target.value)} className='border rounded p-2 w-full' placeholder='Select contact' />
+                <label className='block text-xs text-gray-500 mb-1'>Expense for Contact</label>
+                <Autocomplete
+                  value={selectedContact}
+                  onChange={(_, newValue) => {
+                    if (typeof newValue === 'string') {
+                      setSelectedContact({ name: newValue, inputValue: newValue })
+                      setExpenseContact(newValue)
+                    } else if (newValue && newValue.inputValue) {
+                      setSelectedContact(newValue)
+                      setExpenseContact(newValue.inputValue)
+                    } else {
+                      setSelectedContact(newValue)
+                      setExpenseContact(newValue?.name || '')
+                    }
+                  }}
+                  filterOptions={(options, params) => {
+                    const filtered = filter(options, params)
+                    const { inputValue } = params
+                    const isExisting = options.some(o => o.name === inputValue)
+                    if (inputValue !== '' && !isExisting) {
+                      filtered.push({ inputValue, name: `+ Create "${inputValue}"` })
+                    }
+                    return filtered
+                  }}
+                  selectOnFocus
+                  clearOnBlur
+                  handleHomeEndKeys
+                  options={contacts}
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option
+                    if (option.inputValue) return option.inputValue
+                    return option.name || ''
+                  }}
+                  renderOption={(props, option) => {
+                    const { key, ...rest } = props
+                    return <li key={key} {...rest}>{option.name}</li>
+                  }}
+                  freeSolo
+                  renderInput={(params) => <TextField {...params} placeholder='Select or type new' size='small' />}
+                />
               </div>
               <div>
                 <label className='block text-xs text-gray-500 mb-1'>Attach Document</label>

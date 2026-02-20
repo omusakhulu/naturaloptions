@@ -18,41 +18,40 @@ import { useKeenSlider } from 'keen-slider/react'
 import CustomAvatar from '@core/components/mui/Avatar'
 import AppKeenSlider from '@/libs/styles/AppKeenSlider'
 
-// Vars
-const data = [
-  {
-    title: 'Traffic',
-    img: '/images/cards/graphic-illustration-1.png',
-    details: {
-      Sessions: '28%',
-      'Page Views': '3.1k',
-      Leads: '1.2k',
-      Conversions: '12%'
+const Slides = ({ stats }) => {
+  const data = [
+    {
+      title: 'Sales',
+      img: '/images/cards/graphic-illustration-1.png',
+      details: {
+        'Monthly Sales': stats?.monthlySales?.count ?? 0,
+        Products: stats?.products?.total ?? 0,
+        Customers: stats?.customers?.total ?? 0,
+        Orders: stats?.orders?.monthly ?? 0
+      }
+    },
+    {
+      title: 'Revenue',
+      img: '/images/cards/graphic-illustration-2.png',
+      details: {
+        Revenue: `KSh ${((stats?.financials?.revenue || 0) / 1000).toFixed(1)}k`,
+        Expenses: `KSh ${((stats?.financials?.expenses || 0) / 1000).toFixed(1)}k`,
+        Profit: `KSh ${((stats?.financials?.profit || 0) / 1000).toFixed(1)}k`,
+        Growth: `${stats?.monthlySales?.growth ?? 0}%`
+      }
+    },
+    {
+      title: 'Overview',
+      img: '/images/cards/graphic-illustration-3.png',
+      details: {
+        'Total Orders': stats?.orders?.total ?? 0,
+        'New Customers': stats?.customers?.newThisMonth ?? 0,
+        'Weekly Sales': stats?.weeklySales?.count ?? 0,
+        Locations: stats?.salesByLocation?.length ?? 0
+      }
     }
-  },
-  {
-    title: 'Spending',
-    img: '/images/cards/graphic-illustration-2.png',
-    details: {
-      Spend: '12h',
-      Orders: '18',
-      Order: '127',
-      Items: '2.3k'
-    }
-  },
-  {
-    title: 'Revenue Sources',
-    img: '/images/cards/graphic-illustration-3.png',
-    details: {
-      Direct: '268',
-      Organic: '890',
-      Referral: '62',
-      Campaign: '1.2k'
-    }
-  }
-]
+  ]
 
-const Slides = () => {
   return (
     <>
       {data.map((slide, index) => {
@@ -62,7 +61,7 @@ const Slides = () => {
               Website Analytics
             </Typography>
             <Typography variant='subtitle2' className='mbe-3 text-[var(--mui-palette-common-white)]'>
-              Total 28.5% Conversion Rate
+              Total {stats?.monthlySales?.growth ?? 0}% Growth Rate
             </Typography>
             <Grid container spacing={4} className='relative'>
               <Grid size={{ xs: 12, sm: 8 }} className='order-2 sm:order-1'>
@@ -105,7 +104,7 @@ const Slides = () => {
   )
 }
 
-const WebsiteAnalyticsSlider = () => {
+const WebsiteAnalyticsSlider = ({ stats }) => {
   // States
   const [loaded, setLoaded] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -208,7 +207,7 @@ const WebsiteAnalyticsSlider = () => {
               })}
             </div>
           )}
-          <Slides />
+          <Slides stats={stats} />
         </div>
       </Card>
     </AppKeenSlider>

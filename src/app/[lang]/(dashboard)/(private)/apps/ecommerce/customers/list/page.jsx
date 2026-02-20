@@ -165,6 +165,8 @@ async function getCustomersFromDatabase() {
       avatarUrl: customer.avatarUrl,
       billingAddress: customer.billingAddress ? JSON.parse(customer.billingAddress) : {},
       shippingAddress: customer.shippingAddress ? JSON.parse(customer.shippingAddress) : {},
+      ordersCount: customer.ordersCount || 0,
+      totalSpent: customer.totalSpent || 0,
       dateCreated: customer.createdAt,
       _cachedAt: Date.now()
     }))

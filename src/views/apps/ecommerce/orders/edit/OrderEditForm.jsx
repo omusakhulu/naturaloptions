@@ -17,10 +17,23 @@ import CustomTextField from '@core/components/mui/TextField'
 import OrderLineItems from './OrderLineItems'
 
 const OrderEditForm = ({ orderData }) => {
+  // Format date for datetime-local input
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return ''
+    const d = new Date(dateValue)
+    if (isNaN(d.getTime())) return ''
+
+    // Format as YYYY-MM-DDTHH:MM for datetime-local input
+    const pad = n => String(n).padStart(2, '0')
+
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
   // States
   const [formData, setFormData] = useState({
     status: orderData?.status || 'pending',
     paymentMethodTitle: orderData?.paymentMethodTitle || '',
+    dateCreated: formatDateForInput(orderData?.dateCreated || orderData?.date),
     customerNote: orderData?.customerNote || '',
     billingFirstName: orderData?.billingAddress?.first_name || '',
     billingLastName: orderData?.billingAddress?.last_name || '',
@@ -71,6 +84,7 @@ const OrderEditForm = ({ orderData }) => {
         body: JSON.stringify({
           orderId: orderData?.id,
           status: formData.status,
+          dateCreated: formData.dateCreated ? new Date(formData.dateCreated).toISOString() : undefined,
           customerNote: formData.customerNote,
           billingAddress: {
             first_name: formData.billingFirstName,
@@ -157,6 +171,17 @@ const OrderEditForm = ({ orderData }) => {
                     value={formData.paymentMethodTitle}
                     onChange={handleChange}
                     disabled
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <CustomTextField
+                    fullWidth
+                    label='Order Date'
+                    name='dateCreated'
+                    type='datetime-local'
+                    value={formData.dateCreated}
+                    onChange={handleChange}
+                    slotProps={{ inputLabel: { shrink: true } }}
                   />
                 </Grid>
               </Grid>

@@ -11,60 +11,65 @@ import classnames from 'classnames'
 import OptionMenu from '@core/components/option-menu'
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Vars
-const data = [
-  {
-    title: 'Emails',
-    amount: '12,346',
-    trendNumber: '0.3%',
-    avatarColor: 'success',
-    icon: 'tabler-mail'
-  },
-  {
-    title: 'Opened',
-    amount: '8,734',
-    trendNumber: '2.1%',
-    avatarColor: 'info',
-    icon: 'tabler-link'
-  },
-  {
-    title: 'Clicked',
-    amount: '967',
-    trendNumber: '1.4%',
-    trend: 'negative',
-    avatarColor: 'warning',
-    icon: 'tabler-mouse'
-  },
-  {
-    title: 'Subscribe',
-    amount: '345',
-    trendNumber: '8.5%',
-    avatarColor: 'primary',
-    icon: 'tabler-users'
-  },
-  {
-    title: 'Complaints',
-    amount: '10',
-    trendNumber: '1.5%',
-    trend: 'negative',
-    avatarColor: 'secondary',
-    icon: 'tabler-alert-triangle'
-  },
-  {
-    title: 'Unsubscribe',
-    amount: '86',
-    trendNumber: '0.8%',
-    avatarColor: 'error',
-    icon: 'tabler-ban'
-  }
-]
+const MonthlyCampaignState = ({ monthlyMetrics }) => {
+  const totalSales = monthlyMetrics?.totalSales || 0
+  const totalOrders = monthlyMetrics?.totalOrders || 0
+  const avgOrderValue = monthlyMetrics?.avgOrderValue || 0
+  const newCustomers = monthlyMetrics?.newCustomers || 0
+  const topProduct = monthlyMetrics?.topProduct || 'N/A'
+  const returns = monthlyMetrics?.returns || 0
 
-const MonthlyCampaignState = () => {
+  const data = [
+    {
+      title: 'Total Sales',
+      amount: `KSh ${totalSales.toLocaleString('en-KE')}`,
+      trendNumber: '4.2%',
+      avatarColor: 'success',
+      icon: 'tabler-cash'
+    },
+    {
+      title: 'Orders',
+      amount: totalOrders.toLocaleString('en-KE'),
+      trendNumber: '3.5%',
+      avatarColor: 'info',
+      icon: 'tabler-shopping-cart'
+    },
+    {
+      title: 'Avg Order Value',
+      amount: `KSh ${avgOrderValue.toLocaleString('en-KE')}`,
+      trendNumber: '1.8%',
+      avatarColor: 'primary',
+      icon: 'tabler-chart-bar'
+    },
+    {
+      title: 'New Customers',
+      amount: newCustomers.toLocaleString('en-KE'),
+      trendNumber: '6.2%',
+      avatarColor: 'warning',
+      icon: 'tabler-users'
+    },
+    {
+      title: 'Top Product',
+      amount: topProduct,
+      trendNumber: '12.3%',
+      avatarColor: 'secondary',
+      icon: 'tabler-star'
+    },
+    {
+      title: 'Returns',
+      amount: returns.toLocaleString('en-KE'),
+      trendNumber: '0.5%',
+      trend: 'negative',
+      avatarColor: 'error',
+      icon: 'tabler-arrow-back-up'
+    }
+  ]
+
   return (
     <Card>
       <CardHeader
-        title='Monthly Campaign State'
-        subheader='8.52k Social Visitors'
+        title='Monthly Sales Metrics'
+        subheader={`KSh ${(totalSales / 1000).toFixed(1)}k Revenue`}
         action={<OptionMenu options={['Last Month', 'Last 6 Months', 'Last Year']} />}
       />
       <CardContent className='flex flex-col gap-6 md:gap-[1.6875rem]'>

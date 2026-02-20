@@ -1,12 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 import { createProject, getAllProjects } from '@/lib/db/projects'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const limitParam = parseInt(searchParams.get('limit') || '0', 10)
+
     const projects = await getAllProjects()
 
-    return NextResponse.json({ success: true, projects })
+    // Apply limit if specified
+    const limitedProjects = limitParam > 0 ? projects.slice(0, limitParam) : projects
+
+    return NextResponse.json({ success: true, data: limitedProjects, projects: limitedProjects })
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message || 'Failed to fetch projects' }, { status: 500 })
   }

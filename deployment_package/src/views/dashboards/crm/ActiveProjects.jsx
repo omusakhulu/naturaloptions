@@ -8,83 +8,122 @@ import LinearProgress from '@mui/material/LinearProgress'
 // Components Imports
 import OptionMenu from '@core/components/option-menu'
 
-// Vars
-const data = [
-  {
-    title: 'Laravel',
-    subtitle: 'eCommerce',
-    progress: 54,
-    progressColor: 'error',
-    imgSrc: '/images/logos/laravel.png'
-  },
-  {
-    title: 'Figma',
-    subtitle: 'App UI Kit',
-    progress: 85,
-    progressColor: 'primary',
-    imgSrc: '/images/logos/figma.png'
-  },
-  {
-    title: 'VusJs',
-    subtitle: 'Calendar App',
-    progress: 64,
-    progressColor: 'success',
-    imgSrc: '/images/logos/vue.png'
-  },
-  {
-    title: 'React',
-    subtitle: 'Dashboard',
-    progress: 40,
-    progressColor: 'info',
-    imgSrc: '/images/logos/react.png'
-  },
-  {
-    title: 'Bootstrap',
-    subtitle: 'Website',
-    progress: 17,
-    progressColor: 'primary',
-    imgSrc: '/images/logos/bootstrap.png'
-  },
-  {
-    title: 'Sketch',
-    subtitle: 'Website Design',
-    progress: 30,
-    progressColor: 'warning',
-    imgSrc: '/images/logos/sketch.png'
-  }
-]
+const ActiveProjects = ({ projects = [] }) => {
+  // Filter active projects (not completed or cancelled)
+  const activeProjects = projects.filter(p => !['completed', 'cancelled'].includes(p.status))
 
-const ActiveProjects = () => {
+  // If no active projects, show message
+  if (!activeProjects || activeProjects.length === 0) {
+    return (
+      <Card>
+        <CardHeader
+          title='Active Projects'
+          subheader='No active projects'
+          action={<OptionMenu options={['Refresh', 'Update', 'Share']} />}
+        />
+        <CardContent>
+          <Typography variant='body2' color='text.secondary'>
+            No active projects at the moment
+          </Typography>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Calculate progress based on status
+  const getProgress = status => {
+    switch (status) {
+      case 'draft':
+        return 10
+      case 'submitted':
+        return 30
+      case 'approved':
+        return 50
+      case 'in_progress':
+        return 75
+      case 'completed':
+        return 100
+      default:
+        return 20
+    }
+  }
+
+  const getProgressColor = status => {
+    switch (status) {
+      case 'draft':
+        return 'error'
+      case 'submitted':
+        return 'warning'
+      case 'approved':
+        return 'info'
+      case 'in_progress':
+        return 'primary'
+      case 'completed':
+        return 'success'
+      default:
+        return 'secondary'
+    }
+  }
+
+  const getStatusLabel = status => {
+    switch (status) {
+      case 'draft':
+        return 'Draft'
+      case 'submitted':
+        return 'Submitted'
+      case 'approved':
+        return 'Approved'
+      case 'in_progress':
+        return 'In Progress'
+      case 'completed':
+        return 'Completed'
+      case 'cancelled':
+        return 'Cancelled'
+      default:
+        return status
+    }
+  }
+
+  // Calculate average completion
+  const avgCompletion = Math.round(
+    activeProjects.reduce((sum, p) => sum + getProgress(p.status), 0) / activeProjects.length
+  )
+
   return (
     <Card>
       <CardHeader
         title='Active Projects'
-        subheader='Average 72% completed'
+        subheader={`Average ${avgCompletion}% completed`}
         action={<OptionMenu options={['Refresh', 'Update', 'Share']} />}
       />
       <CardContent className='flex flex-col gap-4'>
-        {data.map((item, index) => (
-          <div key={index} className='flex items-center gap-4'>
-            <img src={item.imgSrc} alt={item.title} width={32} />
-            <div className='flex flex-wrap justify-between items-center gap-x-4 gap-y-1 is-full'>
-              <div className='flex flex-col'>
-                <Typography className='font-medium' color='text.primary'>
-                  {item.title}
-                </Typography>
-                <Typography variant='body2'>{item.subtitle}</Typography>
-              </div>
-              <div className='flex justify-between items-center is-32'>
-                <LinearProgress
-                  value={item.progress}
-                  variant='determinate'
-                  color={item.progressColor}
-                  className='min-bs-2 is-20'
-                />
-                <Typography color='text.disabled'>{`${item.progress}%`}</Typography>
+        {activeProjects.slice(0, 6).map((project, index) => {
+          const progress = getProgress(project.status)
+          const progressColor = getProgressColor(project.status)
+          const statusLabel = getStatusLabel(project.status)
+
+          return (
+            <div key={index} className='flex items-center gap-4'>
+              <div className='flex flex-wrap justify-between items-center gap-x-4 gap-y-1 is-full'>
+                <div className='flex flex-col'>
+                  <Typography className='font-medium' color='text.primary'>
+                    {project.name}
+                  </Typography>
+                  <Typography variant='body2'>{statusLabel}</Typography>
+                </div>
+                <div className='flex justify-between items-center is-32'>
+                  <LinearProgress
+                    value={progress}
+                    variant='determinate'
+                    color={progressColor}
+                    className='min-bs-2 is-20'
+                  />
+                  <Typography color='text.disabled'>{`${progress}%`}</Typography>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </CardContent>
     </Card>
   )

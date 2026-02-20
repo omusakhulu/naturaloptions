@@ -8,6 +8,7 @@ import OrderNotes from './OrderNotesCard'
 import CustomerDetails from './CustomerDetailsCard'
 import ShippingAddress from './ShippingAddressCard'
 import BillingAddress from './BillingAddressCard'
+import PaymentDetailsCard from './PaymentDetailsCard'
 
 const OrderDetails = ({ orderData, order, locale = 'en' }) => {
   return (
@@ -35,6 +36,9 @@ const OrderDetails = ({ orderData, order, locale = 'en' }) => {
           </Grid>
           <Grid size={12}>
             <BillingAddress orderData={orderData} />
+          </Grid>
+          <Grid size={12}>
+            <PaymentDetailsCard orderData={orderData} orderId={order} />
           </Grid>
         </Grid>
       </Grid>

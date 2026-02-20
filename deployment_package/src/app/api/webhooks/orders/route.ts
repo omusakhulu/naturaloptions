@@ -3,6 +3,8 @@ import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { rateLimit } from '@/lib/rate-limiter'
+import { webhookLogger } from '@/lib/logger'
 
 interface OrderLineItem {
   id: number
@@ -40,31 +42,53 @@ interface OrderWebhookPayload {
 
 export async function POST(request: Request) {
   const headers = Object.fromEntries(request.headers.entries())
-  
+
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { limited } = rateLimit('webhook-orders', ip, { maxRequests: 30, windowMs: 60_000 })
+
+    if (limited) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
     // Verify webhook signature
     const signature = headers['x-wc-webhook-signature']
-    const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET || ''
+    const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET
+
+    if (!secret) {
+      webhookLogger.error('Webhook secret not configured (WOOCOMMERCE_WEBHOOK_SECRET or WOOCOMMERCE_CONSUMER_SECRET)')
+
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
 
     if (!signature) {
       return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 })
     }
 
     const payload = await request.text()
-    
+
     // Verify signature
     const hmac = crypto.createHmac('sha256', secret)
     const digest = 'sha256=' + hmac.update(payload).digest('hex')
 
     if (signature !== digest) {
-      console.warn('Invalid webhook signature')
+      webhookLogger.warn('Invalid webhook signature')
+
       return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 })
     }
 
-    const data: OrderWebhookPayload = JSON.parse(payload)
+    let data: OrderWebhookPayload
+
+    try {
+      data = JSON.parse(payload)
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+    }
+
     const eventType = headers['x-wc-webhook-topic']
 
-    console.log(`Order webhook received: ${eventType} for order #${data.number}`)
+    webhookLogger.info(`Order webhook received: ${eventType} for order #${data.number}`)
 
     switch (eventType) {
       case 'order.created':
@@ -77,19 +101,20 @@ export async function POST(request: Request) {
         await handleOrderDeleted(data)
         break
       default:
-        console.log(`Unhandled order event: ${eventType}`)
+        webhookLogger.info(`Unhandled order event: ${eventType}`)
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Order webhook error:', error)
+    webhookLogger.error('Order webhook error:', error)
+
     return NextResponse.json({ error: 'Error processing webhook' }, { status: 500 })
   }
 }
 
 async function handleOrderCreated(order: OrderWebhookPayload): Promise<void> {
   try {
-    console.log(`Processing new order #${order.number}`)
+    webhookLogger.info(`Processing new order #${order.number}`)
 
     // Upsert the order in the database
     await prisma.order.upsert({
@@ -141,16 +166,16 @@ async function handleOrderCreated(order: OrderWebhookPayload): Promise<void> {
       await reconcileInventoryForOrder(order, 'reserve')
     }
 
-    console.log(`Order #${order.number} created and synced`)
+    webhookLogger.info(`Order #${order.number} created and synced`)
   } catch (error) {
-    console.error('Error handling order created:', error)
+    webhookLogger.error('Error handling order created:', error)
     throw error
   }
 }
 
 async function handleOrderUpdated(order: OrderWebhookPayload): Promise<void> {
   try {
-    console.log(`Processing order update #${order.number}, status: ${order.status}`)
+    webhookLogger.info(`Processing order update #${order.number}, status: ${order.status}`)
 
     // Get existing order to check status change
     const existingOrder = await prisma.order.findUnique({
@@ -186,16 +211,16 @@ async function handleOrderUpdated(order: OrderWebhookPayload): Promise<void> {
       await handleStatusTransition(order, previousStatus || '', order.status)
     }
 
-    console.log(`Order #${order.number} updated`)
+    webhookLogger.info(`Order #${order.number} updated`)
   } catch (error) {
-    console.error('Error handling order updated:', error)
+    webhookLogger.error('Error handling order updated:', error)
     throw error
   }
 }
 
 async function handleOrderDeleted(order: OrderWebhookPayload): Promise<void> {
   try {
-    console.log(`Processing order deletion #${order.number}`)
+    webhookLogger.info(`Processing order deletion #${order.number}`)
 
     const existingOrder = await prisma.order.findUnique({
       where: { wooId: order.id }
@@ -215,19 +240,15 @@ async function handleOrderDeleted(order: OrderWebhookPayload): Promise<void> {
       })
     }
 
-    console.log(`Order #${order.number} marked as deleted`)
+    webhookLogger.info(`Order #${order.number} marked as deleted`)
   } catch (error) {
-    console.error('Error handling order deleted:', error)
+    webhookLogger.error('Error handling order deleted:', error)
     throw error
   }
 }
 
-async function handleStatusTransition(
-  order: OrderWebhookPayload,
-  fromStatus: string,
-  toStatus: string
-): Promise<void> {
-  console.log(`Order #${order.number} status: ${fromStatus} -> ${toStatus}`)
+async function handleStatusTransition(order: OrderWebhookPayload, fromStatus: string, toStatus: string): Promise<void> {
+  webhookLogger.info(`Order #${order.number} status: ${fromStatus} -> ${toStatus}`)
 
   // Status groups for inventory handling
   const reserveStatuses = ['processing', 'on-hold']
@@ -259,7 +280,7 @@ async function reconcileInventoryForOrder(
   order: OrderWebhookPayload,
   action: 'reserve' | 'complete' | 'release' | 'refund'
 ): Promise<void> {
-  console.log(`Reconciling inventory for order #${order.number}, action: ${action}`)
+  webhookLogger.info(`Reconciling inventory for order #${order.number}, action: ${action}`)
 
   for (const item of order.line_items) {
     try {
@@ -269,7 +290,7 @@ async function reconcileInventoryForOrder(
       })
 
       if (!product) {
-        console.warn(`Product not found for WooCommerce ID ${item.product_id}`)
+        webhookLogger.warn(`Product not found for WooCommerce ID ${item.product_id}`)
         continue
       }
 
@@ -299,7 +320,7 @@ async function reconcileInventoryForOrder(
         case 'complete':
           // Deduct from actual stock when order is completed
           const newActual = Math.max(0, product.actualStock - quantity)
-          
+
           await prisma.product.update({
             where: { id: product.id },
             data: {
@@ -320,9 +341,11 @@ async function reconcileInventoryForOrder(
 
           // Check for low stock alert
           if (newActual <= product.lowStockAlert) {
-            console.log(`LOW STOCK ALERT: ${product.name} is at ${newActual} units`)
+            webhookLogger.info(`LOW STOCK ALERT: ${product.name} is at ${newActual} units`)
+
             // TODO: Trigger notification
           }
+
           break
 
         case 'release':
@@ -348,7 +371,7 @@ async function reconcileInventoryForOrder(
         case 'refund':
           // Add stock back for refunded orders
           const refundedActual = product.actualStock + quantity
-          
+
           await prisma.product.update({
             where: { id: product.id },
             data: {
@@ -368,9 +391,9 @@ async function reconcileInventoryForOrder(
           break
       }
 
-      console.log(`Inventory reconciled for product ${product.name}: ${action}`)
+      webhookLogger.info(`Inventory reconciled for product ${product.name}: ${action}`)
     } catch (error) {
-      console.error(`Error reconciling inventory for item ${item.product_id}:`, error)
+      webhookLogger.error(`Error reconciling inventory for item ${item.product_id}:`, error)
     }
   }
 }

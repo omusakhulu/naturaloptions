@@ -83,7 +83,7 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Category ID is required' }, { status: 400 })
     }
 
-    await wooClient.delete(`products/categories/${id}`, { force: true })
+    await wooClient.delete(`products/categories/${id}`, { params: { force: true } })
 
     return NextResponse.json({ success: true, message: 'Category deleted successfully' })
   } catch (error) {

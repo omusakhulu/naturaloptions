@@ -118,12 +118,26 @@ export default function BIAnalyticsPage() {
 
           <div className='bg-white border rounded shadow p-4 lg:col-span-2'>
             <div className='flex items-center justify-between mb-2'>
-              <h3 className='font-medium'>Payment Methods (demo)</h3>
-              <div className='text-xs text-gray-500'>Card 45% • Cash 35% • MPesa 20%</div>
+              <h3 className='font-medium'>Payment Methods</h3>
+              <div className='text-xs text-gray-500'>
+                {Array.isArray(metrics.paymentMethods) && metrics.paymentMethods.length > 0
+                  ? metrics.paymentMethods.map(p => {
+                      const total = metrics.paymentMethods.reduce((s, m) => s + m.amount, 0)
+                      const pct = total > 0 ? Math.round((p.amount / total) * 100) : 0
+                      return `${p.method} ${pct}%`
+                    }).join(' • ')
+                  : 'No data'}
+              </div>
             </div>
             <div className='h-80'>
               <Pie
-                data={{ labels:['Card','Cash','MPesa'], datasets:[{ data:[45,35,20], backgroundColor:['#3b82f6','#10b981','#f59e0b'] }] }}
+                data={{
+                  labels: Array.isArray(metrics.paymentMethods) ? metrics.paymentMethods.map(p => p.method) : [],
+                  datasets: [{
+                    data: Array.isArray(metrics.paymentMethods) ? metrics.paymentMethods.map(p => p.amount) : [],
+                    backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16']
+                  }]
+                }}
                 options={{ maintainAspectRatio:false }}
               />
             </div>

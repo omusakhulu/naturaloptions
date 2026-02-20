@@ -12,59 +12,49 @@ import classnames from 'classnames'
 import OptionMenu from '@core/components/option-menu'
 import CustomAvatar from '@core/components/mui/Avatar'
 
-// Vars
-const data = [
-  {
-    title: 'Direct Source',
-    subtitle: 'Direct link click',
-    amount: '1.2k',
-    trendNumber: 4.2,
-    icon: 'tabler-shadow'
-  },
-  {
-    title: 'Social Networks',
-    subtitle: 'Social Channels',
-    amount: '31.5k',
-    trendNumber: 8.2,
-    icon: 'tabler-globe'
-  },
-  {
-    title: 'Email Newsletter',
-    subtitle: 'Mail Campaigns',
-    amount: '893',
-    trendNumber: 2.4,
-    icon: 'tabler-mail'
-  },
-  {
-    title: 'Referrals',
-    subtitle: 'Impact Radius Visits',
-    amount: '342',
-    trendNumber: 0.4,
-    trend: 'negative',
-    icon: 'tabler-external-link'
-  },
-  {
-    title: 'ADVT',
-    subtitle: 'Google ADVT',
-    amount: '2.15k',
-    trendNumber: 9.1,
-    icon: 'tabler-ad'
-  },
-  {
-    title: 'Other',
-    subtitle: 'Many Sources',
-    amount: '12.5k',
-    trendNumber: 6.2,
-    icon: 'tabler-star'
+const SourceVisits = ({ paymentMethods }) => {
+  const getPaymentIcon = method => {
+    const methodLower = (method || '').toLowerCase()
+    if (methodLower.includes('mpesa') || methodLower.includes('m-pesa')) return 'tabler-device-mobile'
+    if (methodLower.includes('cash')) return 'tabler-cash'
+    if (methodLower.includes('card') || methodLower.includes('credit')) return 'tabler-credit-card'
+    if (methodLower.includes('bank')) return 'tabler-building-bank'
+    if (methodLower.includes('pesapal')) return 'tabler-wallet'
+    return 'tabler-coin'
   }
-]
 
-const SourceVisits = () => {
+  const totalPayments = paymentMethods.reduce((sum, pm) => sum + pm.count, 0)
+  const totalAmount = paymentMethods.reduce((sum, pm) => sum + pm.amount, 0)
+
+  const data = paymentMethods.slice(0, 6).map((pm, idx) => {
+    const sharePercent = totalAmount > 0 ? ((pm.amount / totalAmount) * 100).toFixed(1) : 0
+    return {
+      title: pm.method,
+      subtitle: `${pm.count} transactions`,
+      amount: `KSh ${Math.round(pm.amount).toLocaleString('en-KE')}`,
+      trendNumber: parseFloat(sharePercent),
+      trend: sharePercent > 15 ? 'positive' : sharePercent < 5 ? 'negative' : 'neutral',
+      icon: getPaymentIcon(pm.method)
+    }
+  })
+
+  // Fill with empty slots if less than 6
+  while (data.length < 6) {
+    data.push({
+      title: 'Other',
+      subtitle: '0 transactions',
+      amount: 'KSh 0',
+      trendNumber: 0,
+      trend: 'neutral',
+      icon: 'tabler-dots'
+    })
+  }
+
   return (
     <Card>
       <CardHeader
-        title='Source Visits'
-        subheader='38.4k Visitors'
+        title='Payment Methods'
+        subheader={`${totalPayments} Total Payments`}
         action={<OptionMenu options={['Last Week', 'Last Month', 'Last Year']} />}
       />
       <CardContent className='flex flex-col gap-6 md:gap-[1.0875rem] lg:gap-[1.5875rem]'>

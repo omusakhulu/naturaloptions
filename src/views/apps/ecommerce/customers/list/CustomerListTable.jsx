@@ -162,12 +162,13 @@ const CustomerListTable = ({ customerData }) => {
       }),
       columnHelper.accessor('country', {
         header: 'Country',
-        cell: ({ row }) => (
-          <div className='flex items-center gap-2'>
-            <img src={row.original.countryFlag} height={22} />
-            <Typography>{row.original.country}</Typography>
-          </div>
-        )
+        cell: ({ row }) => {
+          const country = row.original.billingAddress?.country || row.original.country || ''
+
+          return (
+            <Typography>{country || '-'}</Typography>
+          )
+        }
       }),
       columnHelper.accessor('ordersCount', {
         header: 'Orders',
@@ -189,9 +190,11 @@ const CustomerListTable = ({ customerData }) => {
         header: 'Outstanding',
         cell: ({ row }) => {
           const amount = Number(row.original.outstanding || 0)
+
           const text = Number.isFinite(amount)
             ? `KSh ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             : 'KSh 0.00'
+
           return (
             <Typography className='font-medium' color='text.primary'>
               {text}
@@ -204,6 +207,7 @@ const CustomerListTable = ({ customerData }) => {
         cell: ({ row }) => {
           const v = row.original.lastInvoice
           const d = v ? new Date(v) : null
+
           return <Typography>{d ? d.toLocaleString() : '-'}</Typography>
         }
       }),
@@ -212,6 +216,7 @@ const CustomerListTable = ({ customerData }) => {
         cell: ({ row }) => {
           const v = row.original.lastOrderDate
           const d = v ? new Date(v) : null
+
           return <Typography>{d ? d.toLocaleString() : '-'}</Typography>
         }
       }),

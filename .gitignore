@@ -120,3 +120,5 @@ deployment_package/next-build.tar.gz
 deployment.tar.gz
 *.tar.gz
 deployment_package/*.tar.gz
+.claude/settings.local.json
+nul

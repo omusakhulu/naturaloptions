@@ -95,7 +95,11 @@ const OrderDetailsPage = async props => {
             ? `${order.billing.first_name} ${order.billing.last_name}`
             : 'Guest Customer',
         email: order.billing?.email || ''
-      }
+      },
+      metaData: Array.isArray(order.meta_data) ? order.meta_data.map(m => ({
+        key: m?.key || '',
+        value: m?.value || ''
+      })) : []
     }
   } catch (e) {
     // Fallback to DB

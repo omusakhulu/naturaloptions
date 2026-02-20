@@ -1078,6 +1078,16 @@ export default function POSTerminalModern() {
           ]))
           setCurrentPaymentAmount('')
           toast.success('M-PESA payment verified and added')
+
+          sendMpesaEmailNotification({
+            phone,
+            amount,
+            checkoutRequestId,
+            merchantRequestId: qData?.MerchantRequestID,
+            mpesaReceiptNumber: qData?.CallbackMetadata?.Item?.find(i => i.Name === 'MpesaReceiptNumber')?.Value,
+            resultDesc: qData?.ResultDesc
+          })
+
           return
         }
 
@@ -1099,6 +1109,80 @@ export default function POSTerminalModern() {
       console.error(e)
       toast.error(e instanceof Error ? e.message : 'Failed to send M-PESA prompt')
       setMpesaPrompt({ status: 'failed', checkoutRequestId: '', message: 'Failed to send prompt.' })
+    } finally {
+      setMpesaBusy(false)
+    }
+  }
+
+  const sendMpesaEmailNotification = async (txInfo) => {
+    try {
+      await fetch('/api/payments/mpesa/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(txInfo)
+      })
+    } catch (e) {
+      console.error('Failed to send M-Pesa email notification:', e)
+    }
+  }
+
+  const verifyMpesaPayment = async () => {
+    const checkoutRequestId = mpesaPrompt?.checkoutRequestId
+    if (!checkoutRequestId) {
+      toast.error('No checkout request to verify')
+      return
+    }
+
+    setMpesaBusy(true)
+    setMpesaPrompt(prev => ({ ...prev, message: 'Verifying payment...' }))
+
+    try {
+      const qRes = await fetch('/api/payments/mpesa/stkquery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkoutRequestId })
+      })
+      const qData = await qRes.json()
+
+      if (qData?.isSuccess) {
+        const amount = parseFloat(currentPaymentAmount) || 0
+        setMpesaPrompt({ status: 'success', checkoutRequestId, message: 'Payment confirmed.' })
+        setSplitPayments(prev => ([
+          ...prev,
+          {
+            id: Date.now(),
+            method: 'mpesa',
+            amount,
+            status: 'COMPLETED',
+            reference: checkoutRequestId,
+            phone: mpesaPhone
+          }
+        ]))
+        setCurrentPaymentAmount('')
+        toast.success('M-PESA payment verified and added')
+
+        sendMpesaEmailNotification({
+          phone: mpesaPhone,
+          amount,
+          checkoutRequestId,
+          merchantRequestId: qData?.MerchantRequestID,
+          mpesaReceiptNumber: qData?.CallbackMetadata?.Item?.find(i => i.Name === 'MpesaReceiptNumber')?.Value,
+          resultDesc: qData?.ResultDesc
+        })
+      } else {
+        const resultCode = String(qData?.ResultCode ?? '')
+        if (resultCode && resultCode !== '0') {
+          setMpesaPrompt({ status: 'failed', checkoutRequestId, message: qData?.ResultDesc || 'Payment failed/cancelled.' })
+          toast.error(qData?.ResultDesc || 'M-PESA payment failed/cancelled')
+        } else {
+          setMpesaPrompt(prev => ({ ...prev, message: 'Payment still pending. Customer has not completed payment yet.' }))
+          toast('Payment still pending — try again in a moment')
+        }
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to verify payment')
+      setMpesaPrompt(prev => ({ ...prev, message: 'Verification failed. Try again.' }))
     } finally {
       setMpesaBusy(false)
     }
@@ -2086,6 +2170,16 @@ export default function POSTerminalModern() {
                       <div className={`text-sm ${mpesaPrompt.status === 'success' ? 'text-green-700' : mpesaPrompt.status === 'failed' ? 'text-red-700' : 'text-gray-600'}`}>
                         {mpesaPrompt.message}
                       </div>
+                    )}
+                    {mpesaPrompt?.checkoutRequestId && mpesaPrompt.status !== 'success' && (
+                      <button
+                        type='button'
+                        onClick={verifyMpesaPayment}
+                        disabled={mpesaBusy}
+                        className='w-full mt-2 px-4 py-2 border border-green-300 rounded-lg hover:bg-green-50 disabled:bg-gray-100 disabled:text-gray-400 text-green-700 font-medium transition'
+                      >
+                        {mpesaBusy ? 'Verifying...' : 'Verify M-PESA Payment'}
+                      </button>
                     )}
                   </div>
                 )}

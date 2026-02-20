@@ -7,6 +7,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcrypt'
 
 import prisma from '@/lib/prisma'
+import { env } from '@/lib/env'
 
 const basePath = process.env.BASEPATH || ''
 const withBasePath = (path: string) => (basePath ? `${basePath}${path}`.replace(/\/{2,}/g, '/') : path)
@@ -95,10 +96,14 @@ const authOptions = {
         }
       }
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || ''
-    })
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET
+          })
+        ]
+      : [])
   ],
   session: {
     strategy: 'jwt' as const,
@@ -131,8 +136,8 @@ const authOptions = {
     },
     async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id
+        ;(session.user as any).role = token.role
+        ;(session.user as any).id = token.id
       }
 
       return session
@@ -142,7 +147,7 @@ const authOptions = {
     signIn: withBasePath('/en/pages/auth/login-v2'),
     error: withBasePath('/en/error')
   },
-  secret: process.env.NEXTAUTH_SECRET
+  secret: env.NEXTAUTH_SECRET
 }
 
 export { authOptions }

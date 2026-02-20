@@ -6,7 +6,7 @@ import { WooCommerceService } from '@/lib/woocommerce/woocommerce-service'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { orderId, status, customerNote, billingAddress, shippingAddress, lineItems } = body
+    const { orderId, status, dateCreated, customerNote, billingAddress, shippingAddress, lineItems } = body
 
     if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 })
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     const wooPayload: Record<string, any> = {}
 
     if (status) wooPayload.status = String(status)
+    if (dateCreated) wooPayload.date_created = String(dateCreated)
     if (typeof customerNote === 'string') wooPayload.customer_note = customerNote
     if (billingAddress && typeof billingAddress === 'object') wooPayload.billing = billingAddress
     if (shippingAddress && typeof shippingAddress === 'object') wooPayload.shipping = shippingAddress

@@ -16,16 +16,13 @@ import {
 } from 'chart.js'
 ChartJS.register(LineElement, BarElement, PointElement, CategoryScale, LinearScale, ArcElement, Tooltip, Legend)
 
-const kpis = [
-  { label: 'Sales', value: 'KSh 153,204', color: 'bg-gradient-to-br from-purple-500 to-pink-500' },
-  { label: 'Gross Profit %', value: '42.95%', color: 'bg-gradient-to-br from-pink-500 to-red-500' },
-  { label: 'COGS', value: 'KSh 0', color: 'bg-gradient-to-br from-blue-500 to-cyan-500' },
-  { label: 'Net Profit', value: 'KSh 111,635', color: 'bg-gradient-to-br from-green-500 to-lime-500' },
-  { label: 'Tax', value: 'KSh 4,688', color: 'bg-gradient-to-br from-indigo-500 to-sky-500' },
-  { label: 'Returns', value: 'KSh 110', color: 'bg-gradient-to-br from-yellow-500 to-orange-500' },
-  { label: 'Expenses', value: 'KSh 820', color: 'bg-gradient-to-br from-teal-500 to-emerald-500' },
-  { label: 'Discounts', value: 'KSh 375', color: 'bg-gradient-to-br from-fuchsia-500 to-rose-500' },
-]
+const formatKsh = (value) => {
+  return new Intl.NumberFormat('en-KE', {
+    style: 'currency',
+    currency: 'KES',
+    maximumFractionDigits: 0
+  }).format(value)
+}
 
 export default function BIDashboardPage() {
   const { updatePageSettings } = useSettings()
@@ -53,6 +50,18 @@ export default function BIDashboardPage() {
     load()
   }, [])
 
+  // Generate KPI cards from metrics
+  const kpis = metrics ? [
+    { label: 'Sales', value: formatKsh(metrics.totalSales), color: 'bg-gradient-to-br from-purple-500 to-pink-500' },
+    { label: 'Gross Profit %', value: `${metrics.grossProfitPercent.toFixed(2)}%`, color: 'bg-gradient-to-br from-pink-500 to-red-500' },
+    { label: 'COGS', value: formatKsh(metrics.totalCOGS), color: 'bg-gradient-to-br from-blue-500 to-cyan-500' },
+    { label: 'Net Profit', value: formatKsh(metrics.netProfit), color: 'bg-gradient-to-br from-green-500 to-lime-500' },
+    { label: 'Tax', value: formatKsh(metrics.totalTax), color: 'bg-gradient-to-br from-indigo-500 to-sky-500' },
+    { label: 'Returns', value: formatKsh(metrics.totalReturns), color: 'bg-gradient-to-br from-yellow-500 to-orange-500' },
+    { label: 'Expenses', value: formatKsh(metrics.totalExpenses), color: 'bg-gradient-to-br from-teal-500 to-emerald-500' },
+    { label: 'Discounts', value: formatKsh(metrics.totalDiscounts), color: 'bg-gradient-to-br from-fuchsia-500 to-rose-500' },
+  ] : []
+
   return (
     <div className='p-8 space-y-6'>
       <div className='flex justify-between items-center'>
@@ -66,14 +75,18 @@ export default function BIDashboardPage() {
       </div>
 
       {/* KPI cards */}
-      <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-        {kpis.map(k => (
-          <div key={k.label} className={`text-white rounded p-4 shadow ${k.color}`}>
-            <div className='text-sm'>{k.label}</div>
-            <div className='text-xl font-semibold'>{k.value}</div>
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <div className='text-center py-8'>Loading KPIs...</div>
+      ) : (
+        <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
+          {kpis.map(k => (
+            <div key={k.label} className={`text-white rounded p-4 shadow ${k.color}`}>
+              <div className='text-sm'>{k.label}</div>
+              <div className='text-xl font-semibold'>{k.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Charts */}
       {loading || !metrics ? (
@@ -115,17 +128,27 @@ export default function BIDashboardPage() {
             </div>
           </div>
 
-          {/* Payment status (placeholder) */}
+          {/* Payment status */}
           <div className='bg-white border rounded shadow p-4 lg:col-span-2'>
             <div className='flex items-center justify-between mb-2'>
-              <h3 className='font-medium'>Payment Status (demo)</h3>
-              <div className='text-xs text-gray-500'>Paid 50% • Due 30% • Partial 20%</div>
+              <h3 className='font-medium'>Invoice Payment Status</h3>
+              <div className='text-xs text-gray-500'>
+                Paid: {metrics.paymentStatusBreakdown.paid} • Due: {metrics.paymentStatusBreakdown.due} • Partial: {metrics.paymentStatusBreakdown.partial}
+              </div>
             </div>
             <div className='h-80'>
               <Pie
                 data={{
                   labels:['Paid','Due','Partial'],
-                  datasets:[{data:[50,30,20],backgroundColor:['#22c55e','#f97316','#eab308']}]}}
+                  datasets:[{
+                    data:[
+                      metrics.paymentStatusBreakdown.paid,
+                      metrics.paymentStatusBreakdown.due,
+                      metrics.paymentStatusBreakdown.partial
+                    ],
+                    backgroundColor:['#22c55e','#f97316','#eab308']
+                  }]
+                }}
                 options={{ maintainAspectRatio:false }}
               />
             </div>

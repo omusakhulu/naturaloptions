@@ -38,16 +38,16 @@ export async function saveProduct(productData: ProductData) {
 
   try {
     // Use wooId if present, otherwise slug (must be unique in schema)
-    let where: any = {};
+    let where: any = {}
+
     if (typeof productData.wooId !== 'undefined' && productData.wooId !== null) {
-      where.wooId = productData.wooId;
-    } else if (typeof productData.id !== 'undefined' && productData.id !== null) {
-      where.id = productData.id;
+      where.wooId = productData.wooId
     } else if (typeof productData.slug === 'string' && productData.slug.length > 0) {
-      where.slug = productData.slug;
+      where.slug = productData.slug
     } else {
-      throw new Error('No unique key (wooId, id, slug) provided for product upsert');
+      throw new Error('Product upsert requires wooId or slug')
     }
+
     const product = await prisma.product.upsert({
       where,
       update: {
@@ -257,16 +257,22 @@ export async function getAllCategories() {
     const categoryMap = new Map()
 
     products.forEach(product => {
-      if (product.categories && Array.isArray(product.categories)) {
-        product.categories.forEach(cat => {
-          if (cat && cat.id) {
-            categoryMap.set(cat.id, {
-              id: cat.id,
-              name: cat.name || `Category ${cat.id}`,
-              slug: cat.slug || `category-${cat.id}`
-            })
-          }
-        })
+      try {
+        const categories = typeof product.categories === 'string' ? JSON.parse(product.categories) : product.categories
+
+        if (categories && Array.isArray(categories)) {
+          categories.forEach((cat: any) => {
+            if (cat && cat.id) {
+              categoryMap.set(cat.id, {
+                id: cat.id,
+                name: cat.name || `Category ${cat.id}`,
+                slug: cat.slug || `category-${cat.id}`
+              })
+            }
+          })
+        }
+      } catch {
+        // Skip products with malformed category data
       }
     })
 
