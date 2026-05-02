@@ -1,61 +1,118 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+
+import { getServerSession } from 'next-auth'
+
+import { prisma } from '@/lib/prisma'
+import { authOptions } from '@/config/auth'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const daysAhead = parseInt(searchParams.get('daysAhead') || '30')
-
-  const today = new Date()
-  const futureDate = new Date()
-  futureDate.setDate(futureDate.getDate() + daysAhead)
-
   try {
-    // The current InventoryItem schema does not have expiryDate or batchNumber.
-    // We fetch items that are low on stock instead as a relevant proxy for a 'stock' report,
-    // or just return empty if the focus is strictly on expiry which is missing in schema.
-    const inventoryItems = await prisma.inventoryItem.findMany({
+    const session = await getServerSession(authOptions)
+
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
+    const locationId = searchParams.get('locationId')
+
+    // Build where clause — only items with expiry dates and stock > 0
+    const where: any = {
+      expiryDate: { not: null },
+      quantity: { gt: 0 }
+    }
+
+    // If date range provided, filter by expiry date range
+    if (from || to) {
+      where.expiryDate = { ...where.expiryDate }
+      if (from) where.expiryDate.gte = new Date(from)
+      if (to) where.expiryDate.lte = new Date(to)
+    }
+
+    if (locationId) {
+      where.locationId = locationId
+    }
+
+    const inventoryLocations = await prisma.inventoryLocation.findMany({
+      where,
       include: {
-        location: {
-          include: {
-            warehouse: { select: { name: true } }
-          }
+        product: {
+          select: { id: true, sku: true, name: true, price: true }
         },
-        warehouse: { select: { name: true } }
+        location: {
+          select: { id: true, name: true }
+        }
       },
-      take: 50
+      orderBy: { expiryDate: 'asc' },
+      take: 200
     })
 
-    const items = inventoryItems.map(item => {
-      // Mocking days until expiry as the schema lacks this field
-      const daysUntilExpiry = 30 
-      
+    const today = new Date()
+
+    const items = inventoryLocations.map(inv => {
+      const daysUntilExpiry = inv.expiryDate
+        ? Math.ceil((inv.expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        : null
+
+      const unitPrice = parseFloat(inv.product.price || '0')
+      const value = inv.quantity * unitPrice
+
+      let status = 'Normal'
+
+      if (daysUntilExpiry !== null) {
+        if (daysUntilExpiry <= 0) status = 'Expired'
+        else if (daysUntilExpiry <= 30) status = 'Critical'
+        else if (daysUntilExpiry <= 90) status = 'Warning'
+      }
+
       return {
-        id: item.id,
-        sku: item.sku,
-        productName: item.productName,
-        batchNumber: 'N/A',
-        expiryDate: 'N/A',
+        id: inv.id,
+        sku: inv.product.sku || '',
+        productName: inv.product.name,
+        batchNumber: inv.batchNumber || '',
+        expiryDate: inv.expiryDate?.toISOString().slice(0, 10) || '',
         daysUntilExpiry,
-        quantity: item.quantity,
-        location: (item.location as any)?.name || 'N/A',
-        warehouse: item.warehouse?.name || 'N/A',
-        status: 'Normal'
+        quantity: inv.quantity,
+        value,
+        warehouse: inv.location.name, // frontend expects 'warehouse' field name
+        status
       }
     })
 
+    // Group by location for chart data
+    const byLocationMap: Record<string, number> = {}
+
+    for (const item of items) {
+      byLocationMap[item.warehouse] = (byLocationMap[item.warehouse] || 0) + item.value
+    }
+
+    const byWarehouse = Object.entries(byLocationMap).map(([warehouse, valueAtRisk]) => ({ warehouse, valueAtRisk }))
+
     const totals = {
       totalItems: items.length,
+      expired: items.filter(i => i.status === 'Expired').length,
       critical: items.filter(i => i.status === 'Critical').length,
       warning: items.filter(i => i.status === 'Warning').length,
       normal: items.filter(i => i.status === 'Normal').length
     }
 
-    return NextResponse.json({ daysAhead, items, totals })
-  } catch (e) {
     return NextResponse.json({
-      daysAhead,
+      range: { from: from || '', to: to || '' },
+      locationId: locationId || '',
+      items,
+      byWarehouse,
+      totals
+    })
+  } catch (error: any) {
+    console.error('Stock expiry report error:', error)
+
+    return NextResponse.json({
+      range: { from: '', to: '' },
       items: [],
-      totals: { totalItems: 0, critical: 0, warning: 0, normal: 0 }
+      byWarehouse: [],
+      totals: { totalItems: 0, expired: 0, critical: 0, warning: 0, normal: 0 }
     })
   }
 }

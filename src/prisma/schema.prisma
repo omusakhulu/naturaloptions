@@ -1378,11 +1378,18 @@ model InventoryLocation {
   minQuantity Int  @default(0)
   maxQuantity Int?
 
+  // Batch/Expiry tracking
+  batchNumber String   @default("")
+  lotNumber   String?
+  expiryDate  DateTime?
+
   lastUpdated DateTime @default(now())
 
-  @@unique([productId, locationId])
+  @@unique([productId, locationId, batchNumber])
   @@index([productId])
   @@index([locationId])
+  @@index([batchNumber])
+  @@index([expiryDate])
 }
 
 // Product Stock Movement Tracking (for dual stock system)
@@ -1810,6 +1817,9 @@ model PurchaseOrder {
 
   // Warehouse destination
   warehouseId String?
+
+  // Store/POS Location destination
+  locationId  String?
 
   // Payment
   paymentStatus PaymentStatus @default(PENDING)

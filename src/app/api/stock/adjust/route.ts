@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { getServerSession } from 'next-auth'
+
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/config/auth'
 
@@ -12,18 +14,16 @@ export const runtime = 'nodejs'
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await req.json()
-    const { productId, quantity, reason, notes, locationId } = body
+    const { productId, quantity, reason, notes, locationId, batchNumber } = body
 
     if (!productId || quantity === undefined) {
-      return NextResponse.json(
-        { error: 'Missing required fields: productId, quantity' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Missing required fields: productId, quantity' }, { status: 400 })
     }
 
     // Get current product
@@ -39,14 +39,11 @@ export async function POST(req: NextRequest) {
     const afterActual = beforeActual + quantity
 
     if (afterActual < 0) {
-      return NextResponse.json(
-        { error: 'Insufficient stock. Cannot reduce below 0.' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Insufficient stock. Cannot reduce below 0.' }, { status: 400 })
     }
 
     // Update product stock and create movement record in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async tx => {
       // Update product
       const updatedProduct = await tx.product.update({
         where: { id: productId },
@@ -77,11 +74,14 @@ export async function POST(req: NextRequest) {
 
       // If location-specific, update inventory location
       if (locationId) {
+        const batch = batchNumber || ''
+
         const inventoryLocation = await tx.inventoryLocation.findUnique({
           where: {
-            productId_locationId: {
+            productId_locationId_batchNumber: {
               productId,
-              locationId
+              locationId,
+              batchNumber: batch
             }
           }
         })
@@ -89,9 +89,10 @@ export async function POST(req: NextRequest) {
         if (inventoryLocation) {
           await tx.inventoryLocation.update({
             where: {
-              productId_locationId: {
+              productId_locationId_batchNumber: {
                 productId,
-                locationId
+                locationId,
+                batchNumber: batch
               }
             },
             data: {
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
             data: {
               productId,
               locationId,
+              batchNumber: batch,
               quantity: Math.max(0, quantity),
               lastUpdated: new Date()
             }
@@ -123,9 +125,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: any) {
     console.error('Stock adjustment error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to adjust stock' },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: error.message || 'Failed to adjust stock' }, { status: 500 })
   }
 }

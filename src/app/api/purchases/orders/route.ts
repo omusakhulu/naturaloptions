@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
+
 import { prisma } from '@/lib/prisma'
 
 // Generate unique PO number
 async function generatePONumber(): Promise<string> {
   const date = new Date()
   const prefix = `PO-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`
-  
+
   const lastPO = await prisma.purchaseOrder.findFirst({
     where: { orderNumber: { startsWith: prefix } },
     orderBy: { orderNumber: 'desc' }
@@ -13,9 +14,10 @@ async function generatePONumber(): Promise<string> {
 
   if (lastPO) {
     const lastNumber = parseInt(lastPO.orderNumber.split('-').pop() || '0')
+
     return `${prefix}-${String(lastNumber + 1).padStart(4, '0')}`
   }
-  
+
   return `${prefix}-0001`
 }
 
@@ -115,26 +117,16 @@ export async function GET(request: Request) {
     })
   } catch (error: any) {
     console.error('Error fetching purchase orders:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch purchase orders', details: error.message },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Failed to fetch purchase orders', details: error.message }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   try {
     const data = await request.json()
-    const {
-      vendorId,
-      expectedDate,
-      warehouseId,
-      notes,
-      terms,
-      items,
-      requisitionId,
-      createdBy
-    } = data
+
+    const { vendorId, expectedDate, warehouseId, notes, terms, items, requisitionId, createdBy } = data
 
     if (!vendorId) {
       return NextResponse.json({ error: 'Vendor ID is required' }, { status: 400 })
@@ -188,6 +180,7 @@ export async function POST(request: Request) {
         vendorId,
         expectedDate: expectedDate ? new Date(expectedDate) : null,
         warehouseId: warehouseId || null,
+        locationId: data.locationId || null,
         notes: notes || null,
         terms: terms || null,
         requisitionId: requisitionId || null,
@@ -212,10 +205,8 @@ export async function POST(request: Request) {
     return NextResponse.json(order, { status: 201 })
   } catch (error: any) {
     console.error('Error creating purchase order:', error)
-    return NextResponse.json(
-      { error: 'Failed to create purchase order', details: error.message },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Failed to create purchase order', details: error.message }, { status: 500 })
   }
 }
 
@@ -230,6 +221,7 @@ export async function PUT(request: Request) {
 
     // Check if order exists
     const existingOrder = await prisma.purchaseOrder.findUnique({ where: { id } })
+
     if (!existingOrder) {
       return NextResponse.json({ error: 'Purchase Order not found' }, { status: 404 })
     }
@@ -240,6 +232,7 @@ export async function PUT(request: Request) {
     if (updateData.vendorId) orderUpdate.vendorId = updateData.vendorId
     if (updateData.expectedDate) orderUpdate.expectedDate = new Date(updateData.expectedDate)
     if (updateData.warehouseId !== undefined) orderUpdate.warehouseId = updateData.warehouseId
+    if (updateData.locationId !== undefined) orderUpdate.locationId = updateData.locationId
     if (updateData.notes !== undefined) orderUpdate.notes = updateData.notes
     if (updateData.terms !== undefined) orderUpdate.terms = updateData.terms
     if (updateData.status) orderUpdate.status = updateData.status
@@ -289,7 +282,7 @@ export async function PUT(request: Request) {
 
       const discount = parseFloat(updateData.discount || existingOrder.discount.toString())
       const shippingCost = parseFloat(updateData.shippingCost || existingOrder.shippingCost.toString())
-      
+
       orderUpdate.subtotal = subtotal
       orderUpdate.taxAmount = taxAmount
       orderUpdate.shippingCost = shippingCost
@@ -309,10 +302,8 @@ export async function PUT(request: Request) {
     return NextResponse.json(order)
   } catch (error: any) {
     console.error('Error updating purchase order:', error)
-    return NextResponse.json(
-      { error: 'Failed to update purchase order', details: error.message },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Failed to update purchase order', details: error.message }, { status: 500 })
   }
 }
 
@@ -326,16 +317,14 @@ export async function DELETE(request: Request) {
     }
 
     const existingOrder = await prisma.purchaseOrder.findUnique({ where: { id } })
+
     if (!existingOrder) {
       return NextResponse.json({ error: 'Purchase Order not found' }, { status: 404 })
     }
 
     // Only allow deletion of DRAFT orders
     if (existingOrder.status !== 'DRAFT') {
-      return NextResponse.json(
-        { error: 'Only draft purchase orders can be deleted' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Only draft purchase orders can be deleted' }, { status: 400 })
     }
 
     await prisma.purchaseOrder.delete({ where: { id } })
@@ -343,9 +332,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true, message: 'Purchase order deleted' })
   } catch (error: any) {
     console.error('Error deleting purchase order:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete purchase order', details: error.message },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Failed to delete purchase order', details: error.message }, { status: 500 })
   }
 }

@@ -43,7 +43,9 @@
       "Bash(grep:*)",
       "Bash(wc:*)",
       "Bash(tar:*)",
-      "Bash(npx next lint:*)"
+      "Bash(npx next lint:*)",
+      "Bash(pnpm prisma generate:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []
