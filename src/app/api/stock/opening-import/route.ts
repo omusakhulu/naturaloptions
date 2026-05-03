@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { getServerSession } from 'next-auth'
 
 import { prisma } from '@/lib/prisma'
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Run stock update in a transaction
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async tx => {
           const beforeActual = product.actualStock
           const afterActual = beforeActual + quantity
 
@@ -125,14 +126,29 @@ export async function POST(req: NextRequest) {
           })
 
           // Upsert inventory location
+          const batch = batchNumber || ''
+          const expiry = expiryDate ? new Date(expiryDate) : null
+
           const existing = await tx.inventoryLocation.findUnique({
-            where: { productId_locationId: { productId: product.id, locationId: location!.id } }
+            where: {
+              productId_locationId_batchNumber: { productId: product.id, locationId: location!.id, batchNumber: batch }
+            }
           })
 
           if (existing) {
             await tx.inventoryLocation.update({
-              where: { productId_locationId: { productId: product.id, locationId: location!.id } },
-              data: { quantity: existing.quantity + quantity, lastUpdated: new Date() }
+              where: {
+                productId_locationId_batchNumber: {
+                  productId: product.id,
+                  locationId: location!.id,
+                  batchNumber: batch
+                }
+              },
+              data: {
+                quantity: existing.quantity + quantity,
+                lastUpdated: new Date(),
+                expiryDate: expiry || existing.expiryDate
+              }
             })
           } else {
             await tx.inventoryLocation.create({
@@ -140,7 +156,10 @@ export async function POST(req: NextRequest) {
                 productId: product.id,
                 locationId: location!.id,
                 quantity,
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
+                batchNumber: batch,
+                lotNumber: null,
+                expiryDate: expiry
               }
             })
           }
@@ -211,9 +230,6 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Opening stock import error:', error)
 
-    return NextResponse.json(
-      `Import failed: ${error.message}`,
-      { status: 500 }
-    )
+    return NextResponse.json(`Import failed: ${error.message}`, { status: 500 })
   }
 }
